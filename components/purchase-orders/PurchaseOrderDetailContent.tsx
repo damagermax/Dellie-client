@@ -1,0 +1,164 @@
+"use client";
+
+import { Avatar, Button, Divider, Dropdown, MenuProps, Tag } from "antd";
+import { CalendarDays, Clock3, CreditCard, MapPinned, MoreHorizontal, PackageCheck, Pencil, Receipt, RotateCcw, StickyNote, Trash2, Truck, Wallet, WalletCards } from "lucide-react";
+import { GoBack } from "@/components/ui/GoBack";
+import { formatDate } from "@/lib/dateUtils";
+import { Purchase } from "@/types/index";
+import PurchaseOrderDetailTables from "./PurchaseOrderDetailTables";
+
+interface PurchaseOrderDetailContentProps {
+  purchase: Purchase;
+  currency: string;
+  canEdit: boolean;
+  canReceive: boolean;
+  canReturn: boolean;
+  isDeleting: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onReceive: () => void;
+  onReturn: () => void;
+  onAddLandedCost: () => void;
+  onRecordPayment: () => void;
+}
+
+export default function PurchaseOrderDetailContent({ purchase, currency, canEdit, canReceive, canReturn, isDeleting, onEdit, onDelete, onReceive, onReturn, onAddLandedCost, onRecordPayment }: PurchaseOrderDetailContentProps) {
+  const moreItems: MenuProps["items"] = [
+    {
+      key: "edit",
+      disabled: !canEdit,
+      icon: <Pencil size={15} />,
+      label: "Edit Purchase",
+      onClick: onEdit,
+    },
+    {
+      key: "return",
+      disabled: !canReturn,
+      icon: <RotateCcw size={15} />,
+      label: "Return Stock",
+      onClick: onReturn,
+    },
+
+    {
+      key: "landed_cost",
+      disabled: Boolean(purchase.locked),
+      icon: <Truck size={15} />,
+      label: "Add Landed Cost",
+      onClick: onAddLandedCost,
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "refund",
+      icon: <RotateCcw size={15} />,
+      label: "Refund Payment",
+    },
+    {
+      key: "write_off",
+      icon: <Receipt size={15} />,
+      label: "Write Off Balance",
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "delete",
+      icon: <Trash2 size={15} />,
+      danger: true,
+      label: "Delete Purchase",
+      onClick: onDelete,
+    },
+  ];
+
+  const supplierName = purchase.contactId?.name || purchase.contactId?.displayName || "Supplier not set";
+  const supplierMeta = [purchase.contactId?.email, purchase.contactId?.phone].filter(Boolean).join(" · ") || "No contact details provided";
+  const locationName = purchase.locationId?.name || "Location not set";
+  const locationMeta = purchase.locationId?.address || "No address provided";
+  const receiptTone = purchase.receiptStatus === "received" ? "green" : purchase.receiptStatus === "partially_received" ? "gold" : "blue";
+
+  return (
+    <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
+      <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-8 pb-7 pt-5">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="flex items-start gap-x-4">
+            <GoBack />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{purchase.purchaseNumber}</h1>
+
+                <Tag className="!m-0 !rounded-full !px-2 capitalize" color={receiptTone}>
+                  {purchase.receiptStatus.replaceAll("_", " ")}
+                </Tag>
+              </div>
+              <p className="mt-2 max-w-xl text-sm text-gray-500">
+                {supplierName} · Created {formatDate(purchase.createdAt)} by {purchase.createdBy?.name || "-"}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button type="primary" className="!shadow-none  !bg-[#2d837d] !py-1  !font-medium" icon={<PackageCheck size={15} />} disabled={!canReceive} onClick={onReceive}>
+              Fulfill Items
+            </Button>
+            <Button type="primary" className="!shadow-none  !bg-amber-600 !font-medium" icon={<CreditCard size={15} />} disabled={Boolean(purchase.locked)} onClick={onRecordPayment}>
+              Record Payment
+            </Button>
+
+            <Dropdown menu={{ items: moreItems }} placement="bottomRight">
+              <Button type="text" className="!bg-gray-200/80 " icon={<MoreHorizontal size={15} />} />
+            </Dropdown>
+          </div>
+        </div>
+      </div>
+
+      <div className="py-7">
+        <div className="mb-18 px-8">
+          <div className="grid gap-4 xl:grid-cols-2">
+            <IdentityPanel label="Supplier" title={supplierName} description={supplierMeta} avatarText={supplierName} accent="" />
+            <IdentityPanel label="Destination" title={locationName} description={locationMeta} icon={<MapPinned size={18} />} accent="" />
+          </div>
+
+          <Divider className="!mt-6" />
+          <div className="mt-5 grid gap-3 grid-cols-2 xl:grid-cols-4">
+            <Detail icon={<CalendarDays size={17} />} label="Ordered" value={formatDate(purchase.date)} />
+            <Detail icon={<Truck size={17} />} label="Deliver by" value={formatDate(purchase.deliveryDate)} />
+            <Detail icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(purchase.dueDate)} />
+            <Detail icon={<WalletCards size={17} />} label="Terms" value={purchase.paymentTerms || "-"} />
+          </div>
+        </div>
+
+        {/* {purchase.note && (
+          <div className="mx-8 mb-8   ">
+            <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-amber-700">Note</p>
+            <p className="text-sm leading-6 text-gray-700">{purchase.note}</p>
+          </div>
+        )} */}
+
+        <PurchaseOrderDetailTables purchase={purchase} currency={currency} />
+      </div>
+    </section>
+  );
+}
+
+function IdentityPanel({ label, title, description, avatarText, icon, accent }: { label: string; title: string; description: string; avatarText?: string; icon?: React.ReactNode; accent: string }) {
+  return (
+    <div className={``}>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">{label}</p>
+          <p className="mt-1 truncate text-lg font-medium text-gray-800">{title}</p>
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className=" border-r mr-5 border-gray-200">
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400 ">{label}</p>
+      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
+    </div>
+  );
+}

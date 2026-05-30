@@ -13,3 +13,5 @@ export * from "./systemsApi";
 export * from "./paymentAccountsApi";
 export * from "./paymentAccountsApi";
 export * from "./taxesApi";
+export * from "./purchasesApi";
+export * from "./salesApi";

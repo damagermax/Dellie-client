@@ -28,7 +28,7 @@ export function AppModal({ open, title, footer, toggle, children, width = 900, h
           <p className="  text-sm  text-gray-600 font-normal">{}</p>
         </div>
       }
-      // wrapClassName={"bg-black/60  backdrop-blur-xs "}
+      wrapClassName={"bg-black/60  backdrop-blur-xs "}
       onClose={toggle}
       styles={{ header: { background: "white" } }}
       onCancel={toggle}

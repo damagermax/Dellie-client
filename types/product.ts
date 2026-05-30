@@ -1,3 +1,5 @@
+import { ITEM_TYPE } from "@/components/products/ProductFormModal";
+
 export interface QuantityData {
   onHand: number;
   available: number;
@@ -66,7 +68,7 @@ export interface ProductListItem {
   sellingPrice: number;
   costPrice?: number;
   sku: string;
-  type?: string;
+  type?: ITEM_TYPE;
   sourceProductName?: string;
   sourceQuantity?: number;
   conversionType?: "source_to_repack" | "repack_to_source";

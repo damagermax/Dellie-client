@@ -33,6 +33,10 @@ export const TAG_TYPES = {
   TRANSACTIONS: "TRANSACTIONs",
   TAXES: "TAXES",
   TAX: "TAX",
+  PURCHASE: "PURCHASE",
+  PURCHASES: "PURCHASES",
+  SALE: "SALE",
+  SALES: "SALES",
 } as const;
 
 export const baseApi = createApi({

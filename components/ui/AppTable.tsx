@@ -13,7 +13,7 @@ interface AppTableProps<T> extends Omit<TableProps<T>, "dataSource" | "columns" 
   pagination?: boolean | TableProps<T>["pagination"];
 }
 
-const AppTable = <T extends object>({ columns, dataSource, pageSize = 100, scrollX, className = "custom-table", pagination: paginationProp = true, ...rest }: AppTableProps<T>) => {
+const AppTable = <T extends object>({ columns, dataSource, pageSize = 100, scrollY, scrollX, className = "custom-table", pagination: paginationProp = true, ...rest }: AppTableProps<T>) => {
   const [isMounted, setIsMounted] = useState(false);
 
   // Ensure component is mounted before rendering to avoid hydration issues

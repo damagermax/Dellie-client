@@ -1,98 +1,104 @@
 "use client";
 
-import OrderDetail from "@/components/orders/OrderDetail";
-import PrintReceiptDrawer from "@/components/orders/PrintReceiptDrawer";
-import { ArrowLeft, History } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { Modal, message } from "antd";
+import PaymentFormModal from "@/components/payment/PaymentFormModel";
+import SaleDetailContent from "@/components/orders/SaleDetailContent";
+import SaleFormModal from "@/components/orders/SaleFormModal";
+import SaleSummary from "@/components/orders/SaleSummary";
+import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/SaleShareDocumentModal";
+import SaleStockOperationModal from "@/components/orders/SaleStockOperationModal";
+import { saleApiError, visibleSaleDeleteRestrictions } from "@/components/orders/saleUtils";
+import { AppViewLoader } from "@/components/ui/AppViewLoader";
+import useToggle from "@/hooks/UseToggle";
+import { useDeleteSaleMutation, useGetSaleQuery } from "@/lib/redux/services";
+import { TransactionType } from "@/types/transaction";
 import { useState } from "react";
 
-import useToggle from "@/hooks/UseToggle";
+export default function SaleDetailPage() {
+  const { orderId } = useParams<{ orderId: string }>();
+  const router = useRouter();
+  const [editOpen, toggleEdit] = useToggle();
+  const [paymentOpen, togglePayment] = useToggle();
+  const [fulfillOpen, toggleFulfill] = useToggle();
+  const [returnOpen, toggleReturn] = useToggle();
+  const [shareDocumentType, setShareDocumentType] = useState<SaleDocumentType>();
+  const { data: sale, isLoading, isError, refetch } = useGetSaleQuery(orderId, { refetchOnMountOrArgChange: true });
+  const [deleteSale, { isLoading: isDeleting }] = useDeleteSaleMutation();
 
-import AuditLogDrawer from "@/components/AuditLogDrawer";
-import Link from "next/link";
+  const confirmDelete = () => {
+    if (!sale || isDeleting) return;
+    const restrictions = visibleSaleDeleteRestrictions(sale);
+    if (restrictions.length) {
+      Modal.warning({
+        title: `${sale.saleNumber} cannot be deleted`,
+        content: `This sale cannot be deleted because ${restrictions.join(", ")}.`,
+      });
+      return;
+    }
 
-// Mock order data - in a real app, this would come from an API
-const mockOrder = {
-    id: "ORD-12345",
-    date: new Date().toISOString(),
-    customer: {
-        name: "John Doe",
-        email: "john.doe@example.com",
-        phone: "+1234567890",
-    },
-    items: [
-        { id: 1, name: "Wireless Earbuds", price: 99.99, quantity: 2 },
-        { id: 2, name: "Phone Case", price: 29.99, quantity: 1 },
-        { id: 3, name: "Screen Protector", price: 9.99, quantity: 2 },
-    ],
-    subtotal: 229.96,
-    shipping: 15.0,
-    tax: 27.6,
-    total: 272.56,
-    status: "processing",
-    paymentMethod: "Credit Card",
-    paymentStatus: "paid",
-    shippingAddress: {
-        street: "123 Main St",
-        city: "Accra",
-        state: "Greater Accra",
-        postalCode: "GA123",
-        country: "Ghana",
-    },
-};
+    Modal.confirm({
+      title: `Delete ${sale.saleNumber}?`,
+      content: "Stock deducted by this sale will be restored. This action cannot be undone.",
+      okText: "Delete",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          await deleteSale(sale.id).unwrap();
+          message.success("Sale deleted and stock restored.");
+          router.replace("/orders");
+        } catch (error) {
+          message.error(saleApiError(error, "Sale could not be deleted."));
+          throw error;
+        }
+      },
+    });
+  };
 
-export default function OrderDetailPage() {
-    const { orderId } = useParams<{ orderId: string }>();
-    const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-    const [isAuditLogsOpen, toggleAuditLogs] = useToggle(false);
+  if (isLoading) return <AppViewLoader loading />;
+  if (isError || !sale) return <p className="px-8 py-10 text-sm text-red-600">This sale could not be loaded.</p>;
 
-    const handlePrintClick = () => {
-        setIsPrintModalOpen(true);
-    };
+  const canEdit = !sale.locked && sale.receiptStatus !== "received" && !sale.returnedItems?.length;
+  const canFulfill = !sale.locked && sale.lineItems.some((line) => Number(line.quantity) > Number(line.fulfilledQuantity || 0));
+  const canReturn = !sale.locked && sale.lineItems.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
 
-    const handlePrintModalClose = () => {
-        setIsPrintModalOpen(false);
-    };
+  return (
+    <div className="min-h-screen">
+      <div className="flex min-h-screen flex-col bg-gray-50 lg:flex-row">
+        <SaleDetailContent sale={sale} currency={sale.currencyId?.code || ""} canEdit={canEdit} isDeleting={isDeleting} onEdit={toggleEdit} onDelete={confirmDelete} />
+        <SaleSummary
+          sale={sale}
+          canFulfill={canFulfill}
+          canReturn={canReturn}
+          onFulfill={toggleFulfill}
+          onReturn={toggleReturn}
+          onRecordPayment={togglePayment}
+          onShare={setShareDocumentType}
+        />
+      </div>
 
-    return (
-        <div className="p-4 bg-white md:p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold">Order Details</h1>
-
-                    <Link href="/orders" className="flex  mt-2  items-center text-sm text-blue-500 hover:text-blue-600">
-                        <ArrowLeft className="w-4 h-4 " />
-                        Back to orders
-                    </Link>
-                </div>
-
-                <div className="space-x-2 flex items-center">
-                    <div className="flex items-center gap-2 cursor-pointer text-blue-500 mr-8" onClick={toggleAuditLogs}>
-                        <History />
-                        <span>History</span>
-                    </div>
-                    <button
-                        onClick={handlePrintClick}
-                        className="flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-gray-50 transition-colors"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path
-                                fillRule="evenodd"
-                                d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z"
-                                clipRule="evenodd"
-                            />
-                        </svg>
-                        <span>Print Receipt</span>
-                    </button>
-                    <button className="px-4 py-2 bg-primary  border rounded-md hover:bg-primary/90 transition-colors">Update Status</button>
-                </div>
-            </div>
-            <OrderDetail orderId={orderId} />
-
-            <AuditLogDrawer open={isAuditLogsOpen} onClose={toggleAuditLogs} />
-
-            {/* Print Receipt Drawer */}
-            <PrintReceiptDrawer order={mockOrder} visible={isPrintModalOpen} onClose={handlePrintModalClose} />
-        </div>
-    );
+      {editOpen && <SaleFormModal open={editOpen} toggle={toggleEdit} sale={sale} onSaved={refetch} />}
+      {fulfillOpen && <SaleStockOperationModal mode="fulfill" open={fulfillOpen} toggle={toggleFulfill} sale={sale} onSaved={refetch} />}
+      {returnOpen && <SaleStockOperationModal mode="return" open={returnOpen} toggle={toggleReturn} sale={sale} onSaved={refetch} />}
+      {shareDocumentType && (
+        <SaleShareDocumentModal
+          open={Boolean(shareDocumentType)}
+          toggle={() => setShareDocumentType(undefined)}
+          sale={sale}
+          type={shareDocumentType}
+        />
+      )}
+      {paymentOpen && (
+        <PaymentFormModal
+          type={TransactionType.PAYMENT}
+          open={paymentOpen}
+          toggle={() => {
+            togglePayment();
+            refetch();
+          }}
+          linkTransaction={{ id: sale.id, rate: sale.rate || 1, currencyId: sale.currencyId?.id || "" }}
+        />
+      )}
+    </div>
+  );
 }

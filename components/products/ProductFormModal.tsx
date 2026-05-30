@@ -43,7 +43,7 @@ interface ProductFormModalProps extends ModalProps {
   formRef?: React.RefObject<FormInstance>;
 }
 
-enum ITEM_TYPE {
+export enum ITEM_TYPE {
   STOCK = "STOCK",
   NON_STOCK = "NON_STOCK",
   SERVICE = "SERVICE",
@@ -74,8 +74,13 @@ const ItemType = [
   },
 
   {
-    title: "Repack",
+    title: "Repacking",
     description: "Sell this product as packs, cartons, or cases using stock from a stock product.",
+    key: ITEM_TYPE.PACKAGING,
+  },
+  {
+    title: "Assemble",
+    description: "Join A Group of items or services  together to create a stock item.",
     key: ITEM_TYPE.PACKAGING,
   },
 ];
@@ -471,11 +476,11 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
         {repackSourceSearch &&
           sourceProducts?.data?.map((product: ProductListItem) => (
             <div key={product.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addRepackSourceProduct(product)}>
-              <div className="flex gap-x-2 items-center">
+              <div className="flex gap-x-2 ">
                 <PreviewImage width={28} height={28} src={product.imageUrl} />
                 <div>
-                  <p>{product.name}</p>
-                  {product.sku && product.sku !== "undefined" && <p className="text-gray-500">{product.sku}</p>}
+                  <p className="line-clamp-1">{product.name}</p>
+                  {product.sku && product.sku !== "undefined" && <p className="text-gray-700 text-[0.7rem]">{product.sku}</p>}
                 </div>
               </div>
             </div>
@@ -531,7 +536,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
           <h2 className="text-lg font-semibold text-gray-800">Choose Item Type</h2>
           <p className="text-sm text-gray-500 mb-5  ">Select how this item will be managed in your system.</p>
 
-          <div className=" grid grid-cols-2 gap-5 mb-8 mt-5">
+          <div className=" grid grid-cols-2 gap-4 mb-8 mt-5">
             {ItemType?.map((type) => (
               <div
                 className="  cursor-pointer hover:border-gray-500 border-gray-200 rounded-md border p-5 border-solid"
@@ -600,12 +605,13 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
 
                     <Form.Item label="What are you creating from the source product?" name="conversionType" initialValue={REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK} className="!px-5" rules={[{ required: true, message: "Select conversion type" }]}>
                       <Radio.Group className="w-full">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 -rounded-md gap-3">
                           <Radio.Button className="!h-auto !p-3 !text-left" value={REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK}>
                             <p className="font-medium">Smaller unit from a larger product</p>
                             <p className="text-xs text-gray-500">Example: Carton to Bottle</p>
                           </Radio.Button>
-                          <Radio.Button className="!h-auto !p-3 !text-left" value={REPACK_CONVERSION_TYPE.REPACK_TO_SOURCE}>
+
+                          <Radio.Button className="!h-auto -rounded-md !p-3 !text-left" value={REPACK_CONVERSION_TYPE.REPACK_TO_SOURCE}>
                             <p className="font-medium">Larger unit from smaller products</p>
                             <p className="text-xs text-gray-500">Example: Bottle to Carton</p>
                           </Radio.Button>

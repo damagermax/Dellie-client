@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GoChevronLeft } from "react-icons/go";
@@ -8,7 +9,9 @@ export function GoBack() {
   const router = useRouter();
 
   return (
-    <span
+    <Button
+      shape="circle"
+      type="text"
       onClick={() => {
         if (window.history.length > 1) {
           router.back();
@@ -16,9 +19,9 @@ export function GoBack() {
           router.push("/dashboard");
         }
       }}
-      className="cursor-pointer inline-block p-[6px] bg-gray-200 rounded-full"
+      className="cursor-pointer  !bg-gray-200 "
     >
       <GoChevronLeft />
-    </span>
+    </Button>
   );
 }

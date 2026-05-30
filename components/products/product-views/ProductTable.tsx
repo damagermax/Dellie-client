@@ -8,6 +8,7 @@ import type { TableProps } from "antd/es/table";
 import Link from "next/link";
 import { CiLink } from "react-icons/ci";
 import { RiMoreLine } from "react-icons/ri";
+import { ITEM_TYPE } from "../ProductFormModal";
 
 interface ProductTableProps {
   products: ProductListItem[];
@@ -28,9 +29,10 @@ export default function ProductsTable({ products }: ProductTableProps) {
           </div>
           <Link href={`/products/${data.id}`} className="hover:text-indigo-600 !text-gray-500 transition-colors">
             <div>
-              <p className="font-medium  line-clamp-1 text-gray-600">{name}</p>
-              <p className="text-xs  text-gray-500">{data.sku}</p>
-              {data.type === "PACKAGING" && data.conversionRule && <p className="text-xs text-gray-500">Uses: {data.conversionRule}</p>}
+              <p className="font-medium  line-clamp-1 text-gray-700">{name}</p>
+              <p className="text-xs  text-gray-700">
+                {data.sku} | <span className="capitalize">{data?.type?.replaceAll("_", " ").toLocaleLowerCase() || "N/A"}</span>
+              </p>
             </div>
           </Link>
         </div>
@@ -54,9 +56,21 @@ export default function ProductsTable({ products }: ProductTableProps) {
       title: "Status",
       dataIndex: "availableStock",
       key: "availableStock",
-      render: (stock: number) => {
-        const isOutOfStock = stock === 0;
-        return <span style={{ color: isOutOfStock ? "red" : "inherit" }}>{isOutOfStock ? "Out of stock" : `${stock || 0} in stock`}</span>;
+      render: (stock: number, product: ProductListItem) => {
+        if (product?.type && [ITEM_TYPE.STOCK, ITEM_TYPE.PACKAGING]?.includes(product?.type)) {
+          const isOutOfStock = stock === 0;
+
+          return (
+            <>
+              <span className={`border px-2  font-medium border-solid   rounded-full inline-block ${isOutOfStock ? "text-red-600 border-red-600 bg-red-50" : "text-green-700 border-green-200 bg-green-50"}`}>
+                {isOutOfStock ? "Sold out" : `${stock || 0} Available`}
+              </span>
+              {product.type === "PACKAGING" && product.conversionRule && <p className="text-xs mt-1 w-fit text-gray-700"> {product.conversionRule}</p>}
+            </>
+          );
+        } else {
+          return <span className=" text-green-700 -border border-green-200 bg-green-50 font-medium px-2 py-1 text-sm  rounded-sm  capitalize ">Available </span>;
+        }
       },
     },
 
