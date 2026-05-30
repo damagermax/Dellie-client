@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Button, Empty, Segmented } from "antd";
+import { Empty, Segmented, Tabs } from "antd";
 import type { TableProps } from "antd/es/table";
 import { CreditCard, FileText, PackageCheck, Receipt, RotateCcw } from "lucide-react";
 import AppTable from "@/components/ui/AppTable";
@@ -28,6 +28,10 @@ function ProductCell({ name, imageUrl }: { name: string; imageUrl?: string }) {
   );
 }
 
+function productSku(product: string | { sku?: string }) {
+  return typeof product === "string" ? undefined : product.sku;
+}
+
 function SegmentLabel({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <span className="flex items-center gap-x-2 px-1">
@@ -44,6 +48,11 @@ const tableOptions = [
   { label: <SegmentLabel icon={<Receipt size={15} />} text="Landed Costs" />, value: "landedCosts" },
   { label: <SegmentLabel icon={<CreditCard size={15} />} text="Payments" />, value: "payments" },
 ];
+
+const mobileTabItems = tableOptions.map((option) => ({
+  key: option.value,
+  label: option.label,
+}));
 
 export default function PurchaseOrderDetailTables({ purchase, currency }: { purchase: Purchase; currency: string }) {
   const [view, setView] = React.useState<PurchaseTableView>("items");
@@ -94,20 +103,29 @@ export default function PurchaseOrderDetailTables({ purchase, currency }: { purc
 
   return (
     <>
-      <div className="mb-8 overflow-x-auto pb-1">
+      <div className="mb-6 hidden overflow-x-auto pb-1 md:block">
         <div className="flex w-max min-w-full justify-center">
           <Segmented
             shape="round"
             options={tableOptions}
             value={view}
             onChange={(value) => setView(value as PurchaseTableView)}
-            className="[&_.ant-segmented-item-selected]:!bg-green-600 [&_.ant-segmented-item-selected]:!text-white"
+            className="[&_.ant-segmented-item-selected]:!bg-[#2d837d] [&_.ant-segmented-item-selected]:!text-white"
             style={{ backgroundColor: "#ebebeb", padding: "5px" }}
           />
         </div>
       </div>
+      <div className="mb-5 border-y border-gray-200 bg-white px-2 md:hidden">
+        <Tabs
+          activeKey={view}
+          items={mobileTabItems}
+          onChange={(value) => setView(value as PurchaseTableView)}
+          tabBarGutter={18}
+          className="purchase-mobile-tabs [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-nav:before]:!border-0 [&_.ant-tabs-tab]:!py-4 [&_.ant-tabs-tab-btn]:!text-gray-500 [&_.ant-tabs-tab-active_.ant-tabs-tab-btn]:!text-[#2d837d] [&_.ant-tabs-ink-bar]:!bg-[#2d837d]"
+        />
+      </div>
       <div>
-        <div className="mb-3 px-8 hidden flex items-center justify-between">
+        <div className="mb-3 hidden items-center justify-between px-8">
           <h2 className=" text-base font-medium text-gray-900">{current.title}</h2>
 
           {/* <div className=" flex items-center gap-2">
@@ -118,7 +136,14 @@ export default function PurchaseOrderDetailTables({ purchase, currency }: { purc
           </div> */}
         </div>
         {current.data.length ? (
-          <AppTable columns={current.columns || []} dataSource={current.data as any[]} rowKey="id" pagination={false} />
+          <>
+            <div className="md:hidden">
+              <MobilePurchaseList view={view} purchase={purchase} currency={currency} />
+            </div>
+            <div className="hidden md:block">
+              <AppTable columns={current.columns || []} dataSource={current.data as any[]} rowKey="id" pagination={false} />
+            </div>
+          </>
         ) : (
           <div className="border-t border-gray-200 py-12">
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`No ${current.title.toLowerCase()} recorded`} />
@@ -126,5 +151,136 @@ export default function PurchaseOrderDetailTables({ purchase, currency }: { purc
         )}
       </div>
     </>
+  );
+}
+
+function MobilePurchaseList({ view, purchase, currency }: { view: PurchaseTableView; purchase: Purchase; currency: string }) {
+  if (view === "items") {
+    return (
+      <div className="grid gap-3  ">
+        {purchase.lineItems.map((line) => (
+          <MobileCard key={line.id}>
+            <MobileProductHeader name={line.productName} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} />
+            <div className="mt-2 -pl-14 flex items-center justify-between gap-3 text-[13px]">
+              <span className="text-gray-500">
+                Qty {Number(line.quantity).toLocaleString()} x {line.unitPrice}
+              </span>
+              <span className="font-semibold text-gray-900">
+                {currency} {Number(line.total).toFixed(2)}
+              </span>
+            </div>
+          </MobileCard>
+        ))}
+      </div>
+    );
+  }
+
+  if (view === "fulfillments") {
+    return (
+      <div className="grid gap-3  ">
+        {(purchase.fulfilledItems || []).map((event) => (
+          <MobileCard key={event.id}>
+            <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+            <div className="mt-2 text-[13px] text-gray-500 flex items-center justify-between gap-3">
+              <span>Qty {Number(event.quantity).toLocaleString()}</span>
+              <span>{formatDate(event.fulfilledAt)}</span>
+            </div>
+          </MobileCard>
+        ))}
+      </div>
+    );
+  }
+
+  if (view === "returns") {
+    return (
+      <div className="grid gap-3  pb-6">
+        {(purchase.returnedItems || []).map((event) => (
+          <MobileCard key={event.id}>
+            <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <MobileStat label="Returned Qty" value={Number(event.quantity).toLocaleString()} />
+              <MobileStat label="Date" value={formatDate(event.returnedAt)} />
+            </div>
+            {event.reason && <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">{event.reason}</p>}
+          </MobileCard>
+        ))}
+      </div>
+    );
+  }
+
+  if (view === "landedCosts") {
+    return (
+      <div className="grid gap-3  pb-6">
+        {(purchase.landedCosts || []).map((cost) => (
+          <MobileCard key={cost.id}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-base font-semibold text-gray-900">{cost.name}</p>
+                <p className="mt-1 text-xs capitalize text-gray-500">{cost.allocationMethod.replaceAll("_", " ").toLowerCase()}</p>
+              </div>
+              <p className="shrink-0 text-base font-semibold text-gray-900">
+                {currency} {Number(cost.amount).toFixed(2)}
+              </p>
+            </div>
+            <MobileTotal label="Applied To" value={cost.appliesTo === "SELECTED_ITEMS" ? `${cost.lineItemIds.length} selected product${cost.lineItemIds.length === 1 ? "" : "s"}` : "All products"} />
+          </MobileCard>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3  pb-6">
+      {((purchase.payments || []) as any[]).map((payment, index) => (
+        <MobileCard key={payment.id || index}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-base font-semibold capitalize text-gray-900">{payment.type?.replaceAll("_", " ") || "Payment"}</p>
+              <p className="mt-1 text-xs text-gray-500">{formatDate(payment.date)}</p>
+            </div>
+            <p className="shrink-0 text-base font-semibold text-gray-900">
+              {currency} {Number(payment.amount || 0).toFixed(2)}
+            </p>
+          </div>
+          <MobileTotal label="Reference" value={payment.reference || "-"} />
+        </MobileCard>
+      ))}
+    </div>
+  );
+}
+
+function MobileCard({ children }: { children: React.ReactNode }) {
+  return <article className=" border-b border-gray-200 bg-white px-4 py-2 ">{children}</article>;
+}
+
+function MobileProductHeader({ name, sku, imageUrl }: { name: string; sku?: string; imageUrl?: string }) {
+  return (
+    <div className="flex gap-3">
+      <div className=" flex-shrink-0">
+        <PreviewImage width={42} height={42} src={imageUrl} />
+      </div>
+      <div className="min-w-0">
+        <p className="line-clamp-2 text-sm  text-gray-900">{name}</p>
+        {sku && <p className="mt-1 text-xs text-gray-500">SKU: {sku}</p>}
+      </div>
+    </div>
+  );
+}
+
+function MobileStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-gray-50 px-3 py-2">
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
+    </div>
+  );
+}
+
+function MobileTotal({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="mt-4 flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className="font-semibold text-gray-900">{value}</span>
+    </div>
   );
 }

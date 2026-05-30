@@ -79,9 +79,9 @@ export default function PurchaseOrderDetailContent({ purchase, currency, canEdit
 
   return (
     <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
-      <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-8 pb-7 pt-5">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="flex items-start gap-x-4">
+      <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-4 md:px-8 pb-7 pt-5">
+        <div className="flex flex-wrap justify-center items-start md:justify-between gap-5">
+          <div className="flex w-full md:w-fit items-start gap-x-4">
             <GoBack />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -92,15 +92,15 @@ export default function PurchaseOrderDetailContent({ purchase, currency, canEdit
                 </Tag>
               </div>
               <p className="mt-2 max-w-xl text-sm text-gray-500">
-                {supplierName} · Created {formatDate(purchase.createdAt)} by {purchase.createdBy?.name || "-"}
+                Created {formatDate(purchase.createdAt)} by {purchase.createdBy?.name || "-"}
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="primary" className="!shadow-none  !bg-[#2d837d] !py-1  !font-medium" icon={<PackageCheck size={15} />} disabled={!canReceive} onClick={onReceive}>
-              Fulfill Items
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-2">
+            <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<PackageCheck size={15} />} disabled={!canReceive} onClick={onReceive}>
+              Fulfill
             </Button>
-            <Button type="primary" className="!shadow-none  !bg-amber-600 !font-medium" icon={<CreditCard size={15} />} disabled={Boolean(purchase.locked)} onClick={onRecordPayment}>
+            <Button type="primary" className="!shadow-none  !bg-[#f7c855] !text-black !font-semibold" icon={<CreditCard size={15} />} disabled={Boolean(purchase.locked)} onClick={onRecordPayment}>
               Record Payment
             </Button>
 
@@ -112,7 +112,7 @@ export default function PurchaseOrderDetailContent({ purchase, currency, canEdit
       </div>
 
       <div className="py-7">
-        <div className="mb-18 px-8">
+        <div className="mb-18 px-4 md:px-8">
           <div className="grid gap-4 xl:grid-cols-2">
             <IdentityPanel label="Supplier" title={supplierName} description={supplierMeta} avatarText={supplierName} accent="" />
             <IdentityPanel label="Destination" title={locationName} description={locationMeta} icon={<MapPinned size={18} />} accent="" />
