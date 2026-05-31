@@ -1,6 +1,11 @@
 import { baseApi, TAG_TYPES } from "./baseApi";
 
-import { PaginatedResponse, ProductQueryParams, Product, ProductListItem } from "@/types/index";
+import { PaginatedResponse, ProductQueryParams, ProductListItem } from "@/types/index";
+
+export type UpdateProductPayload = {
+  id: string;
+  [key: string]: unknown;
+};
 
 export const productsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -21,7 +26,7 @@ export const productsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [TAG_TYPES.PRODUCTS],
     }),
-    updateProduct: builder.mutation<any, { id: string }>({
+    updateProduct: builder.mutation<any, UpdateProductPayload>({
       query: ({ id, ...data }) => ({
         url: `products/${id}`,
         method: "PUT",

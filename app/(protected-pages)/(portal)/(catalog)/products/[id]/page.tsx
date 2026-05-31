@@ -1,9 +1,10 @@
 "use client";
 
 import { GoBack } from "@/components/ui/GoBack";
-import { ProductVisibility } from "@/components/products";
-import { useGetProductQuery, useUpdateProductMutation } from "@/lib/redux/services";
-import { Button, Empty, Form, Segmented, Skeleton, Tabs, Tag } from "antd";
+import { ProductEditModal } from "@/components/products/ProductEditModal";
+import { useGetProductQuery } from "@/lib/redux/services";
+import useToggle from "@/hooks/UseToggle";
+import { Button, Empty, Segmented, Skeleton, Tabs, Tag } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import React, { useEffect, useMemo, useState } from "react";
@@ -62,6 +63,7 @@ type ProductDetail = Record<string, unknown> & {
   type: ProductType;
   sku?: string;
   barcode?: string;
+  categoryId?: string;
   categoryName?: string;
   description?: string;
   weight?: number;
@@ -69,6 +71,16 @@ type ProductDetail = Record<string, unknown> & {
   costPrice?: number;
   wholesalePrice?: number;
   availableStock?: number;
+  lowStockThreshold?: number;
+  minOrderLevel?: number;
+  allowOversell?: boolean;
+  showInStorefront?: boolean;
+  showInPOS?: boolean;
+  sourceProductId?: string;
+  sourceQuantity?: number;
+  conversionType?: string;
+  conversionQuantity?: number;
+  repackUnitName?: string;
   media?: Array<{ url?: string }>;
   imageUrl?: string;
   createdAt?: string;
@@ -77,6 +89,11 @@ type ProductDetail = Record<string, unknown> & {
   conversionRule?: string;
   bundleAvailability?: number;
   bundleComponents?: BundleComponent[];
+  bundleItems?: Array<{
+    productId?: { id?: string; name?: string; sku?: string; media?: { url?: string }[]; sellingPrice?: number } | string;
+    quantity?: number;
+  }>;
+  hasVariants?: boolean;
   inventory?: {
     summary?: InventorySummary;
     locations?: InventoryLocation[];
@@ -95,19 +112,10 @@ type DetailTab = {
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
-  const [productForm] = Form.useForm();
-  const [updatedProduct, setUpdatedProduct] = useState<Record<string, unknown>>({});
+  const [editOpen, toggleEdit] = useToggle();
   const [activeSection, setActiveSection] = useState("overview");
-  const { data: rawProduct, error, isLoading, isSuccess } = useGetProductQuery(id, { skip: !id });
-  const [updateProduct, { isLoading: updatingProduct }] = useUpdateProductMutation();
+  const { data: rawProduct, isLoading, refetch } = useGetProductQuery(id, { skip: !id });
   const product = rawProduct as ProductDetail | undefined;
-
-  useEffect(() => {
-    if (!product) return;
-    const profit = Number(product.sellingPrice || 0) - Number(product.costPrice || 0);
-    const profitMargin = product.sellingPrice ? `${((profit / Number(product.sellingPrice)) * 100).toFixed()}%` : "0%";
-    productForm.setFieldsValue({ ...product, profit, profitMargin });
-  }, [isSuccess, product, productForm]);
 
   const tabs = useMemo(() => buildTabs(product), [product]);
   const currentTab = tabs.find((tab) => tab.key === activeSection) || tabs[0];
@@ -118,26 +126,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     }
   }, [activeSection, tabs]);
 
-  const handleFormValueChange = (changedValues: Record<string, unknown>) => {
-    const key = Object.keys(changedValues)[0];
-    if (!key || !product) return;
-
-    if (changedValues[key] !== product[key]) {
-      setUpdatedProduct((values) => ({ ...values, ...changedValues }));
-    } else {
-      setUpdatedProduct((values) => {
-        const updated = { ...values };
-        delete updated[key];
-        return updated;
-      });
-    }
-  };
-
-  const handleUpdate = async () => {
-    await updateProduct({ ...updatedProduct, id });
-    setUpdatedProduct({});
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
@@ -146,7 +134,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  if (error || !product) {
+  if (!product) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <GoBack />
@@ -156,9 +144,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       </div>
     );
   }
-
   const imageUrl = product.media?.[0]?.url || product.imageUrl;
-  const hasChanges = Object.keys(updatedProduct).length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -177,9 +163,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="default">Edit</Button>
-                <Button type="primary" disabled={!hasChanges} loading={updatingProduct} onClick={handleUpdate}>
-                  Save
+                <Button type="default" onClick={toggleEdit}>
+                  Edit
                 </Button>
               </div>
             </div>
@@ -236,11 +221,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
         <aside className="bg-gray-50 px-5 py-5 md:px-8">
           <div className="sticky top-4 space-y-5">
-            <ProductVisibility form={productForm} onChange={handleFormValueChange} />
             <QuickActions product={product} />
           </div>
         </aside>
       </div>
+
+      {editOpen && product && <ProductEditModal open={editOpen} toggle={toggleEdit} product={product} onSaved={refetch} />}
     </div>
   );
 }
