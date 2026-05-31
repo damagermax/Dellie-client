@@ -115,13 +115,13 @@ export default function PurchaseOrderDetailTables({ purchase, currency }: { purc
           />
         </div>
       </div>
-      <div className="mb-5 border-y border-gray-200 bg-white px-2 md:hidden">
+      <div className=" border-y border-gray-200 bg-white px-2 md:hidden">
         <Tabs
           activeKey={view}
           items={mobileTabItems}
           onChange={(value) => setView(value as PurchaseTableView)}
           tabBarGutter={18}
-          className="purchase-mobile-tabs [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-nav:before]:!border-0 [&_.ant-tabs-tab]:!py-4 [&_.ant-tabs-tab-btn]:!text-gray-500 [&_.ant-tabs-tab-active_.ant-tabs-tab-btn]:!text-[#2d837d] [&_.ant-tabs-ink-bar]:!bg-[#2d837d]"
+          className="purchase-mobile-tabs !mb-0 [&_.ant-tabs-nav]:!mb-0 [&_.ant-tabs-nav:before]:!border-0 [&_.ant-tabs-tab]:!py-4 [&_.ant-tabs-tab-btn]:!text-gray-500 [&_.ant-tabs-tab-active_.ant-tabs-tab-btn]:!text-[#2d837d] [&_.ant-tabs-ink-bar]:!bg-[#2d837d]"
         />
       </div>
       <div>
@@ -157,7 +157,7 @@ export default function PurchaseOrderDetailTables({ purchase, currency }: { purc
 function MobilePurchaseList({ view, purchase, currency }: { view: PurchaseTableView; purchase: Purchase; currency: string }) {
   if (view === "items") {
     return (
-      <div className="grid gap-3  ">
+      <div className="grid  ">
         {purchase.lineItems.map((line) => (
           <MobileCard key={line.id}>
             <MobileProductHeader name={line.productName} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} />
@@ -177,7 +177,7 @@ function MobilePurchaseList({ view, purchase, currency }: { view: PurchaseTableV
 
   if (view === "fulfillments") {
     return (
-      <div className="grid gap-3  ">
+      <div className="grid   ">
         {(purchase.fulfilledItems || []).map((event) => (
           <MobileCard key={event.id}>
             <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
@@ -210,19 +210,21 @@ function MobilePurchaseList({ view, purchase, currency }: { view: PurchaseTableV
 
   if (view === "landedCosts") {
     return (
-      <div className="grid gap-3  pb-6">
+      <div className="">
         {(purchase.landedCosts || []).map((cost) => (
           <MobileCard key={cost.id}>
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-base font-semibold text-gray-900">{cost.name}</p>
-                <p className="mt-1 text-xs capitalize text-gray-500">{cost.allocationMethod.replaceAll("_", " ").toLowerCase()}</p>
-              </div>
+              <p className="text-base  font-medium text-gray-900">{cost.name}</p>
+
               <p className="shrink-0 text-base font-semibold text-gray-900">
                 {currency} {Number(cost.amount).toFixed(2)}
               </p>
             </div>
-            <MobileTotal label="Applied To" value={cost.appliesTo === "SELECTED_ITEMS" ? `${cost.lineItemIds.length} selected product${cost.lineItemIds.length === 1 ? "" : "s"}` : "All products"} />
+
+            <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+              <span className="text-gray-500 capitalize ">Allocation: {cost.allocationMethod.replaceAll("_", " ").toLowerCase()}</span>
+              <span className="text-gray-500">{cost.appliesTo === "SELECTED_ITEMS" ? `${cost.lineItemIds.length} selected product${cost.lineItemIds.length === 1 ? "" : "s"}` : "All products"}</span>
+            </div>
           </MobileCard>
         ))}
       </div>

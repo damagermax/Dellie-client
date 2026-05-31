@@ -111,28 +111,29 @@ export default function PurchaseOrderDetailContent({ purchase, currency, canEdit
         </div>
       </div>
 
-      <div className="py-7">
-        <div className="mb-18 px-4 md:px-8">
-          <div className="grid gap-4 xl:grid-cols-2">
+      <div className="pt-7">
+        <div className=" px-4 md:px-8">
+          <div className="grid gap-4 sm:grid-cols-2">
             <IdentityPanel label="Supplier" title={supplierName} description={supplierMeta} avatarText={supplierName} accent="" />
             <IdentityPanel label="Destination" title={locationName} description={locationMeta} icon={<MapPinned size={18} />} accent="" />
           </div>
 
-          <Divider className="!mt-6" />
-          <div className="mt-5 grid gap-3 grid-cols-2 xl:grid-cols-4">
-            <Detail icon={<CalendarDays size={17} />} label="Ordered" value={formatDate(purchase.date)} />
-            <Detail icon={<Truck size={17} />} label="Deliver by" value={formatDate(purchase.deliveryDate)} />
-            <Detail icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(purchase.dueDate)} />
-            <Detail icon={<WalletCards size={17} />} label="Terms" value={purchase.paymentTerms || "-"} />
+          <Divider className="!mt-6 " />
+          <div className="mt-5 grid grid-cols-2  sm:grid-cols-4">
+            <Detail className="border-r border-b pb-5 sm:pb-0 sm:border-b-0 border-gray-200 pr-5" icon={<CalendarDays size={17} />} label="Ordered" value={formatDate(purchase.date)} />
+            <Detail className="pl-5 sm:border-r border-b pb-5 sm:pb-0 sm:border-b-0  border-gray-200 sm:pr-5" icon={<Truck size={17} />} label="Deliver by" value={formatDate(purchase.deliveryDate)} />
+            <Detail className="border-r pt-5 sm:pt-0 border-gray-200 pr-5 sm:pl-5" icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(purchase.dueDate)} />
+            <Detail className="pl-5 pt-5 sm:pt-0" icon={<WalletCards size={17} />} label="Terms" value={purchase.paymentTerms || "-"} />
           </div>
+          <Divider className="!my-5 " />
         </div>
 
-        {/* {purchase.note && (
-          <div className="mx-8 mb-8   ">
+        {purchase.note && (
+          <div className="mx-4 sm:mx-8 mb-8   ">
             <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-amber-700">Note</p>
             <p className="text-sm leading-6 text-gray-700">{purchase.note}</p>
           </div>
-        )} */}
+        )}
 
         <PurchaseOrderDetailTables purchase={purchase} currency={currency} />
       </div>
@@ -154,9 +155,9 @@ function IdentityPanel({ label, title, description, avatarText, icon, accent }: 
   );
 }
 
-function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Detail({ icon, label, value, className = "" }: { icon: React.ReactNode; label: string; value: string; className?: string }) {
   return (
-    <div className=" border-r mr-5 border-gray-200">
+    <div className={`min-w-0 ${className}`}>
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400 ">{label}</p>
       <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
     </div>

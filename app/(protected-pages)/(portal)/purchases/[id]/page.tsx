@@ -67,7 +67,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="min-h-screen">
-      <div className="flex min-h-screen flex-col bg-gray-50 lg:flex-row">
+      <div className="flex min-h-hull flex-col bg-gray-50 lg:flex-row">
         <PurchaseOrderDetailContent
           purchase={purchase}
           currency={currency}

@@ -28,7 +28,7 @@ export default function PurchaseOrderSummary({ purchase, canReceive, canReturn, 
   ).map(([name, amount]) => ({ name, amount }));
 
   return (
-    <aside className="w-full bg-gray-50 px-7 pb-8 pt-6 lg:w-[30%]">
+    <aside className="w-full bg-gray-50 px-7 pb-8  pt-6 lg:w-[30%]">
       <div className="border-b border-gray-200 ">
         <div className="mb-5 flex justify-between items-center">
           <h2 className=" text-base font-medium text-gray-900">Purchase Summary</h2>
