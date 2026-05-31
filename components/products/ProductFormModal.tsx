@@ -78,11 +78,6 @@ const ItemType = [
     description: "Sell this product as packs, cartons, or cases using stock from a stock product.",
     key: ITEM_TYPE.PACKAGING,
   },
-  {
-    title: "Assemble",
-    description: "Join A Group of items or services  together to create a stock item.",
-    key: ITEM_TYPE.PACKAGING,
-  },
 ];
 
 const REPACK_CONVERSION_TYPE = {
@@ -160,6 +155,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     if (values.categoryId) formData.append("categoryId", String(values.categoryId));
     if (values.sku) formData.append("sku", String(values.sku));
     if (values.barcode) formData.append("barcode", String(values.barcode));
+    if (itemType === ITEM_TYPE.STOCK && values.weight) formData.append("weight", String(values.weight));
 
     if (itemType === ITEM_TYPE.PACKAGING) {
       formData.append("sourceProductId", String(values.sourceProductId || ""));
@@ -585,6 +581,11 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
                         <InputFormItem type="number" label="Selling Price" name="sellingPrice" placeholder="0.0" />
                       </div>
                     </div>
+                    {itemType === ITEM_TYPE.STOCK && (
+                      <div className="grid grid-cols-2 gap-x-5">
+                        <InputFormItem type="number" label="Weight (Optional)" name="weight" placeholder="0.0" />
+                      </div>
+                    )}
                     <TextAreaFormItem label="Description (Optional)" name="description" placeholder="Enter product description" />
                   </>
                 )}
