@@ -1,65 +1,131 @@
 "use client";
 
-import { Button, Tag } from "antd";
-import { Pencil, Trash2 } from "lucide-react";
+import { Button, Divider, Dropdown, MenuProps, Tag } from "antd";
+import { CalendarDays, Clock3, CreditCard, FileText, MapPinned, MoreHorizontal, PackageCheck, Pencil, ReceiptText, RotateCcw, Trash2, Truck, WalletCards } from "lucide-react";
 import { GoBack } from "@/components/ui/GoBack";
 import { formatDate } from "@/lib/dateUtils";
 import { Sale } from "@/types/index";
 import SaleDetailTables from "./SaleDetailTables";
+import { SaleDocumentType } from "./SaleShareDocumentModal";
 
 interface SaleDetailContentProps {
   sale: Sale;
   currency: string;
   canEdit: boolean;
+  canFulfill: boolean;
+  canReturn: boolean;
   isDeleting: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onFulfill: () => void;
+  onReturn: () => void;
+  onRecordPayment: () => void;
+  onShare: (type: SaleDocumentType) => void;
 }
 
-export default function SaleDetailContent({ sale, currency, canEdit, isDeleting, onEdit, onDelete }: SaleDetailContentProps) {
+export default function SaleDetailContent({ sale, currency, canEdit, canFulfill, canReturn, isDeleting, onEdit, onDelete, onFulfill, onReturn, onRecordPayment, onShare }: SaleDetailContentProps) {
   const fulfillmentStatus = sale.receiptStatus || "pending";
+  const statusTone = fulfillmentStatus === "received" ? "green" : fulfillmentStatus === "partially_received" ? "gold" : "blue";
+  const customerName = sale.contactId?.name || sale.contactId?.displayName || "Customer not set";
+  const customerMeta = [sale.contactId?.email, sale.contactId?.phone].filter(Boolean).join(" · ") || "No contact details provided";
+  const locationName = sale.locationId?.name || "Location not set";
+  const locationMeta = sale.locationId?.address || "No address provided";
+
+  const moreItems: MenuProps["items"] = [
+    {
+      key: "edit",
+      disabled: !canEdit,
+      icon: <Pencil size={15} />,
+      label: "Edit Sale",
+      onClick: onEdit,
+    },
+    {
+      key: "return",
+      disabled: !canReturn,
+      icon: <RotateCcw size={15} />,
+      label: "Return Stock",
+      onClick: onReturn,
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "invoice",
+      icon: <FileText size={15} />,
+      label: "Share Invoice",
+      onClick: () => onShare("invoice"),
+    },
+    {
+      key: "receipt",
+      icon: <ReceiptText size={15} />,
+      label: "Share Receipt",
+      onClick: () => onShare("receipt"),
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "delete",
+      icon: <Trash2 size={15} />,
+      danger: true,
+      disabled: isDeleting,
+      label: "Delete Sale",
+      onClick: onDelete,
+    },
+  ];
 
   return (
     <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
-      <div className="border-b border-gray-200 pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-8">
-          <div className="flex items-center gap-x-3">
+      <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-4 pb-7 pt-5 md:px-8">
+        <div className="flex flex-wrap items-start justify-center gap-5 md:justify-between">
+          <div className="flex w-full items-start gap-x-4 md:w-fit">
             <GoBack />
-            <div>
-              <div className="flex items-center gap-x-3">
-                <h1 className="pageTittle">{sale.saleNumber}</h1>
-                <Tag color={fulfillmentStatus === "received" ? "green" : "blue"}>{fulfillmentStatus.replaceAll("_", " ")}</Tag>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{sale.saleNumber}</h1>
+                <Tag className="!m-0 !rounded-full !px-2 capitalize" color={statusTone}>
+                  {fulfillmentStatus.replaceAll("_", " ")}
+                </Tag>
               </div>
-              <p className="mt-1 text-sm text-gray-500">{sale.contactId?.name || sale.contactId?.displayName || "Customer not set"}</p>
+              <p className="mt-2 max-w-xl text-sm text-gray-500">
+                Created {formatDate(sale.createdAt)} by {sale.createdBy?.name || "-"}
+              </p>
             </div>
           </div>
-          <div className="flex gap-x-3">
-            <Button icon={<Pencil size={15} />} disabled={!canEdit} onClick={onEdit}>
-              Edit
+          <div className="flex flex-wrap items-center justify-center gap-2 md:justify-end">
+            <Button type="primary" className="!border-2 !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<PackageCheck size={15} />} disabled={!canFulfill} onClick={onFulfill}>
+              Fulfill
             </Button>
-            <Button icon={<Trash2 size={15} />} danger loading={isDeleting} onClick={onDelete}>
-              Delete
+            <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<CreditCard size={15} />} disabled={Boolean(sale.locked)} onClick={onRecordPayment}>
+              Record Payment
             </Button>
+            <Dropdown menu={{ items: moreItems }} placement="bottomRight">
+              <Button type="text" className="!bg-gray-200/80" icon={<MoreHorizontal size={15} />} />
+            </Dropdown>
           </div>
         </div>
-        <p className="ml-18 mt-3 text-sm text-gray-500">
-          Created {formatDate(sale.createdAt)} by {sale.createdBy?.name || "-"} | Updated {formatDate(sale.updatedAt)}
-        </p>
       </div>
 
-      <div className="py-7">
-        <div className="mb-9 grid grid-cols-2 gap-x-10 gap-y-6 px-5 md:grid-cols-4">
-          <Detail label="Sale Date" value={formatDate(sale.date)} />
-          <Detail label="Expected Delivery" value={formatDate(sale.deliveryDate)} />
-          <Detail label="Location" value={sale.locationId?.name || "-"} />
-          <Detail label="Payment Terms" value={sale.paymentTerms || "-"} />
-          <Detail label="Due Date" value={formatDate(sale.dueDate)} />
-          <Detail label="Currency" value={sale.currencyId?.name || currency || "-"} />
+      <div className="pt-7">
+        <div className="px-4 md:px-8">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <IdentityPanel label="Customer" title={customerName} description={customerMeta} />
+            <IdentityPanel label="Destination" title={locationName} description={locationMeta} />
+          </div>
+
+          <Divider className="!mt-6" />
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
+            <Detail className="border-b border-r border-gray-200 pb-5 pr-5 sm:border-b-0 sm:pb-0" icon={<CalendarDays size={17} />} label="Sold" value={formatDate(sale.date)} />
+            <Detail className="border-b border-gray-200 pb-5 pl-5 sm:border-b-0 sm:border-r sm:pr-5 sm:pb-0" icon={<Truck size={17} />} label="Deliver by" value={formatDate(sale.deliveryDate)} />
+            <Detail className="border-r border-gray-200 pr-5 pt-5 sm:pl-5 sm:pt-0" icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(sale.dueDate)} />
+            <Detail className="pl-5 pt-5 sm:pt-0" icon={<WalletCards size={17} />} label="Terms" value={sale.paymentTerms || "-"} />
+          </div>
+          <Divider className="!my-5" />
         </div>
         {sale.note && (
-          <div className="mb-8 border-t border-gray-100 pt-5">
-            <p className="mb-1 text-xs text-gray-500">Notes</p>
-            <p className="text-sm text-gray-700">{sale.note}</p>
+          <div className="mx-4 mb-8 sm:mx-8">
+            <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-amber-700">Note</p>
+            <p className="text-sm leading-6 text-gray-700">{sale.note}</p>
           </div>
         )}
         <SaleDetailTables sale={sale} currency={currency} />
@@ -68,11 +134,25 @@ export default function SaleDetailContent({ sale, currency, canEdit, isDeleting,
   );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function IdentityPanel({ label, title, description }: { label: string; title: string; description: string }) {
   return (
     <div>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-sm text-gray-700">{value}</p>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">{label}</p>
+          <p className="mt-1 truncate text-lg font-medium text-gray-800">{title}</p>
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ icon, label, value, className = "" }: { icon: React.ReactNode; label: string; value: string; className?: string }) {
+  return (
+    <div className={`min-w-0 ${className}`}>
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400">{label}</p>
+      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
     </div>
   );
 }

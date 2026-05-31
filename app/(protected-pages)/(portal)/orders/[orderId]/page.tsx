@@ -65,16 +65,21 @@ export default function SaleDetailPage() {
   return (
     <div className="min-h-screen">
       <div className="flex min-h-screen flex-col bg-gray-50 lg:flex-row">
-        <SaleDetailContent sale={sale} currency={sale.currencyId?.code || ""} canEdit={canEdit} isDeleting={isDeleting} onEdit={toggleEdit} onDelete={confirmDelete} />
-        <SaleSummary
+        <SaleDetailContent
           sale={sale}
+          currency={sale.currencyId?.code || ""}
+          canEdit={canEdit}
           canFulfill={canFulfill}
           canReturn={canReturn}
+          isDeleting={isDeleting}
+          onEdit={toggleEdit}
+          onDelete={confirmDelete}
           onFulfill={toggleFulfill}
           onReturn={toggleReturn}
           onRecordPayment={togglePayment}
           onShare={setShareDocumentType}
         />
+        <SaleSummary sale={sale} />
       </div>
 
       {editOpen && <SaleFormModal open={editOpen} toggle={toggleEdit} sale={sale} onSaved={refetch} />}

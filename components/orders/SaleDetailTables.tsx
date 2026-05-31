@@ -91,16 +91,16 @@ export default function SaleDetailTables({ sale, currency }: { sale: Sale; curre
       <div className="mb-8 overflow-x-auto pb-1">
         <div className="flex w-max min-w-full justify-center">
           <Segmented
+            shape="round"
             options={tableOptions}
             value={view}
             onChange={(value) => setView(value as SaleTableView)}
-            className="[&_.ant-segmented-item-selected]:!bg-yellow-600 [&_.ant-segmented-item-selected]:!text-white"
+            className="[&_.ant-segmented-item-selected]:!bg-[#2d837d] [&_.ant-segmented-item-selected]:!text-white"
             style={{ backgroundColor: "#ebebeb", padding: "5px" }}
           />
         </div>
       </div>
       <div>
-        <h2 className="mb-3 px-5 text-base font-medium text-gray-900">{current.title}</h2>
         {current.data.length ? (
           <AppTable columns={current.columns || []} dataSource={current.data as any[]} rowKey="id" pagination={false} />
         ) : (

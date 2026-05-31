@@ -28,28 +28,6 @@ export function ProductVisibility({ form, onChange }: { form: FormInstance; onCh
               <Switch />
             </Form.Item>
           </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Sales</p>
-              <p className="text-sm text-gray-500">Allow this product in sales transactions</p>
-            </div>
-
-            <Form.Item name="showInSales" valuePropName="checked" className="!m-0">
-              <Switch />
-            </Form.Item>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Purchases</p>
-              <p className="text-sm text-gray-500">Allow this product in purchase orders</p>
-            </div>
-
-            <Form.Item name="showInPurchases" valuePropName="checked" className="!m-0">
-              <Switch />
-            </Form.Item>
-          </div>
         </div>
       </div>
     </Form>
