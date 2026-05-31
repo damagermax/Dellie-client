@@ -15,6 +15,7 @@ export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId
   productId: string | { id: string; name: string; sku?: string; type?: string; media?: { url: string }[] };
   productName: string;
   productSku?: string;
+  productType?: string;
   productUrl?: string;
   subtotal: number;
   taxDescription?: string;
@@ -117,7 +118,7 @@ export interface AddPurchaseLandedCostInput {
 export interface PurchaseStockEvent {
   id: string;
   lineItemId: string;
-  productId: string | { id: string; name: string; sku?: string; media?: { url: string }[] };
+  productId: string | { id: string; name: string; sku?: string; type?: string; media?: { url: string }[] };
   quantity: number;
   fulfilledAt: string;
 }

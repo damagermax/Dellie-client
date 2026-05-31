@@ -24,8 +24,10 @@ export default function PurchaseOrderStockOperationModal({ mode, open, toggle, p
   const isReturn = mode === "return";
   const productImage = (product: typeof purchase.lineItems[number]["productId"]) =>
     typeof product === "string" ? undefined : product.media?.[0]?.url;
+  const productType = (line: typeof purchase.lineItems[number]) =>
+    typeof line.productId === "string" ? line.productType : line.productId.type || line.productType;
   const lines = purchase.lineItems.filter((line) => {
-    if (typeof line.productId === "string" || line.productId.type !== "STOCK") return false;
+    if (productType(line) === "BUNDLE") return false;
     const limit = isReturn ? Number(line.fulfilledQuantity || 0) - Number(line.returnedQuantity || 0) : Number(line.quantity) - Number(line.fulfilledQuantity || 0);
     return limit > 0;
   });
@@ -47,25 +49,25 @@ export default function PurchaseOrderStockOperationModal({ mode, open, toggle, p
       }));
 
     if (!items.length) {
-      message.error(`Enter a quantity to ${isReturn ? "return" : "receive"}.`);
+      message.error(`Enter a quantity to ${isReturn ? "return" : "fulfill"}.`);
       return;
     }
 
     try {
       if (isReturn) await returnPurchase({ id: purchase.id, items }).unwrap();
       else await fulfillPurchase({ id: purchase.id, items }).unwrap();
-      message.success(isReturn ? "Stock return recorded." : "Stock received.");
+      message.success(isReturn ? "Return recorded." : "Purchase fulfilled.");
       onSaved();
       toggle();
     } catch (error) {
-      message.error(purchaseApiError(error, isReturn ? "Stock could not be returned." : "Stock could not be received."));
+      message.error(purchaseApiError(error, isReturn ? "Items could not be returned." : "Items could not be fulfilled."));
     }
   };
 
   return (
-    <AppModal open={open} toggle={toggle} title={isReturn ? "Return Stock" : "Receive Stock"} onOk={submit} width={640} loading={fulfilling || returning} okText={isReturn ? "Record Return" : "Receive"}>
+    <AppModal open={open} toggle={toggle} title={isReturn ? "Return Items" : "Fulfill Items"} onOk={submit} width={640} loading={fulfilling || returning} okText={isReturn ? "Record Return" : "Fulfill"}>
       <div className="px-5 py-4">
-        <p className="mb-4 text-sm text-gray-500">{isReturn ? `Return received goods from ${purchase.locationId?.name || "this location"}.` : `Add received goods to ${purchase.locationId?.name || "the purchase location"}.`}</p>
+        <p className="mb-4 text-sm text-gray-500">{isReturn ? `Return fulfilled items from ${purchase.locationId?.name || "this location"}.` : `Fulfill purchase items for ${purchase.locationId?.name || "the purchase location"}.`}</p>
         <div className="space-y-3">
           {lines.map((line) => {
             const max = isReturn ? Number(line.fulfilledQuantity || 0) - Number(line.returnedQuantity || 0) : Number(line.quantity) - Number(line.fulfilledQuantity || 0);
@@ -76,7 +78,7 @@ export default function PurchaseOrderStockOperationModal({ mode, open, toggle, p
                   <div>
                     <p className="text-sm font-medium">{line.productName}</p>
                     <p className="text-xs text-gray-500">
-                      {max.toLocaleString()} available to {isReturn ? "return" : "receive"}
+                      {max.toLocaleString()} available to {isReturn ? "return" : "fulfill"}
                     </p>
                   </div>
                 </div>

@@ -35,7 +35,7 @@ export default function PurchaseOrderDetailContent({ purchase, currency, canEdit
       key: "return",
       disabled: !canReturn,
       icon: <RotateCcw size={15} />,
-      label: "Return Stock",
+      label: "Return Items",
       onClick: onReturn,
     },
 

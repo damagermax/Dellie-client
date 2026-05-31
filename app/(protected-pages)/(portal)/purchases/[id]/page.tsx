@@ -60,9 +60,12 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
   if (isError || !purchase) return <p className="px-8 py-10 text-sm text-red-600">This purchase could not be loaded.</p>;
 
   const canEdit = !purchase.locked && purchase.receiptStatus !== "received";
-  const stockLines = purchase.lineItems.filter((line) => typeof line.productId !== "string" && line.productId.type === "STOCK");
-  const canReceive = !purchase.locked && stockLines.some((line) => Number(line.quantity) > Number(line.fulfilledQuantity || 0));
-  const canReturn = !purchase.locked && stockLines.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
+  const fulfillableLines = purchase.lineItems.filter((line) => {
+    const productType = typeof line.productId === "string" ? line.productType : line.productId.type || line.productType;
+    return productType !== "BUNDLE";
+  });
+  const canReceive = !purchase.locked && fulfillableLines.some((line) => Number(line.quantity) > Number(line.fulfilledQuantity || 0));
+  const canReturn = !purchase.locked && fulfillableLines.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
   const currency = purchase.currencyId?.code || "";
 
   return (

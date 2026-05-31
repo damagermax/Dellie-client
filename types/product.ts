@@ -54,6 +54,7 @@ export interface ProductQueryParams {
   inPOS?: boolean;
   inStorefront?: boolean;
   type?: "STOCK" | "NON_STOCK" | "SERVICE" | "BUNDLE" | "PACKAGING";
+  purchasable?: boolean;
   page?: number;
   limit?: number;
 }

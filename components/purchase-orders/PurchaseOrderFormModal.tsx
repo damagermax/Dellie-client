@@ -63,7 +63,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
 
   const [createPurchase, { isLoading: creating }] = useCreatePurchaseMutation();
   const [updatePurchase, { isLoading: updating }] = useUpdatePurchaseMutation();
-  const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20 });
+  const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20, purchasable: true });
   const { data: taxes } = useGetTaxesQuery();
 
   const rate = Form.useWatch("rate", form) || 1;
@@ -94,9 +94,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
         purchase.lineItems.map((item) => ({
           id: typeof item.productId === "string" ? item.productId : item.productId.id,
           productName: item.productName,
-          productImageUrl:
-            item.productUrl ||
-            (typeof item.productId === "string" ? undefined : item.productId.media?.[0]?.url),
+          productImageUrl: item.productUrl || (typeof item.productId === "string" ? undefined : item.productId.media?.[0]?.url),
           quantity: item.quantity,
           unitPrice: item.unitPrice,
         })),
@@ -121,13 +119,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
     setLineItems((current) =>
       current.map((item) => ({
         ...item,
-        tax: selectedDocumentTax
-          ? undefined
-          : taxes.find(
-              (tax) =>
-                tax.id ===
-                purchase.lineItems.find((line) => (typeof line.productId === "string" ? line.productId : line.productId.id) === item.id)?.taxId,
-            ),
+        tax: selectedDocumentTax ? undefined : taxes.find((tax) => tax.id === purchase.lineItems.find((line) => (typeof line.productId === "string" ? line.productId : line.productId.id) === item.id)?.taxId),
       })),
     );
   }, [open, purchase, taxes]);
@@ -144,8 +136,6 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
       );
     }
   }, [isDeferentProductTax]);
-
-  const purchasableProducts = useMemo(() => productsData?.data?.filter((product) => product.type === "STOCK" || product.type === "NON_STOCK") || [], [productsData]);
 
   const items: MenuProps["items"] = [
     { key: "percent", label: "%" },
@@ -391,7 +381,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
       </div>
       <div className="shadow-xl bg-white">
         {searchValue &&
-          purchasableProducts.map((item) => (
+          (productsData?.data || []).map((item) => (
             <div key={item.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addLineItem(item)}>
               <div className="flex gap-x-2 items-center">
                 <PreviewImage width={28} height={28} src={item.imageUrl} />
