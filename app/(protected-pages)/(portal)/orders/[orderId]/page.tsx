@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { Modal, message } from "antd";
+import { Button, Modal, message } from "antd";
 import PaymentFormModal from "@/components/payment/PaymentFormModel";
 import SaleDetailContent from "@/components/orders/SaleDetailContent";
 import SaleFormModal from "@/components/orders/SaleFormModal";
@@ -26,6 +26,7 @@ export default function SaleDetailPage() {
   const [returnOpen, toggleReturn] = useToggle();
   const [shareDocumentType, setShareDocumentType] = useState<SaleDocumentType>();
   const [editingItem, setEditingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | { kind: "return"; item: PurchaseReturnEvent } | null>(null);
+  const [deletingItem, setDeletingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | { kind: "return"; item: PurchaseReturnEvent } | null>(null);
   const { data: sale, isLoading, isError, refetch } = useGetSaleQuery(orderId, { refetchOnMountOrArgChange: true });
   const [deleteSale, { isLoading: isDeleting }] = useDeleteSaleMutation();
   const [updateSaleFulfillment, { isLoading: isUpdatingFulfillment }] = useUpdateSaleFulfillmentMutation();
@@ -69,7 +70,12 @@ export default function SaleDetailPage() {
   const canFulfill = !sale.locked && sale.lineItems.some((line) => Number(line.quantity) > Number(line.fulfilledQuantity || 0));
   const canReturn = !sale.locked && sale.lineItems.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
   const editingItemName = editingItem ? (typeof editingItem.item.productId === "string" ? "Selected item" : editingItem.item.productId.name || "Selected item") : "";
+  const deletingItemName = deletingItem ? (typeof deletingItem.item.productId === "string" ? "Selected item" : deletingItem.item.productId.name || "Selected item") : "";
+  const deletingItemType = deletingItem ? getProductType(deletingItem.item) : undefined;
+  const deletingItemAffectsStock = deletingItemType ? ["STOCK", "PACKAGING"].includes(deletingItemType) : false;
+  const deletingItemLabel = deletingItem?.kind === "fulfillment" ? "fulfillment" : "return";
   const closeItemEditor = () => setEditingItem(null);
+  const closeDeleteDialog = () => setDeletingItem(null);
   const saveItem = async (values: { quantity: number; date: string }) => {
     if (!sale || !editingItem) return;
 
@@ -89,28 +95,29 @@ export default function SaleDetailPage() {
   };
 
   const confirmDeleteItem = (kind: "fulfillment" | "return", item: PurchaseStockEvent | PurchaseReturnEvent) => {
-    if (!sale) return;
+    setDeletingItem({ kind, item });
+  };
 
-    Modal.confirm({
-      title: `Delete ${kind === "fulfillment" ? "fulfillment" : "return"}?`,
-      content: "This action will update stock and cannot be undone.",
-      okText: "Delete",
-      okType: "danger",
-      onOk: async () => {
-        try {
-          if (kind === "fulfillment") {
-            await deleteSaleFulfillment({ id: sale.id, fulfillmentId: item.id }).unwrap();
-          } else {
-            await deleteSaleReturn({ id: sale.id, returnId: item.id }).unwrap();
-          }
-          message.success("Item deleted.");
-          refetch();
-        } catch (error) {
-          message.error(saleApiError(error, "Item could not be deleted."));
-          throw error;
-        }
-      },
-    });
+  function getProductType(item: PurchaseStockEvent | PurchaseReturnEvent) {
+    return typeof item.productId === "string" ? item.productType : item.productId.type || item.productType;
+  }
+
+  const runDeleteItem = async () => {
+    if (!sale || !deletingItem) return;
+
+    try {
+      if (deletingItem.kind === "fulfillment") {
+        await deleteSaleFulfillment({ id: sale.id, fulfillmentId: deletingItem.item.id }).unwrap();
+      } else {
+        await deleteSaleReturn({ id: sale.id, returnId: deletingItem.item.id }).unwrap();
+      }
+      message.success("Item deleted.");
+      closeDeleteDialog();
+      refetch();
+    } catch (error) {
+      message.error(saleApiError(error, "Item could not be deleted."));
+      throw error;
+    }
   };
 
   return (
@@ -172,6 +179,24 @@ export default function SaleDetailPage() {
           loading={isUpdatingFulfillment || isDeletingFulfillment || isUpdatingReturn || isDeletingReturn}
           onSubmit={saveItem}
         />
+      )}
+      {deletingItem && (
+        <Modal open onCancel={closeDeleteDialog} footer={null} title={`Delete this ${deletingItemLabel}?`}>
+          <div className="px-5 py-4">
+            <p className="text-sm text-gray-600">
+              {deletingItemAffectsStock
+                ? `This will reverse the stock changes made by this ${deletingItemLabel}. Inventory quantities will be updated accordingly. This action cannot be undone.`
+                : `This will remove the ${deletingItemLabel} record. No inventory will be affected. This action cannot be undone.`}
+            </p>
+            <p className="mt-2 text-xs text-gray-500">{deletingItemName}</p>
+            <div className="mt-5 flex items-center justify-end gap-3">
+              <Button onClick={closeDeleteDialog}>Cancel</Button>
+              <Button danger type="primary" loading={isDeletingFulfillment || isDeletingReturn} onClick={runDeleteItem}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
