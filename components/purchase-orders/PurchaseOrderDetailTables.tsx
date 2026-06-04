@@ -5,11 +5,21 @@ import { Empty, Segmented, Tabs } from "antd";
 import type { TableProps } from "antd/es/table";
 import { CreditCard, FileText, PackageCheck, Receipt, RotateCcw } from "lucide-react";
 import AppTable from "@/components/ui/AppTable";
+import { ActionDropdown } from "@/components/ui/ActionDropdown";
 import PreviewImage from "@/components/ui/PreviewImage";
 import { formatDate } from "@/lib/dateUtils";
 import { Purchase, PurchaseLandedCost, PurchaseLineItem, PurchaseReturnEvent, PurchaseStockEvent } from "@/types/index";
 
 type PurchaseTableView = "items" | "fulfillments" | "returns" | "landedCosts" | "payments";
+
+interface PurchaseOrderDetailTablesProps {
+  purchase: Purchase;
+  currency: string;
+  onEditFulfillment: (event: PurchaseStockEvent) => void;
+  onDeleteFulfillment: (event: PurchaseStockEvent) => void;
+  onEditReturn: (event: PurchaseReturnEvent) => void;
+  onDeleteReturn: (event: PurchaseReturnEvent) => void;
+}
 
 function productName(product: string | { name: string }) {
   return typeof product === "string" ? "-" : product.name;
@@ -54,7 +64,7 @@ const mobileTabItems = tableOptions.map((option) => ({
   label: option.label,
 }));
 
-export default function PurchaseOrderDetailTables({ purchase, currency }: { purchase: Purchase; currency: string }) {
+export default function PurchaseOrderDetailTables({ purchase, currency, onEditFulfillment, onDeleteFulfillment, onEditReturn, onDeleteReturn }: PurchaseOrderDetailTablesProps) {
   const [view, setView] = React.useState<PurchaseTableView>("items");
   const itemColumns: TableProps<PurchaseLineItem>["columns"] = [
     { title: "Product", key: "productName", className: "!pl-8", width: "45%", render: (_, line) => <ProductCell name={line.productName} imageUrl={line.productUrl || productImage(line.productId)} /> },
@@ -69,12 +79,30 @@ export default function PurchaseOrderDetailTables({ purchase, currency }: { purc
     { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} imageUrl={productImage(event.productId)} /> },
     { title: "Received Qty", dataIndex: "quantity", key: "quantity" },
     { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.fulfilledAt) },
+    {
+      title: "",
+      key: "actions",
+      dataIndex: "id",
+      align: "right",
+      className: "!pr-8",
+      width: 80,
+      render: (_, event) => <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />,
+    },
   ];
   const returnColumns: TableProps<PurchaseReturnEvent>["columns"] = [
     { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} imageUrl={productImage(event.productId)} /> },
     { title: "Returned Qty", dataIndex: "quantity", key: "quantity" },
     { title: "Reason", dataIndex: "reason", key: "reason", render: (reason) => reason || "-" },
     { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.returnedAt) },
+    {
+      title: "",
+      key: "actions",
+      dataIndex: "id",
+      align: "right",
+      className: "!pr-8",
+      width: 80,
+      render: (_, event) => <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} />,
+    },
   ];
   const costColumns: TableProps<PurchaseLandedCost>["columns"] = [
     { title: "Cost", dataIndex: "name", key: "name", className: "!pl-8" },
@@ -138,11 +166,19 @@ export default function PurchaseOrderDetailTables({ purchase, currency }: { purc
         {current.data.length ? (
           <>
             <div className="md:hidden">
-              <MobilePurchaseList view={view} purchase={purchase} currency={currency} />
-            </div>
-            <div className="hidden md:block">
-              <AppTable columns={current.columns || []} dataSource={current.data as any[]} rowKey="id" pagination={false} />
-            </div>
+            <MobilePurchaseList
+              view={view}
+              purchase={purchase}
+              currency={currency}
+              onEditFulfillment={onEditFulfillment}
+              onDeleteFulfillment={onDeleteFulfillment}
+              onEditReturn={onEditReturn}
+              onDeleteReturn={onDeleteReturn}
+            />
+          </div>
+          <div className="hidden md:block">
+              <AppTable columns={current.columns || []} dataSource={current.data as any[]} rowKey="id" pagination={false} scrollX={900} />
+          </div>
           </>
         ) : (
           <div className="border-t border-gray-200 py-12">
@@ -154,7 +190,23 @@ export default function PurchaseOrderDetailTables({ purchase, currency }: { purc
   );
 }
 
-function MobilePurchaseList({ view, purchase, currency }: { view: PurchaseTableView; purchase: Purchase; currency: string }) {
+function MobilePurchaseList({
+  view,
+  purchase,
+  currency,
+  onEditFulfillment,
+  onDeleteFulfillment,
+  onEditReturn,
+  onDeleteReturn,
+}: {
+  view: PurchaseTableView;
+  purchase: Purchase;
+  currency: string;
+  onEditFulfillment: (event: PurchaseStockEvent) => void;
+  onDeleteFulfillment: (event: PurchaseStockEvent) => void;
+  onEditReturn: (event: PurchaseReturnEvent) => void;
+  onDeleteReturn: (event: PurchaseReturnEvent) => void;
+}) {
   if (view === "items") {
     return (
       <div className="grid  ">
@@ -180,7 +232,10 @@ function MobilePurchaseList({ view, purchase, currency }: { view: PurchaseTableV
       <div className="grid   ">
         {(purchase.fulfilledItems || []).map((event) => (
           <MobileCard key={event.id}>
-            <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+            <div className="flex items-start justify-between gap-3">
+              <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+              <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />
+            </div>
             <div className="mt-2 text-[13px] text-gray-500 flex items-center justify-between gap-3">
               <span>Qty {Number(event.quantity).toLocaleString()}</span>
               <span>{formatDate(event.fulfilledAt)}</span>
@@ -196,7 +251,10 @@ function MobilePurchaseList({ view, purchase, currency }: { view: PurchaseTableV
       <div className="grid gap-3  pb-6">
         {(purchase.returnedItems || []).map((event) => (
           <MobileCard key={event.id}>
-            <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+            <div className="flex items-start justify-between gap-3">
+              <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+              <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} />
+            </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <MobileStat label="Returned Qty" value={Number(event.quantity).toLocaleString()} />
               <MobileStat label="Date" value={formatDate(event.returnedAt)} />

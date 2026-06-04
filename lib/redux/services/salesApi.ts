@@ -1,4 +1,14 @@
-import { CreateSaleInput, FulfillSaleInput, ReturnSaleInput, Sale, SaleQueryParams, SalesResponse, UpdateSaleInput } from "@/types/index";
+import {
+  CreateSaleInput,
+  FulfillSaleInput,
+  ReturnSaleInput,
+  Sale,
+  SaleQueryParams,
+  SalesResponse,
+  UpdateSaleFulfillmentInput,
+  UpdateSaleInput,
+  UpdateSaleReturnInput,
+} from "@/types/index";
 import { baseApi, TAG_TYPES } from "./baseApi";
 
 export const salesApi = baseApi.injectEndpoints({
@@ -31,7 +41,35 @@ export const salesApi = baseApi.injectEndpoints({
       query: ({ id, ...body }) => ({ url: `sales/${id}/returns`, method: "POST", body }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.SALE, id }, TAG_TYPES.SALES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
     }),
+    updateSaleFulfillment: builder.mutation<Sale, UpdateSaleFulfillmentInput>({
+      query: ({ id, fulfillmentId, ...body }) => ({ url: `sales/${id}/fulfillments/${fulfillmentId}`, method: "PATCH", body }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.SALE, id }, TAG_TYPES.SALES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
+    }),
+    deleteSaleFulfillment: builder.mutation<Sale, { id: string; fulfillmentId: string }>({
+      query: ({ id, fulfillmentId }) => ({ url: `sales/${id}/fulfillments/${fulfillmentId}`, method: "DELETE" }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.SALE, id }, TAG_TYPES.SALES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
+    }),
+    updateSaleReturn: builder.mutation<Sale, UpdateSaleReturnInput>({
+      query: ({ id, returnId, ...body }) => ({ url: `sales/${id}/returns/${returnId}`, method: "PATCH", body }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.SALE, id }, TAG_TYPES.SALES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
+    }),
+    deleteSaleReturn: builder.mutation<Sale, { id: string; returnId: string }>({
+      query: ({ id, returnId }) => ({ url: `sales/${id}/returns/${returnId}`, method: "DELETE" }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.SALE, id }, TAG_TYPES.SALES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
+    }),
   }),
 });
 
-export const { useCreateSaleMutation, useGetSalesQuery, useGetSaleQuery, useUpdateSaleMutation, useDeleteSaleMutation, useFulfillSaleMutation, useReturnSaleStockMutation } = salesApi;
+export const {
+  useCreateSaleMutation,
+  useGetSalesQuery,
+  useGetSaleQuery,
+  useUpdateSaleMutation,
+  useDeleteSaleMutation,
+  useFulfillSaleMutation,
+  useReturnSaleStockMutation,
+  useUpdateSaleFulfillmentMutation,
+  useDeleteSaleFulfillmentMutation,
+  useUpdateSaleReturnMutation,
+  useDeleteSaleReturnMutation,
+} = salesApi;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Divider, Dropdown, MenuProps, Tag } from "antd";
-import { CalendarDays, Clock3, CreditCard, FileText, MapPinned, MoreHorizontal, PackageCheck, Pencil, ReceiptText, RotateCcw, Trash2, Truck, WalletCards } from "lucide-react";
+import { CalendarDays, Clock3, CreditCard, FileText, MoreHorizontal, PackageCheck, Pencil, Receipt, ReceiptText, RotateCcw, Trash2, Truck, WalletCards } from "lucide-react";
 import { GoBack } from "@/components/ui/GoBack";
 import { formatDate } from "@/lib/dateUtils";
 import { Sale } from "@/types/index";
@@ -21,12 +21,34 @@ interface SaleDetailContentProps {
   onReturn: () => void;
   onRecordPayment: () => void;
   onShare: (type: SaleDocumentType) => void;
+  onEditFulfillment: (event: any) => void;
+  onDeleteFulfillment: (event: any) => void;
+  onEditReturn: (event: any) => void;
+  onDeleteReturn: (event: any) => void;
 }
 
-export default function SaleDetailContent({ sale, currency, canEdit, canFulfill, canReturn, isDeleting, onEdit, onDelete, onFulfill, onReturn, onRecordPayment, onShare }: SaleDetailContentProps) {
+export default function SaleDetailContent({
+  sale,
+  currency,
+  canEdit,
+  canFulfill,
+  canReturn,
+  isDeleting,
+  onEdit,
+  onDelete,
+  onFulfill,
+  onReturn,
+  onRecordPayment,
+  onShare,
+  onEditFulfillment,
+  onDeleteFulfillment,
+  onEditReturn,
+  onDeleteReturn,
+}: SaleDetailContentProps) {
   const fulfillmentStatus = sale.receiptStatus || "pending";
   const statusTone = fulfillmentStatus === "received" ? "green" : fulfillmentStatus === "partially_received" ? "gold" : "blue";
-  const customerName = sale.contactId?.name || sale.contactId?.displayName || "Customer not set";
+  const sourceTone = sale.source === "POS" ? "green" : sale.source === "Online Store" ? "blue" : sale.source === "Sales Order" ? "gold" : "default";
+  const customerName = sale.contactId?.name || sale.contactId?.displayName || "Walk-in Customer";
   const customerMeta = [sale.contactId?.email, sale.contactId?.phone].filter(Boolean).join(" · ") || "No contact details provided";
   const locationName = sale.locationId?.name || "Location not set";
   const locationMeta = sale.locationId?.address || "No address provided";
@@ -45,6 +67,24 @@ export default function SaleDetailContent({ sale, currency, canEdit, canFulfill,
       icon: <RotateCcw size={15} />,
       label: "Return Stock",
       onClick: onReturn,
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "refund",
+      icon: <RotateCcw size={15} />,
+      label: "Refund Payment",
+    },
+    {
+      key: "issue_credit",
+      icon: <RotateCcw size={15} />,
+      label: "Issue Credit",
+    },
+    {
+      key: "write_off",
+      icon: <Receipt size={15} />,
+      label: "Write Off Balance",
     },
     {
       type: "divider",
@@ -86,6 +126,9 @@ export default function SaleDetailContent({ sale, currency, canEdit, canFulfill,
                 <Tag className="!m-0 !rounded-full !px-2 capitalize" color={statusTone}>
                   {fulfillmentStatus.replaceAll("_", " ")}
                 </Tag>
+                <Tag className="!m-0 !rounded-full !px-2" color={sourceTone}>
+                  {sale.source || "Manual Sale"}
+                </Tag>
               </div>
               <p className="mt-2 max-w-xl text-sm text-gray-500">
                 Created {formatDate(sale.createdAt)} by {sale.createdBy?.name || "-"}
@@ -110,7 +153,7 @@ export default function SaleDetailContent({ sale, currency, canEdit, canFulfill,
         <div className="px-4 md:px-8">
           <div className="grid gap-4 sm:grid-cols-2">
             <IdentityPanel label="Customer" title={customerName} description={customerMeta} />
-            <IdentityPanel label="Destination" title={locationName} description={locationMeta} />
+            <IdentityPanel label="Location" title={locationName} description={locationMeta} />
           </div>
 
           <Divider className="!mt-6" />
@@ -128,7 +171,14 @@ export default function SaleDetailContent({ sale, currency, canEdit, canFulfill,
             <p className="text-sm leading-6 text-gray-700">{sale.note}</p>
           </div>
         )}
-        <SaleDetailTables sale={sale} currency={currency} />
+        <SaleDetailTables
+          sale={sale}
+          currency={currency}
+          onEditFulfillment={onEditFulfillment}
+          onDeleteFulfillment={onDeleteFulfillment}
+          onEditReturn={onEditReturn}
+          onDeleteReturn={onDeleteReturn}
+        />
       </div>
     </section>
   );

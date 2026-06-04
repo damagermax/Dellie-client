@@ -1,7 +1,7 @@
 "use client";
 
-import { Avatar, Button, Divider, Dropdown, MenuProps, Tag } from "antd";
-import { CalendarDays, Clock3, CreditCard, MapPinned, MoreHorizontal, PackageCheck, Pencil, Receipt, RotateCcw, StickyNote, Trash2, Truck, Wallet, WalletCards } from "lucide-react";
+import { Button, Divider, Dropdown, MenuProps, Tag } from "antd";
+import { CalendarDays, Clock3, CreditCard, MoreHorizontal, PackageCheck, Pencil, Receipt, RotateCcw, Trash2, Truck, WalletCards } from "lucide-react";
 import { GoBack } from "@/components/ui/GoBack";
 import { formatDate } from "@/lib/dateUtils";
 import { Purchase } from "@/types/index";
@@ -20,9 +20,30 @@ interface PurchaseOrderDetailContentProps {
   onReturn: () => void;
   onAddLandedCost: () => void;
   onRecordPayment: () => void;
+  onEditFulfillment: (event: any) => void;
+  onDeleteFulfillment: (event: any) => void;
+  onEditReturn: (event: any) => void;
+  onDeleteReturn: (event: any) => void;
 }
 
-export default function PurchaseOrderDetailContent({ purchase, currency, canEdit, canReceive, canReturn, isDeleting, onEdit, onDelete, onReceive, onReturn, onAddLandedCost, onRecordPayment }: PurchaseOrderDetailContentProps) {
+export default function PurchaseOrderDetailContent({
+  purchase,
+  currency,
+  canEdit,
+  canReceive,
+  canReturn,
+  isDeleting,
+  onEdit,
+  onDelete,
+  onReceive,
+  onReturn,
+  onAddLandedCost,
+  onRecordPayment,
+  onEditFulfillment,
+  onDeleteFulfillment,
+  onEditReturn,
+  onDeleteReturn,
+}: PurchaseOrderDetailContentProps) {
   const moreItems: MenuProps["items"] = [
     {
       key: "edit",
@@ -53,6 +74,11 @@ export default function PurchaseOrderDetailContent({ purchase, currency, canEdit
       key: "refund",
       icon: <RotateCcw size={15} />,
       label: "Refund Payment",
+    },
+    {
+      key: "issue_credit",
+      icon: <RotateCcw size={15} />,
+      label: "Issue Credit",
     },
     {
       key: "write_off",
@@ -114,8 +140,8 @@ export default function PurchaseOrderDetailContent({ purchase, currency, canEdit
       <div className="pt-7">
         <div className=" px-4 md:px-8">
           <div className="grid gap-4 sm:grid-cols-2">
-            <IdentityPanel label="Supplier" title={supplierName} description={supplierMeta} avatarText={supplierName} accent="" />
-            <IdentityPanel label="Destination" title={locationName} description={locationMeta} icon={<MapPinned size={18} />} accent="" />
+            <IdentityPanel label="Supplier" title={supplierName} description={supplierMeta} />
+            <IdentityPanel label="Destination" title={locationName} description={locationMeta} />
           </div>
 
           <Divider className="!mt-6 " />
@@ -135,13 +161,20 @@ export default function PurchaseOrderDetailContent({ purchase, currency, canEdit
           </div>
         )}
 
-        <PurchaseOrderDetailTables purchase={purchase} currency={currency} />
+        <PurchaseOrderDetailTables
+          purchase={purchase}
+          currency={currency}
+          onEditFulfillment={onEditFulfillment}
+          onDeleteFulfillment={onDeleteFulfillment}
+          onEditReturn={onEditReturn}
+          onDeleteReturn={onDeleteReturn}
+        />
       </div>
     </section>
   );
 }
 
-function IdentityPanel({ label, title, description, avatarText, icon, accent }: { label: string; title: string; description: string; avatarText?: string; icon?: React.ReactNode; accent: string }) {
+function IdentityPanel({ label, title, description }: { label: string; title: string; description: string }) {
   return (
     <div className={``}>
       <div className="flex items-start gap-3">

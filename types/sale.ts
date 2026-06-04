@@ -5,6 +5,8 @@ export interface SaleLineItemInput {
   productId: string;
   quantity: number;
   unitPrice: number;
+  discountValue?: number;
+  discountType?: PurchaseDiscountType;
   taxId?: string;
 }
 
@@ -18,6 +20,7 @@ export interface CreateSaleInput {
   paymentTerms?: string;
   dueDate?: string;
   note?: string;
+  source?: string;
   discountValue?: number;
   discountType?: PurchaseDiscountType;
   taxId?: string;
@@ -45,6 +48,7 @@ export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" |
   amount: number;
   balance: number;
   paymentStatus: "unpaid" | "partial" | "paid";
+  source?: string;
   payments?: unknown[];
   createdAt: string;
   updatedAt: string;
@@ -76,4 +80,18 @@ export interface FulfillSaleInput {
 export interface ReturnSaleInput {
   id: string;
   items: (SaleOperationItemInput & { reason?: string })[];
+}
+
+export interface UpdateSaleFulfillmentInput {
+  id: string;
+  fulfillmentId: string;
+  quantity: number;
+  date: string;
+}
+
+export interface UpdateSaleReturnInput {
+  id: string;
+  returnId: string;
+  quantity: number;
+  date: string;
 }

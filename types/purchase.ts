@@ -7,6 +7,8 @@ export interface PurchaseLineItemInput {
   productId: string;
   quantity: number;
   unitPrice: number;
+  discountValue?: number;
+  discountType?: PurchaseDiscountType;
   taxId?: string;
 }
 
@@ -18,6 +20,9 @@ export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId
   productType?: string;
   productUrl?: string;
   subtotal: number;
+  discountValue?: number;
+  discountType?: PurchaseDiscountType;
+  discountAmount?: number;
   taxDescription?: string;
   taxRate?: number;
   taxAmount: number;
@@ -98,6 +103,20 @@ export interface FulfillPurchaseInput {
 export interface ReturnPurchaseInput {
   id: string;
   items: (PurchaseOperationItemInput & { reason?: string })[];
+}
+
+export interface UpdatePurchaseFulfillmentInput {
+  id: string;
+  fulfillmentId: string;
+  quantity: number;
+  date: string;
+}
+
+export interface UpdatePurchaseReturnInput {
+  id: string;
+  returnId: string;
+  quantity: number;
+  date: string;
 }
 
 export type PurchaseLandedCostAllocation = "BUY_VALUE" | "QUANTITY" | "WEIGHT";
