@@ -5,7 +5,7 @@ import { AppModal, ModalProps } from "../ui/AppModal";
 import { Form, Input, InputNumber, Select, MenuProps, Dropdown, message } from "antd";
 import { DatePickerFormItem } from "../ui/AppFormItems";
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
-import { useCreatePurchaseMutation, useGetProductsQuery, useGetTaxesQuery, useUpdatePurchaseMutation } from "@/lib/redux/services";
+import { useCreatePurchaseMutation, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdatePurchaseMutation } from "@/lib/redux/services";
 import { ProductListItem, Purchase, PurchaseDiscountType, Tax } from "@/types/index";
 import { RiSearchLine } from "react-icons/ri";
 import { Trash2 } from "lucide-react";
@@ -17,24 +17,12 @@ import dayjs from "dayjs";
 
 import { TaxSelector } from "../settings/TaxSelector";
 import useToggle from "@/hooks/UseToggle";
+import { buildPaymentTermOptions, getLegacyPaymentTermDays } from "@/lib/payment-terms";
 
 interface PurchaseOrderFormModalProps extends ModalProps {
   purchase?: Purchase;
   onSaved?: () => void;
 }
-
-const paymentTerms = [
-  { label: "Due on Receipt", value: "due_on_receipt" },
-  { label: "Net 7 Days", value: "net_7" },
-  { label: "Net 15 Days", value: "net_15" },
-  { label: "Net 30 Days", value: "net_30" },
-  { label: "Net 45 Days", value: "net_45" },
-  { label: "Net 60 Days", value: "net_60" },
-  { label: "End of Month (EOM)", value: "eom" },
-  { label: "50% Upfront, 50% on Completion", value: "milestone_50_50" },
-  { label: "100% Upfront", value: "full_advance" },
-  { label: "Installments", value: "installments" },
-];
 
 interface ProductLineItem {
   id: string;
@@ -63,6 +51,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
 
   const [createPurchase, { isLoading: creating }] = useCreatePurchaseMutation();
   const [updatePurchase, { isLoading: updating }] = useUpdatePurchaseMutation();
+  const { data: paymentTerms } = useGetPaymentTermsQuery();
   const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20, purchasable: true });
   const { data: taxes } = useGetTaxesQuery();
 
@@ -70,6 +59,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
   const currency = "";
   const loading = creating || updating;
   const cannotEdit = Boolean(purchase?.locked || purchase?.receiptStatus === "received");
+  const paymentTermOptions = useMemo(() => buildPaymentTermOptions(paymentTerms || []), [paymentTerms]);
 
   useEffect(() => {
     if (!open) return;
@@ -145,6 +135,16 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
   const updateLineItem = useCallback((id: string, patch: Partial<ProductLineItem>) => {
     setLineItems((prev) => prev.map((lineItem) => (lineItem.id === id ? { ...lineItem, ...patch } : lineItem)));
   }, []);
+  const handlePaymentTermChange = useCallback(
+    (value: string) => {
+      const days = paymentTerms?.find((term) => term.code === value)?.days ?? getLegacyPaymentTermDays(value);
+      const dateValue = form.getFieldValue("date");
+      if (dateValue && typeof days === "number") {
+        form.setFieldsValue({ dueDate: dayjs(dateValue).add(days, "day") });
+      }
+    },
+    [form, paymentTerms],
+  );
 
   const calculateLineTotal = (item: ProductLineItem) => {
     const subtotal = item.quantity * item.unitPrice;
@@ -416,7 +416,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
               <InputNumber className="!w-full" prefix={"1 USD ="} defaultValue={1} placeholder="1" suffix={"GHS"} type="number" controls={false} />
             </Form.Item>
             <Form.Item name="paymentTerm" label="Payment Term">
-              <Select options={paymentTerms} placeholder="Payment Term" />
+              <Select options={paymentTermOptions} placeholder="Payment Term" onChange={handlePaymentTermChange} />
             </Form.Item>
             <DatePickerFormItem label="Due Date" name="dueDate" placeholder="Due Date" className="" />
           </div>

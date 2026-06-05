@@ -10,27 +10,37 @@ import LocationList from "./locations/LocationList";
 import LocationsFormModal from "./locations/LocationsFormModal";
 import DiscountsList from "../discounts/discount-view/DiscountsList";
 import CategoriesList from "../categories/categories-view/CategoriesList";
+import PaymentTermsList from "./PaymentTermsList";
+import PaymentTermsForm from "./PaymentTermsForm";
+import { PaymentTerm } from "@/types/payment-term";
+import PaymentMethodsList from "./PaymentMethodsList";
+import PaymentMethodsForm from "./PaymentMethodsForm";
+import { PaymentMethod } from "@/types/payment-method";
+import PricingGroupsList from "./PricingGroupsList";
+import PricingGroupsForm from "./PricingGroupsForm";
+import { PricingGroup } from "@/types/pricing-group";
 
-interface Props {}
-
-const SettingsDrawer = ({}: Props) => {
+const SettingsDrawer = () => {
   const [selectedTab, setSelectedTab] = useState("Taxes");
-  const [selectedItem, setSelectedItem] = useState<unknown | null>(null);
+  const [selectedItem, setSelectedItem] = useState<Tax | Location | PaymentTerm | PaymentMethod | PricingGroup | null>(null);
   const [openSetting, toggleOpenSetting] = useToggle();
   const [openForm, toggleOpenForm] = useToggle();
 
   const options = [
     { key: "Taxes", label: "Taxes" },
     { key: "Locations", label: "Locations" },
-    { key: "Discount", label: "Discount" },
+    { key: "Discount", label: "Discounts" },
     { key: "Categories", label: "Categories" },
+    { key: "payment_term", label: "Payment Terms" },
+    { key: "payment_method", label: "Payment Method" },
+    { key: "pricing_group", label: "Pricing Groups" },
   ];
 
   useEffect(() => {
     if (selectedItem) {
       toggleOpenForm();
     }
-  }, [selectedItem]);
+  }, [selectedItem, toggleOpenForm]);
 
   return (
     <div>
@@ -39,9 +49,9 @@ const SettingsDrawer = ({}: Props) => {
       </Button>
 
       {openSetting && (
-        <Drawer destroyOnClose width={550} styles={{ body: { padding: 0 } }} closeIcon={null} onClose={toggleOpenSetting} open={openSetting}>
+        <Drawer destroyOnClose width={750} styles={{ body: { padding: 0 } }} closeIcon={null} onClose={toggleOpenSetting} open={openSetting}>
           <div className=" sticky top-0 z-50   bg-gray-100 ">
-            <div className=" px-5 flex items-center justify-between ">
+            {/* <div className=" px-5 flex items-center justify-between ">
               <p className=" pageTittle">
                 <p className=" text-transparent ">Settings</p>
               </p>
@@ -49,28 +59,65 @@ const SettingsDrawer = ({}: Props) => {
               <Button type="text" shape="circle" title="settings" className="!bg-gray-200" onClick={toggleOpenSetting}>
                 <AiOutlineClose className="!text-gray-600 " />
               </Button>
-            </div>
-            <Menu onSelect={({ key }) => setSelectedTab(key)} selectedKeys={[selectedTab]} style={{ fontSize: "16px" }} className="!bg-gray-100 settings" mode="horizontal" items={options} />
+            </div> */}
+            {/* <Menu
+              onSelect={({ key }) => setSelectedTab(key)}
+              selectedKeys={[selectedTab]}
+              style={{ fontSize: "16px" }}
+              className="!bg-gray-100 settings"
+              //mode="horizontal"
+              items={options}
+            /> */}
           </div>
 
-          {selectedTab == "Taxes" && <TaxList onSelect={setSelectedItem} />}
-          {selectedTab == "Locations" && <LocationList onSelect={setSelectedItem} />}
-          {selectedTab == "Discount" && <DiscountsList />}
-          {selectedTab == "Categories" && <CategoriesList query={{}} />}
+          <div className=" flex min-h-screen w-full ">
+            <Menu
+              onSelect={({ key }) => setSelectedTab(key)}
+              selectedKeys={[selectedTab]}
+              style={{ fontSize: "16px" }}
+              className="!bg-gray-100 settings !w-[50%]"
+              //mode="horizontal"
+              items={options}
+            />
 
-          <FloatButton
-            type="primary"
-            icon={<LuPlus />}
-            onClick={() => {
-              setSelectedItem(null);
-              toggleOpenForm();
-            }}
-          />
+            <div className=" w-full">
+              <div className=" px-5 flex border-b border-b-blue-100 items-center justify-between ">
+                <p className=" pageTittle">
+                  <p className=" text-transparent ">Settings</p>
+                </p>
+
+                <Button type="text" shape="circle" title="settings" className="!bg-gray-200" onClick={toggleOpenSetting}>
+                  <AiOutlineClose className="!text-gray-600 " />
+                </Button>
+              </div>
+              {selectedTab == "Taxes" && <TaxList onSelect={setSelectedItem as (tax: Tax) => void} />}
+              {selectedTab == "Locations" && <LocationList onSelect={setSelectedItem as (location: Location) => void} />}
+              {selectedTab == "Discount" && <DiscountsList />}
+              {selectedTab == "Categories" && <CategoriesList query={{}} />}
+              {selectedTab == "payment_term" && <PaymentTermsList onSelect={setSelectedItem as (paymentTerm: PaymentTerm) => void} />}
+              {selectedTab == "payment_method" && <PaymentMethodsList onSelect={setSelectedItem as (paymentMethod: PaymentMethod) => void} />}
+              {selectedTab == "pricing_group" && <PricingGroupsList onSelect={setSelectedItem as (pricingGroup: PricingGroup) => void} />}
+            </div>
+          </div>
+
+          {(selectedTab == "Taxes" || selectedTab == "Locations" || selectedTab == "payment_term" || selectedTab == "payment_method" || selectedTab == "pricing_group") && (
+            <FloatButton
+              type="primary"
+              icon={<LuPlus />}
+              onClick={() => {
+                setSelectedItem(null);
+                toggleOpenForm();
+              }}
+            />
+          )}
         </Drawer>
       )}
 
       {selectedTab == "Taxes" && <TaxesDrawer initialValue={selectedItem as Tax} open={openForm} toggle={toggleOpenForm} />}
       {selectedTab == "Locations" && <LocationsFormModal initialValues={selectedItem as Location} open={openForm} toggle={toggleOpenForm} />}
+      {selectedTab == "payment_term" && <PaymentTermsForm initialValues={selectedItem as PaymentTerm} open={openForm} toggle={toggleOpenForm} />}
+      {selectedTab == "payment_method" && <PaymentMethodsForm initialValues={selectedItem as PaymentMethod} open={openForm} toggle={toggleOpenForm} />}
+      {selectedTab == "pricing_group" && <PricingGroupsForm initialValues={selectedItem as PricingGroup} open={openForm} toggle={toggleOpenForm} />}
     </div>
   );
 };

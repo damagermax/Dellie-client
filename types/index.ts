@@ -14,5 +14,8 @@ export * from "./transaction";
 export * from "./system";
 export * from "./payment-account";
 export * from "./taxes";
+export * from "./payment-term";
+export * from "./payment-method";
+export * from "./pricing-group";
 export * from "./purchase";
 export * from "./sale";

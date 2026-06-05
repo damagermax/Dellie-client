@@ -69,7 +69,7 @@ export function AppSearch({ placeholder = "Search...", className = "", menu, onR
           trigger={["click"]}
           menu={{ items }}
           placement="bottomRight"
-          dropdownRender={(menu) => (
+          popupRender={(menu) => (
             <div style={{ marginTop: 10 }} className=" bg-white  shadow-[0_4px_20px_rgba(0,0,0,0.25)] overflow-hidden !rounded-lg  ">
               {menu}
             </div>

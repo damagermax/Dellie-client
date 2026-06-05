@@ -34,7 +34,7 @@ export function SearchableContactSelect({ value, onChange, mode, onAddContact }:
       filterOption={false}
       onSearch={(value) => setContactsQuery({ ...contactsQuery, search: value })}
       notFoundContent={isLoading ? <Spin size="small" /> : <span>No contacts found</span>}
-      dropdownRender={(menu) => (
+      popupRender={(menu) => (
         <>
           <div
             className="px-3 py-2 cursor-pointer hover:bg-gray-100 text-blue-500"

@@ -2,13 +2,15 @@
 
 import { GoBack } from "@/components/ui/GoBack";
 import { ProductEditModal } from "@/components/products/ProductEditModal";
+import { ProductMediaManagerModal } from "@/components/products/ProductMediaManagerModal";
+import { ITEM_TYPE } from "@/components/products/ProductFormModal";
 import { useGetProductQuery } from "@/lib/redux/services";
 import useToggle from "@/hooks/UseToggle";
 import { Button, Empty, Segmented, Skeleton, Tabs, Tag } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import React, { useEffect, useMemo, useState } from "react";
-import { FaBox, FaChartLine, FaLayerGroup, FaTags } from "react-icons/fa";
+import { FaBox, FaLayerGroup, FaTags } from "react-icons/fa";
 import { GrHistory } from "react-icons/gr";
 import { ImBoxRemove } from "react-icons/im";
 import { TbPackageExport, TbPackages } from "react-icons/tb";
@@ -16,8 +18,6 @@ import { TbPackageExport, TbPackages } from "react-icons/tb";
 dayjs.extend(relativeTime);
 
 const INVENTORY_TYPES = ["STOCK", "PACKAGING"];
-
-type ProductType = "STOCK" | "NON_STOCK" | "SERVICE" | "PACKAGING" | "BUNDLE" | string;
 
 type InventorySummary = {
   availableQuantity?: number;
@@ -58,9 +58,9 @@ type BundleComponent = {
 };
 
 type ProductDetail = Record<string, unknown> & {
-  id?: string;
-  name?: string;
-  type: ProductType;
+  id: string;
+  name: string;
+  type: ITEM_TYPE;
   sku?: string;
   barcode?: string;
   categoryId?: string;
@@ -81,7 +81,7 @@ type ProductDetail = Record<string, unknown> & {
   conversionType?: string;
   conversionQuantity?: number;
   repackUnitName?: string;
-  media?: Array<{ url?: string }>;
+  media?: Array<{ url?: string; key?: string; type?: string }>;
   imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -113,6 +113,8 @@ type DetailTab = {
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const [editOpen, toggleEdit] = useToggle();
+  const [mediaOpen, toggleMedia] = useToggle();
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
   const { data: rawProduct, isLoading, refetch } = useGetProductQuery(id, { skip: !id });
   const product = rawProduct as ProductDetail | undefined;
@@ -145,18 +147,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     );
   }
   const imageUrl = product.media?.[0]?.url || product.imageUrl;
+  const descriptionText = product.description || "No description has been added for this product.";
+  const canToggleDescription = Boolean(product.description && product.description.length > 160);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="border-r border-gray-200 bg-white">
-          <header className="border-b border-gray-200 px-5 py-5 md:px-8">
+          <header className="border-b border-gray-200 p-3 sm:px-5  sm:py-5 md:px-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex min-w-0 items-start gap-3">
                 <GoBack />
-                <div className="min-w-0">
+                <div className="min-w-0 hidden md:block font-semibold">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="pageTittle truncate">{product.name}</h1>
+                    <h1 className="text-2xl   text-gray-700 truncate">{product.name}</h1>
                     <TypeBadge type={product.type} />
                   </div>
                   <AuditFooter createdAt={product.createdAt} updatedAt={product.updatedAt} />
@@ -170,28 +174,75 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </header>
 
-          <section className="grid gap-6 px-5 py-6 md:grid-cols-[180px_minmax(0,1fr)] md:px-8">
-            <div className="aspect-square overflow-hidden rounded-sm border border-gray-200 bg-gray-50">
-              {imageUrl ? <img className="h-full w-full object-cover" src={imageUrl} alt={product.name || "Product"} /> : <div className="flex h-full items-center justify-center text-gray-400">No image</div>}
-            </div>
-            <div className="min-w-0">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <SummaryCard label="Available" value={formatQuantity(product.availableStock)} muted={!INVENTORY_TYPES.includes(product.type)} />
-                <SummaryCard label="Selling Price" value={formatMoney(product.sellingPrice)} />
-                <SummaryCard label="Cost Price" value={formatMoney(product.costPrice)} />
-                <SummaryCard label="Inventory Value" value={formatMoney(product.inventory?.summary?.inventoryValue)} muted={!INVENTORY_TYPES.includes(product.type)} />
-              </div>
+          <section className="grid sm:gap-6 md:px-5 md:py-6 lg:grid-cols-[200px_minmax(0,1fr)]  cursor-pointer ">
+            <button
+              type="button"
+              onClick={toggleMedia}
+              className="group w-[20%] lg:w-full cursor-pointer relative aspect-square overflow-hidden rounded-sm border  border-[#2d837d] sm:border-gray-300 hover:border-[#2d837d] text-left outline-none transition  focus-visible:ring-2 focus-visible:ring-gray-950"
+            >
+              {imageUrl ? <img className="h-full  w-full hover:p-1 object-cover" src={imageUrl} alt={product.name || "Product"} /> : <div className="flex h-full items-center justify-center text-gray-400">No image</div>}
+              <span className="absolute inset-x-0 bottom-0 bg-[#2d837d] px-3 py-2 text-center text-xs font-medium text-white sm:opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">Manage media</span>
+            </button>
 
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <Detail label="SKU" value={product.sku || "-"} />
-                <Detail label="Barcode" value={product.barcode || "-"} />
-                <Detail label="Category" value={product.categoryName || "Uncategorized"} />
-                <Detail label="Weight" value={product.weight ? `${product.weight}` : "-"} />
+            <div className="min-w-0">
+              <DetailGrid
+                items={[
+                  { label: "SKU", value: product.sku || "-" },
+                  { label: "Barcode", value: product.barcode || "-" },
+                  { label: "Category", value: product.categoryName || "Uncategorized" },
+                  { label: "Weight", value: product.weight ? `${product.weight}` : "-" },
+                  // { label: "Visibility", value: getVisibilityLabel(product) },
+                  {
+                    label: INVENTORY_TYPES.includes(product.type) ? "Available" : "Inventory",
+                    value: INVENTORY_TYPES.includes(product.type) ? formatQuantity(product.availableStock) : "Not tracked",
+                  },
+                  { label: "Selling Price", value: formatMoney(product.sellingPrice) },
+                  { label: "Cost Price", value: formatMoney(product.costPrice) },
+                  {
+                    label: "Inventory Value",
+                    value: INVENTORY_TYPES.includes(product.type) ? formatMoney(product.inventory?.summary?.inventoryValue) : "Not tracked",
+                  },
+                ]}
+              />
+
+              <div
+                className={`border-b border-gray-200 px-4 py-4 ${canToggleDescription ? "cursor-pointer" : "cursor-default"}`}
+                role={canToggleDescription ? "button" : undefined}
+                tabIndex={canToggleDescription ? 0 : undefined}
+                aria-expanded={descriptionExpanded}
+                onClick={() => canToggleDescription && setDescriptionExpanded((current) => !current)}
+                onKeyDown={(event) => {
+                  if (!canToggleDescription) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setDescriptionExpanded((current) => !current);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400">Description</p>
+                  {canToggleDescription && <p className="text-xs font-medium text-gray-500">{descriptionExpanded ? "Show less" : "Read more"}</p>}
+                </div>
+                <p
+                  className="mt-3 whitespace-pre-line text-sm leading-7 text-gray-600"
+                  style={
+                    !descriptionExpanded && canToggleDescription
+                      ? {
+                          display: "-webkit-box",
+                          WebkitLineClamp: 4,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }
+                      : undefined
+                  }
+                >
+                  {descriptionText}
+                </p>
               </div>
             </div>
           </section>
 
-          <section className="px-5 pb-8 md:px-8">
+          <section className=" pb-8 md:px-8">
             <div className="mb-6 hidden overflow-x-auto pb-1 md:block">
               <div className="flex w-max min-w-full justify-center">
                 <Segmented
@@ -227,6 +278,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {editOpen && product && <ProductEditModal open={editOpen} toggle={toggleEdit} product={product} onSaved={refetch} />}
+      {mediaOpen && product && <ProductMediaManagerModal open={mediaOpen} toggle={toggleMedia} productId={product.id} productName={product.name} media={product.media || []} onChanged={refetch} />}
     </div>
   );
 }
@@ -290,22 +342,6 @@ function buildTabs(product?: ProductDetail): DetailTab[] {
     });
   }
 
-  if (product.type === "NON_STOCK") {
-    tabs.push({
-      key: "commerce",
-      label: <TabLabel icon={<FaChartLine />} text="Commerce" />,
-      children: <Commerce />,
-    });
-  }
-
-  if (product.type === "SERVICE") {
-    tabs.push({
-      key: "service",
-      label: <TabLabel icon={<FaChartLine />} text="Service" />,
-      children: <ServiceInfo product={product} />,
-    });
-  }
-
   tabs.push({
     key: "activity",
     label: <TabLabel icon={<GrHistory />} text="Activity" />,
@@ -317,17 +353,19 @@ function buildTabs(product?: ProductDetail): DetailTab[] {
 
 function Overview({ product }: { product: ProductDetail }) {
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <Panel>
-        <h2 className="sectionTitle">Product Information</h2>
-        <p className="mt-3 whitespace-pre-line text-sm leading-6 text-gray-600">{product.description || "No description has been added for this product."}</p>
-      </Panel>
-      <Panel>
-        <h2 className="sectionTitle">Statistics</h2>
-        <div className="mt-4 grid gap-3">
-          <Metric label="Total sales" value="0" />
-          <Metric label="Revenue generated" value={formatMoney(0)} />
-          <Metric label="Quantity sold" value="0" />
+    <div className="grid gap-5">
+      <Panel className="border-gray-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.03)]">
+        <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Performance</p>
+            <h2 className="mt-1 text-lg font-semibold text-gray-950">Statistics</h2>
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-md border border-gray-200">
+          <MetricRow label="Total sales" value="0" />
+          <MetricRow label="Revenue generated" value={formatMoney(0)} />
+          <MetricRow label="Quantity sold" value="0" />
         </div>
       </Panel>
     </div>
@@ -444,35 +482,6 @@ function Bundle({ product }: { product: ProductDetail }) {
   );
 }
 
-function Commerce() {
-  return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      <SummaryCard label="Total Purchased" value="0" />
-      <SummaryCard label="Total Sold" value="0" />
-      <SummaryCard label="Gross Profit" value={formatMoney(0)} />
-    </div>
-  );
-}
-
-function ServiceInfo({ product }: { product: ProductDetail }) {
-  return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <Panel>
-        <h2 className="sectionTitle">Service Information</h2>
-        <p className="mt-3 text-sm leading-6 text-gray-600">{product.description || "No service description has been added."}</p>
-      </Panel>
-      <Panel>
-        <h2 className="sectionTitle">Financial Summary</h2>
-        <div className="mt-4 space-y-3">
-          <Metric label="Times sold" value="0" />
-          <Metric label="Revenue" value={formatMoney(0)} />
-          <Metric label="Refunds" value={formatMoney(0)} />
-        </div>
-      </Panel>
-    </div>
-  );
-}
-
 function Activity({ product }: { product: ProductDetail }) {
   const emptyText = product.type === "SERVICE" ? "Service sales and refunds will appear here." : product.type === "BUNDLE" ? "Bundle sales and returns will appear here." : "Purchases, sales, fulfillments, returns, and adjustments will appear here.";
   return (
@@ -554,11 +563,18 @@ function SummaryCard({ label, value, muted }: { label: string; value: React.Reac
   );
 }
 
-function Detail({ label, value }: { label: string; value: React.ReactNode }) {
+function DetailGrid({ items }: { items: { label: string; value: React.ReactNode }[] }) {
   return (
-    <div className="border-l border-gray-200 pl-4">
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400">{label}</p>
-      <p className="mt-1 truncate text-sm font-medium text-gray-900">{value}</p>
+    <div className="grid grid-cols-2  border-y border-gray-200  md:grid-cols-4">
+      {items.map((item, index) => (
+        <div
+          key={`${item.label}-${index}`}
+          className={`min-w-0 px-4 py-4 ${index % 2 === 0 ? "border-r" : ""} ${index % 4 !== 3 ? "sm:border-r" : "sm:border-r-0"} ${index < items.length - 2 ? "border-b" : ""} ${index < items.length - 4 ? "sm:border-b" : "sm:border-b-0"} border-gray-200`}
+        >
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400">{item.label}</p>
+          <p className="mt-1 truncate text-sm font-medium text-gray-900">{item.value}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -572,8 +588,17 @@ function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function Panel({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-sm border border-gray-200 bg-white p-5">{children}</div>;
+function MetricRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-gray-100 bg-white px-4 py-3 last:border-b-0">
+      <span className="text-sm text-gray-500">{label}</span>
+      <span className="text-sm font-semibold text-gray-950">{value}</span>
+    </div>
+  );
+}
+
+function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-md border border-gray-200 bg-white p-5 ${className}`}>{children}</div>;
 }
 
 function ProductThumb({ src, name }: { src?: string | null; name?: string }) {
@@ -622,6 +647,13 @@ function AuditFooter({ createdAt, updatedAt }: { createdAt?: string; updatedAt?:
       <span>Updated {updatedAt ? dayjs(updatedAt).fromNow() : "-"}</span>
     </div>
   );
+}
+
+function getVisibilityLabel(product: ProductDetail) {
+  if (product.showInPOS && product.showInStorefront) return "POS and Storefront";
+  if (product.showInPOS) return "POS only";
+  if (product.showInStorefront) return "Storefront only";
+  return "Hidden";
 }
 
 function formatMoney(value: unknown) {

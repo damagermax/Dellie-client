@@ -54,7 +54,7 @@ export const productsApi = baseApi.injectEndpoints({
       invalidatesTags: [TAG_TYPES.PRODUCTS],
     }),
 
-    deleteProductMedia: builder.mutation<void, { id: string; key: string }>({
+    deleteProductMedia: builder.mutation<any, { id: string; key: string }>({
       query: ({ id, key }) => ({
         url: `products/${id}/media/${encodeURIComponent(key)}`,
         method: "DELETE",
@@ -62,7 +62,7 @@ export const productsApi = baseApi.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PRODUCT, id }, TAG_TYPES.PRODUCTS],
     }),
 
-    addProductMedia: builder.mutation<void, { id: string; data: FormData }>({
+    addProductMedia: builder.mutation<any, { id: string; data: FormData }>({
       query: ({ id, data }) => ({
         url: `products/${id}/media`,
         method: "POST",
@@ -71,8 +71,16 @@ export const productsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PRODUCT, id }, TAG_TYPES.PRODUCTS],
     }),
+    reorderProductMedia: builder.mutation<any, { id: string; keys: string[] }>({
+      query: ({ id, keys }) => ({
+        url: `products/${id}/media/reorder`,
+        method: "PATCH",
+        body: { keys },
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PRODUCT, id }, TAG_TYPES.PRODUCTS],
+    }),
   }),
   overrideExisting: false,
 });
 
-export const { useGetProductsQuery, useGetProductQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation, useUpdateProductVariantMutation, useDeleteProductMediaMutation, useAddProductMediaMutation } = productsApi;
+export const { useGetProductsQuery, useGetProductQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation, useUpdateProductVariantMutation, useDeleteProductMediaMutation, useAddProductMediaMutation, useReorderProductMediaMutation } = productsApi;

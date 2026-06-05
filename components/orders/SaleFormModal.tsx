@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Dropdown, Form, Input, InputNumber, MenuProps, Select, message } from "antd";
+import { Button, Dropdown, Form, Input, InputNumber, MenuProps, Select, message } from "antd";
 import dayjs from "dayjs";
 import { Trash2 } from "lucide-react";
 import { RiSearchLine } from "react-icons/ri";
@@ -14,7 +14,8 @@ import { DatePickerFormItem } from "@/components/ui/AppFormItems";
 import AppTable from "@/components/ui/AppTable";
 import PreviewImage from "@/components/ui/PreviewImage";
 import useToggle from "@/hooks/UseToggle";
-import { useCreateSaleMutation, useGetProductsQuery, useGetTaxesQuery, useUpdateSaleMutation } from "@/lib/redux/services";
+import { useCreateSaleMutation, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdateSaleMutation } from "@/lib/redux/services";
+import { buildPaymentTermOptions, getLegacyPaymentTermDays } from "@/lib/payment-terms";
 import { ProductListItem, PurchaseDiscountType, Sale, Tax } from "@/types/index";
 import { saleApiError } from "./saleUtils";
 
@@ -30,21 +31,10 @@ interface SaleFormLineItem {
   productSku?: string;
   quantity: number;
   unitPrice: number;
+  discountValue?: number;
+  discountType?: PurchaseDiscountType;
   tax?: Tax;
 }
-
-const paymentTerms = [
-  { label: "Due on Receipt", value: "due_on_receipt" },
-  { label: "Net 7 Days", value: "net_7" },
-  { label: "Net 15 Days", value: "net_15" },
-  { label: "Net 30 Days", value: "net_30" },
-  { label: "Net 45 Days", value: "net_45" },
-  { label: "Net 60 Days", value: "net_60" },
-  { label: "End of Month (EOM)", value: "eom" },
-  { label: "50% Upfront, 50% on Completion", value: "milestone_50_50" },
-  { label: "100% Upfront", value: "full_advance" },
-  { label: "Installments", value: "installments" },
-];
 
 export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormModalProps) {
   const [form] = Form.useForm();
@@ -57,11 +47,14 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
   const [discount, setDiscount] = useState<{ discountValue: number; discountType: PurchaseDiscountType }>({ discountValue: 0, discountType: "percent" });
   const [createSale, { isLoading: creating }] = useCreateSaleMutation();
   const [updateSale, { isLoading: updating }] = useUpdateSaleMutation();
+  const { data: paymentTerms } = useGetPaymentTermsQuery();
   const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20 });
   const { data: taxes } = useGetTaxesQuery();
   const rate = Form.useWatch("rate", form) || 1;
   const currency = "";
   const loading = creating || updating;
+  const paymentTermOptions = useMemo(() => buildPaymentTermOptions(paymentTerms || []), [paymentTerms]);
+  const isQuote = sale?.status === "draft";
 
   useEffect(() => {
     if (!open) return;
@@ -97,6 +90,8 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
           (typeof item.productId === "string" ? undefined : item.productId.media?.[0]?.url),
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        discountValue: item.discountValue,
+        discountType: item.discountType,
       })),
     );
   }, [form, open, sale]);
@@ -134,14 +129,26 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
   const updateLineItem = useCallback((id: string, patch: Partial<SaleFormLineItem>) => {
     setLineItems((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }, []);
+  const handlePaymentTermChange = useCallback(
+    (value: string) => {
+      const days = paymentTerms?.find((term) => term.code === value)?.days ?? getLegacyPaymentTermDays(value);
+      const dateValue = form.getFieldValue("date");
+      if (dateValue && typeof days === "number") {
+        form.setFieldsValue({ dueDate: dayjs(dateValue).add(days, "day") });
+      }
+    },
+    [form, paymentTerms],
+  );
   const lineTotal = (item: SaleFormLineItem) => {
     const subtotal = item.quantity * item.unitPrice;
+    const discountAmount = item.discountType === "percent" ? (subtotal * (item.discountValue || 0)) / 100 : item.discountValue || 0;
+    const discountedSubtotal = Math.max(subtotal - discountAmount, 0);
     const taxItems =
       item.tax?.items.map((tax) => ({
         name: tax.name,
-        amount: (subtotal * tax.value) / 100,
+        amount: (discountedSubtotal * tax.value) / 100,
       })) || [];
-    return { subtotal, tax: taxItems.reduce((sum, itemTax) => sum + itemTax.amount, 0), taxItems };
+    return { subtotal, discountAmount, discountedSubtotal, tax: taxItems.reduce((sum, itemTax) => sum + itemTax.amount, 0), taxItems };
   };
   const addProduct = (product: ProductListItem) => {
     setLineItems((current) => {
@@ -152,7 +159,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
     setSearchValue("");
   };
   const summary = useMemo(() => {
-    const itemsTotal = lineItems.reduce((sum, item) => sum + lineTotal(item).subtotal, 0);
+    const itemsTotal = lineItems.reduce((sum, item) => sum + lineTotal(item).discountedSubtotal, 0);
     const discountAmount = discount.discountType === "percent" ? (itemsTotal * discount.discountValue) / 100 : discount.discountValue;
     const subtotal = Math.max(itemsTotal - discountAmount, 0);
     const taxItems = selectedTax
@@ -168,7 +175,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
     return { itemsTotal, discountAmount, subtotal, taxSummary, total: subtotal + taxAmount, baseTotal: (subtotal + taxAmount) * rate };
   }, [discount, lineItems, rate, selectedTax]);
 
-  const submit = async () => {
+  const submit = async (mode: "sale" | "quote") => {
     const values = await form.validateFields().catch(() => null);
     if (!values) return;
     if (!lineItems.length) {
@@ -182,6 +189,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
       locationId: values.location,
       currencyId: values.currencyId,
       rate: Number(values.rate || 1),
+      status: mode === "quote" ? "draft" : "open",
       paymentTerms: values.paymentTerm,
       dueDate: values.dueDate?.toISOString(),
       discountValue: discount.discountValue,
@@ -191,6 +199,8 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
         productId: item.id,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        discountValue: item.discountValue,
+        discountType: item.discountType,
         taxId: differentProductTax ? item.tax?.id : undefined,
       })),
     };
@@ -198,7 +208,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
     try {
       if (sale) await updateSale({ id: sale.id, ...payload }).unwrap();
       else await createSale(payload).unwrap();
-      message.success(sale ? "Sale updated." : "Sale created.");
+      message.success(mode === "quote" ? (sale ? "Quote updated." : "Quote saved.") : sale ? "Sale updated." : "Sale created.");
       onSaved?.();
       toggle();
     } catch (error) {
@@ -237,14 +247,33 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
           },
         ]
       : []),
-    { title: "Total", key: "total", render: (_: unknown, item: SaleFormLineItem) => `${currency} ${(lineTotal(item).subtotal + lineTotal(item).tax).toFixed(2)}` },
+    { title: "Total", key: "total", render: (_: unknown, item: SaleFormLineItem) => `${currency} ${(lineTotal(item).discountedSubtotal + lineTotal(item).tax).toFixed(2)}` },
     { title: "", key: "remove", className: "!pr-8", render: (_: unknown, item: SaleFormLineItem) => <Trash2 size={15} className="cursor-pointer text-gray-500 hover:text-red-500" onClick={() => setLineItems((current) => current.filter((line) => line.id !== item.id))} /> },
   ];
 
   return (
     <>
-      <AppModal open={open} toggle={toggle} title={sale ? "Edit Sale" : "New Sale"} onOk={submit} width={1000} loading={loading} okText="Save">
-        <Form form={form} disabled={loading || Boolean(sale?.locked || sale?.receiptStatus === "received" || sale?.returnedItems?.length)} layout="vertical" initialValues={{ date: dayjs(), dueDate: dayjs() }}>
+      <AppModal
+        open={open}
+        toggle={toggle}
+        title={sale ? (isQuote ? "Edit Quote" : "Edit Sale") : "New Sale"}
+        width={1000}
+        loading={loading}
+        footer={
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-5 py-4">
+            <Button onClick={toggle}>Cancel</Button>
+            {!sale && (
+              <Button disabled={loading} onClick={() => submit("quote")}>
+                Save as Quote
+              </Button>
+            )}
+            <Button type="primary" loading={loading} onClick={() => submit(sale && isQuote ? "quote" : "sale")}>
+              {sale ? (isQuote ? "Save Quote" : "Save Changes") : "Save Sale"}
+            </Button>
+          </div>
+        }
+      >
+        <Form form={form} disabled={loading || Boolean(sale?.locked || sale?.receiptStatus === "received")} layout="vertical" initialValues={{ date: dayjs(), dueDate: dayjs() }}>
           <div className="grid grid-cols-4 p-5 gap-x-5 pb-12">
             <Form.Item name="contactId" label="Contact" rules={[{ required: true, message: "Select contact" }]}>
               <SearchableContactSelect onAddContact={() => {}} />
@@ -261,7 +290,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
               <InputNumber className="!w-full" prefix={"1 USD ="} defaultValue={1} placeholder="1" suffix={"GHS"} type="number" controls={false} />
             </Form.Item>
             <Form.Item name="paymentTerm" label="Payment Term">
-              <Select options={paymentTerms} placeholder="Payment Term" />
+              <Select options={paymentTermOptions} placeholder="Payment Term" onChange={handlePaymentTermChange} />
             </Form.Item>
             <DatePickerFormItem label="Due Date" name="dueDate" placeholder="Due Date" className="" />
           </div>

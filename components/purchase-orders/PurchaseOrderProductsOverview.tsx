@@ -7,7 +7,6 @@ interface ProductLineItem {
   productImage?: string;
   quantityOrdered: number;
   quantityReceived: number;
-  quantityReturned: number;
   cost: number;
   total: number;
 }
@@ -20,7 +19,6 @@ const PurchaseOrderProductsOverview = () => {
       productImage: "",
       quantityOrdered: 10,
       quantityReceived: 8,
-      quantityReturned: 0,
       cost: 2000,
       total: 20000,
     },
@@ -30,7 +28,6 @@ const PurchaseOrderProductsOverview = () => {
       productImage: "",
       quantityOrdered: 6,
       quantityReceived: 6,
-      quantityReturned: 1,
       cost: 3500,
       total: 21000,
     },
@@ -40,7 +37,6 @@ const PurchaseOrderProductsOverview = () => {
       productImage: "",
       quantityOrdered: 15,
       quantityReceived: 12,
-      quantityReturned: 0,
       cost: 600,
       total: 9000,
     },
@@ -50,7 +46,6 @@ const PurchaseOrderProductsOverview = () => {
       productImage: "",
       quantityOrdered: 25,
       quantityReceived: 25,
-      quantityReturned: 2,
       cost: 150,
       total: 3750,
     },
@@ -60,7 +55,6 @@ const PurchaseOrderProductsOverview = () => {
       productImage: "",
       quantityOrdered: 8,
       quantityReceived: 5,
-      quantityReturned: 0,
       cost: 2800,
       total: 22400,
     },
@@ -86,7 +80,6 @@ const PurchaseOrderProductsOverview = () => {
             <p className=" text-gray-900">100</p>
             <div className=" mt-1 hidden flex gap-1">
               <p className="bg-gray-100 px-2 rounded-full text-sm  text-green-600">Rec: 3</p>
-              <p className="bg-gray-100 px-2 rounded-full text-sm  text-gray-600">Ret: 1</p>
             </div>
           </div>
         );

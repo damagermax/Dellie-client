@@ -3,15 +3,16 @@
 import { Form } from "antd";
 import { InputFormItem, DatePickerFormItem } from "../ui/AppFormItems";
 import { AppModal, ModalProps } from "../ui/AppModal";
-import { Transaction, ApplyPaymentInput, UpdateAppliedPaymentInput, Payment, TransactionType } from "../../types/transaction";
-import { useEffect, useState } from "react";
+import { ApplyPaymentInput, UpdateAppliedPaymentInput, Payment, TransactionType } from "../../types/transaction";
+import { useEffect } from "react";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
 import dayjs from "dayjs";
 
 import { useCreateTransactionActionMutation, useUpdateTransactionActionMutation, useGetTransactionQuery } from "@/lib/redux/services";
-import useToggle from "@/hooks/UseToggle";
 
 import { SearchablePaymentAccountSelect } from "../paymentAccounts/SearchabalePaymentAccountSelect";
+import { SearchablePaymentMethodSelect } from "../paymentMethods/SearchablePaymentMethodSelect";
+import { TextAreaFormItem } from "../ui/AppFormItems";
 
 interface ExpenseFormModalProps extends ModalProps {
   initialValues?: Payment;
@@ -35,7 +36,6 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
   const { data: expenseData, isSuccess } = useGetTransactionQuery(initialValues?.id || "", { skip: !initialValues?.id, refetchOnMountOrArgChange: true });
   const [createPayment, { isLoading: isCreating, isSuccess: createSuccess }] = useCreateTransactionActionMutation();
   const [updatePayment, { isLoading: isUpdating, isSuccess: updateSuccess }] = useUpdateTransactionActionMutation();
-  const [openExpenseCategoryModal, toggleOpenExpenseCategoryModal] = useToggle();
 
   useEffect(() => {
     if (expenseData && isSuccess) {
@@ -46,16 +46,18 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
         categoryId: expenseData.category?.id,
         contactId: expenseData.contact?.id,
         currencyId: expenseData.currency?.id,
+        paymentMethodId: expenseData.paymentMethod?.id,
+        note: expenseData.note || expenseData.reference,
       });
     }
-  }, [expenseData, isSuccess]);
+  }, [expenseData, expenseForm, isSuccess]);
 
   useEffect(() => {
     if (updateSuccess || createSuccess) {
       expenseForm.resetFields();
       toggle();
     }
-  }, [updateSuccess, createSuccess]);
+  }, [createSuccess, expenseForm, toggle, updateSuccess]);
 
   useEffect(() => {
     if (!initialValues) {
@@ -63,15 +65,20 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
     }
 
     if (initialValues) {
-      expenseForm.setFieldsValue({ currencyId: initialValues.currency?.id, accountId: initialValues.paidFrom?.id });
+      expenseForm.setFieldsValue({
+        currencyId: initialValues.currency?.id,
+        accountId: initialValues.paidFrom?.id || initialValues.paidTo?.id,
+        paymentMethodId: initialValues.paymentMethod?.id,
+        note: initialValues.note,
+      });
     }
-  }, [initialValues]);
+  }, [expenseForm, initialValues, storeCurrencyId]);
 
   useEffect(() => {
     if (linkTransaction) {
       expenseForm.setFieldsValue({ currencyId: linkTransaction.currencyId, rate: linkTransaction.rate });
     }
-  }, [linkTransaction]);
+  }, [expenseForm, linkTransaction]);
 
   const handleSubmit = async (values: PaymentFormValues) => {
     if (initialValues?.id) {
@@ -98,7 +105,7 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
 
   return (
     <>
-      <AppModal height={"62vh"} title={initialValues ? editTitle(transactionType) : createTitle(transactionType)} onOk={expenseForm.submit} width={showPayment ? 600 : 500} okText={isCreating || isUpdating ? "Saving.." : "Save"} open={open} toggle={toggle}>
+      <AppModal height={"70vh"} title={initialValues ? editTitle(transactionType) : createTitle(transactionType)} onOk={expenseForm.submit} width={showPayment ? 600 : 600} okText={isCreating || isUpdating ? "Saving.." : "Save"} open={open} toggle={toggle}>
         <Form
           //size="small"
           disabled={isCreating || isUpdating}
@@ -110,9 +117,8 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
           }}
           layout={"vertical"}
         >
-          <div className={`grid ${showPayment ? "grid-cols-2" : "grid-cols-1"}  gap-x-5 px-5 `}>
+          <div className={`grid ${showPayment ? "grid-cols-2" : "grid-cols-2"}  gap-x-5 px-5 `}>
             <DatePickerFormItem name="date" label="Date" />
-            {showPayment && <InputFormItem label="Reference" name="reference" />}
 
             <Form.Item label="Currency" name="currencyId">
               <SearchableCurrenciesSelect />
@@ -123,10 +129,19 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
             <>
               <InputFormItem placeholder="00.00" type="number" label="Amount" name="amount" rules={[{ required: true, message: "Enter payment amount" }]} />
               {showPayment && (
+                <Form.Item label="Payment Method (Optional)" name="paymentMethodId">
+                  <SearchablePaymentMethodSelect allowClear />
+                </Form.Item>
+              )}
+              {showPayment && (
                 <Form.Item label="Payment Account" name="accountId" rules={[{ required: true, message: "Select payment account" }]}>
                   <SearchablePaymentAccountSelect />
                 </Form.Item>
               )}
+
+              <div className="col-span-2">
+                <TextAreaFormItem label="Note" name="note" placeholder="Add an optional note" />
+              </div>
             </>
           </div>
         </Form>

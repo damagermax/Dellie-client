@@ -10,10 +10,6 @@ const TaxList = ({ onSelect }: { onSelect: (tax: Tax) => void }) => {
 
   return (
     <div>
-      <div className=" py-5   px-5 gap-3  border-b border-blue-100 -bg-gray-100   flex items-center">
-        <Checkbox />
-        <p className=" text-gray-900  ">Some products are taxed differently than others.</p>
-      </div>
       <div className="max-w-3xl mx-auto -bg-green-50/30  pb-52 ">
         {texes?.map((tax, index) => {
           const total = tax.items.reduce((sum, i) => sum + i.value, 0);

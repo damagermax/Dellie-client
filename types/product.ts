@@ -54,6 +54,7 @@ export interface ProductQueryParams {
   inPOS?: boolean;
   inStorefront?: boolean;
   type?: "STOCK" | "NON_STOCK" | "SERVICE" | "BUNDLE" | "PACKAGING";
+  categoryId?: string;
   purchasable?: boolean;
   page?: number;
   limit?: number;
@@ -66,6 +67,8 @@ export interface ProductListItem {
   description?: string;
   quantity?: number;
   category?: string;
+  categoryId?: string;
+  categoryName?: string;
   sellingPrice: number;
   costPrice?: number;
   sku: string;

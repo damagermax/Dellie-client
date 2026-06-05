@@ -17,6 +17,7 @@ export interface CreateSaleInput {
   locationId: string;
   currencyId: string;
   rate: number;
+  status?: "open" | "draft";
   paymentTerms?: string;
   dueDate?: string;
   note?: string;
@@ -29,11 +30,14 @@ export interface CreateSaleInput {
 
 export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" | "currencyId" | "lineItems"> {
   id: string;
-  saleNumber: string;
+  saleNumber?: string;
+  quoteNumber?: string;
+  documentNumber?: string;
   type: "sale";
   status: "open" | "closed" | "draft";
   receiptStatus: PurchaseReceiptStatus;
   locked?: boolean;
+  isDeleted?: boolean;
   contactId?: { id: string; name: string; displayName?: string; email?: string; phone?: string };
   locationId?: { id: string; name: string; address?: string };
   currencyId?: { id: string; code: string; name?: string };
@@ -77,21 +81,9 @@ export interface FulfillSaleInput {
   items: SaleOperationItemInput[];
 }
 
-export interface ReturnSaleInput {
-  id: string;
-  items: (SaleOperationItemInput & { reason?: string })[];
-}
-
 export interface UpdateSaleFulfillmentInput {
   id: string;
   fulfillmentId: string;
-  quantity: number;
-  date: string;
-}
-
-export interface UpdateSaleReturnInput {
-  id: string;
-  returnId: string;
   quantity: number;
   date: string;
 }

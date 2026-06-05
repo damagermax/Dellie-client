@@ -4,8 +4,8 @@ import React from "react";
 import { Form, Input, InputNumber, Segmented, Select, Table, message } from "antd";
 import type { TableProps } from "antd/es/table";
 import { AppModal } from "@/components/ui/AppModal";
-import { useAddPurchaseLandedCostMutation } from "@/lib/redux/services";
-import { Purchase, PurchaseLandedCostAllocation, PurchaseLandedCostScope, PurchaseLineItem } from "@/types/index";
+import { useAddPurchaseLandedCostMutation, useUpdatePurchaseLandedCostMutation } from "@/lib/redux/services";
+import { Purchase, PurchaseLandedCost, PurchaseLandedCostAllocation, PurchaseLandedCostScope, PurchaseLineItem } from "@/types/index";
 import { purchaseApiError } from "./purchaseDetailUtils";
 
 interface PurchaseOrderLandedCostModalProps {
@@ -13,11 +13,13 @@ interface PurchaseOrderLandedCostModalProps {
   toggle: () => void;
   purchase: Purchase;
   onSaved: () => void;
+  initialValues?: PurchaseLandedCost;
 }
 
-export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, onSaved }: PurchaseOrderLandedCostModalProps) {
+export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, onSaved, initialValues }: PurchaseOrderLandedCostModalProps) {
   const [form] = Form.useForm();
   const [addLandedCost, { isLoading }] = useAddPurchaseLandedCostMutation();
+  const [updateLandedCost, { isLoading: isUpdating }] = useUpdatePurchaseLandedCostMutation();
   const appliesTo = Form.useWatch("appliesTo", form) as PurchaseLandedCostScope | undefined;
   const [selectedLineItemIds, setSelectedLineItemIds] = React.useState<React.Key[]>([]);
   const [productSearch, setProductSearch] = React.useState("");
@@ -29,6 +31,29 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
     { title: "Value", key: "total", width: 115, render: (_, line) => `${purchase.currencyId?.code || ""} ${Number(line.total).toFixed(2)}` },
   ];
 
+  React.useEffect(() => {
+    if (!open) return;
+
+    if (initialValues) {
+      form.setFieldsValue({
+        name: initialValues.name,
+        amount: initialValues.amount,
+        allocationMethod: initialValues.allocationMethod,
+        appliesTo: initialValues.appliesTo || "ALL_ITEMS",
+      });
+      setSelectedLineItemIds((initialValues.lineItemIds || []).map(String));
+      setProductSearch("");
+      setSelectionError(false);
+      return;
+    }
+
+    form.resetFields();
+    form.setFieldsValue({ allocationMethod: "BUY_VALUE", appliesTo: "ALL_ITEMS" });
+    setSelectedLineItemIds([]);
+    setProductSearch("");
+    setSelectionError(false);
+  }, [initialValues, open, form]);
+
   const submit = async () => {
     const values = await form.validateFields().catch(() => null);
     if (!values || !purchase.currencyId?.id) return;
@@ -38,7 +63,7 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
     }
 
     try {
-      await addLandedCost({
+      const payload = {
         id: purchase.id,
         name: values.name,
         amount: Number(values.amount),
@@ -47,17 +72,32 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
         ...(values.appliesTo === "SELECTED_ITEMS" ? { lineItemIds: selectedLineItemIds.map(String) } : {}),
         currencyId: purchase.currencyId.id,
         exchangeRate: Number(purchase.rate || 1),
-      }).unwrap();
-      message.success("Landed cost added.");
+      };
+
+      if (initialValues) {
+        await updateLandedCost({ ...payload, landedCostId: initialValues.id }).unwrap();
+        message.success("Landed cost updated.");
+      } else {
+        await addLandedCost(payload).unwrap();
+        message.success("Landed cost added.");
+      }
       onSaved();
       toggle();
     } catch (error) {
-      message.error(purchaseApiError(error, "Landed cost could not be added."));
+      message.error(purchaseApiError(error, initialValues ? "Landed cost could not be updated." : "Landed cost could not be added."));
     }
   };
 
   return (
-    <AppModal open={open} toggle={toggle} title="Add Landed Cost" onOk={submit} width={560} loading={isLoading} okText="Add Cost">
+    <AppModal
+      open={open}
+      toggle={toggle}
+      title={initialValues ? "Edit Landed Cost" : "Add Landed Cost"}
+      onOk={submit}
+      width={560}
+      loading={isLoading || isUpdating}
+      okText={initialValues ? "Save Changes" : "Add Cost"}
+    >
       <Form form={form} layout="vertical" className="!px-5 py-4" initialValues={{ allocationMethod: "BUY_VALUE", appliesTo: "ALL_ITEMS" }}>
         <Form.Item name="name" label="Cost Name" rules={[{ required: true, message: "Enter a cost name" }]}>
           <Input placeholder="Freight, customs, handling" />

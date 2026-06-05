@@ -4,8 +4,12 @@ import { Button, Divider, Modal, Tag, message } from "antd";
 import { Printer, Share2 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { formatDate } from "@/lib/dateUtils";
+import { useGetPaymentTermsQuery } from "@/lib/redux/services";
+import { getPaymentTermLabel } from "@/lib/payment-terms";
 import { RootState } from "@/lib/store";
 import { Sale, Store } from "@/types/index";
+import { PaymentTerm } from "@/types/payment-term";
+import { saleDocumentNumber } from "./saleUtils";
 
 export type SaleDocumentType = "invoice" | "receipt";
 
@@ -43,9 +47,10 @@ function saleDocumentText(sale: Sale, store: Store | null, type: SaleDocumentTyp
 
   return [
     store?.name || "Dellie",
-    `${label} ${sale.saleNumber}`,
+    `${label} ${saleDocumentNumber(sale)}`,
     `Date: ${formatDate(sale.date)}`,
     `Customer: ${customer}`,
+    `Source: ${sale.source || "Manual Sale"}`,
     "",
     ...itemLines,
     "",
@@ -60,7 +65,7 @@ function saleDocumentText(sale: Sale, store: Store | null, type: SaleDocumentTyp
     .join("\n");
 }
 
-function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentType) {
+function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentType, paymentTerms: PaymentTerm[] = []) {
   const label = documentLabel(type);
   const currency = sale.currencyId?.code || "";
   const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
@@ -82,7 +87,7 @@ function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentTy
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>${label} ${escapeHtml(sale.saleNumber)}</title>
+    <title>${label} ${escapeHtml(saleDocumentNumber(sale))}</title>
     <style>
       * { box-sizing: border-box; }
       body { color: #111827; font: 14px Arial, sans-serif; margin: 0; padding: 42px; }
@@ -106,12 +111,12 @@ function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentTy
   <body>
     <div class="top">
       <div><h1>${escapeHtml(store?.name || "Dellie")}</h1><div class="muted">Sales document</div></div>
-      <div class="right"><h2>${label}</h2><p>${escapeHtml(sale.saleNumber)}</p></div>
+      <div class="right"><h2>${label}</h2><p>${escapeHtml(saleDocumentNumber(sale))}</p></div>
     </div>
-    <div class="meta">
-      <div><div class="muted">${type === "invoice" ? "BILL TO" : "CUSTOMER"}</div><p><strong>${escapeHtml(customer)}</strong></p><p>${escapeHtml(sale.contactId?.email)}</p><p>${escapeHtml(sale.contactId?.phone)}</p></div>
-      <div class="right"><p><span class="muted">Date:</span> ${escapeHtml(formatDate(sale.date))}</p><p><span class="muted">Due:</span> ${escapeHtml(formatDate(sale.dueDate))}</p><p><span class="muted">Location:</span> ${escapeHtml(sale.locationId?.name || "-")}</p></div>
-    </div>
+      <div class="meta">
+        <div><div class="muted">${type === "invoice" ? "BILL TO" : "CUSTOMER"}</div><p><strong>${escapeHtml(customer)}</strong></p><p>${escapeHtml(sale.contactId?.email)}</p><p>${escapeHtml(sale.contactId?.phone)}</p></div>
+      <div class="right"><p><span class="muted">Date:</span> ${escapeHtml(formatDate(sale.date))}</p><p><span class="muted">Due:</span> ${escapeHtml(formatDate(sale.dueDate))}</p><p><span class="muted">Location:</span> ${escapeHtml(sale.locationId?.name || "-")}</p><p><span class="muted">Source:</span> ${escapeHtml(sale.source || "Manual Sale")}</p></div>
+      </div>
     <table>
       <thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Unit Price</th><th class="right">Amount</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -124,28 +129,29 @@ function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentTy
       ${type === "receipt" ? `<tr><td>Paid</td><td class="right">${escapeHtml(amount(currency, Number(sale.amount) - Number(sale.balance)))}</td></tr>` : ""}
       <tr><td>Balance</td><td class="right">${escapeHtml(amount(currency, sale.balance))}</td></tr>
     </table>
-    <div class="footer">${type === "receipt" ? "Thank you for your business." : `Payment terms: ${escapeHtml(sale.paymentTerms || "-")}`}</div>
+    <div class="footer">${type === "receipt" ? "Thank you for your business." : `Payment terms: ${escapeHtml(getPaymentTermLabel(sale.paymentTerms, paymentTerms))}`}</div>
   </body>
 </html>`;
 }
 
 export default function SaleShareDocumentModal({ open, toggle, sale, type }: SaleShareDocumentModalProps) {
   const store = useSelector((state: RootState) => state.currentUser.store);
+  const { data: paymentTerms } = useGetPaymentTermsQuery();
   const label = documentLabel(type);
   const currency = sale.currencyId?.code || "";
   const paid = Math.max(Number(sale.amount) - Number(sale.balance), 0);
 
   const handleShare = async () => {
     const text = saleDocumentText(sale, store, type);
-    const html = printableDocument(sale, store, type);
-    const file = new File([html], `${label.toLowerCase()}-${sale.saleNumber}.html`, { type: "text/html" });
+    const html = printableDocument(sale, store, type, paymentTerms || []);
+    const file = new File([html], `${label.toLowerCase()}-${saleDocumentNumber(sale)}.html`, { type: "text/html" });
 
     try {
       if (navigator.share) {
         if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ title: `${label} ${sale.saleNumber}`, text, files: [file] });
+          await navigator.share({ title: `${label} ${saleDocumentNumber(sale)}`, text, files: [file] });
         } else {
-          await navigator.share({ title: `${label} ${sale.saleNumber}`, text });
+          await navigator.share({ title: `${label} ${saleDocumentNumber(sale)}`, text });
         }
         return;
       }
@@ -164,7 +170,7 @@ export default function SaleShareDocumentModal({ open, toggle, sale, type }: Sal
       message.error("Allow pop-ups to print this document.");
       return;
     }
-    printWindow.document.write(printableDocument(sale, store, type));
+    printWindow.document.write(printableDocument(sale, store, type, paymentTerms || []));
     printWindow.document.close();
     printWindow.focus();
     printWindow.addEventListener("load", () => printWindow.print());
@@ -193,7 +199,8 @@ export default function SaleShareDocumentModal({ open, toggle, sale, type }: Sal
           </div>
           <div className="text-right">
             <p className="text-lg font-semibold uppercase text-gray-900">{label}</p>
-            <p className="text-sm text-gray-500">{sale.saleNumber}</p>
+            <p className="text-sm text-gray-500">{saleDocumentNumber(sale)}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-gray-400">{sale.source || "Manual Sale"}</p>
           </div>
         </div>
 
@@ -208,6 +215,7 @@ export default function SaleShareDocumentModal({ open, toggle, sale, type }: Sal
             <p>Date: {formatDate(sale.date)}</p>
             <p>Due: {formatDate(sale.dueDate)}</p>
             <p>Location: {sale.locationId?.name || "-"}</p>
+            <p>Source: {sale.source || "Manual Sale"}</p>
           </div>
         </div>
 

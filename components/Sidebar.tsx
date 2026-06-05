@@ -10,6 +10,7 @@ import { LuPackage2 } from "react-icons/lu";
 import { IoWalletOutline } from "react-icons/io5";
 
 import { FaBarcode } from "react-icons/fa";
+import SidebarAccountDropdown from "./SidebarAccountDropdown";
 
 // Memoize the menu items to prevent unnecessary re-renders
 const MENU_ITEMS = [
@@ -22,6 +23,7 @@ const MENU_ITEMS = [
   { title: "Expenses", link: "/expenses", icon: <GoCreditCard /> },
   { title: "Contacts", link: "/contacts", icon: <RiGroupLine /> },
   { title: "Cash Book", link: "/wallet", icon: <IoWalletOutline /> },
+  { title: "POS", link: "/pos", icon: <IoWalletOutline /> },
   // { title: "Transactions", link: "/transactions", icon: <GoCreditCard /> },
   // { title: "Settings", link: "/settings/my-store", icon: <RiSettings2Line /> },
 ] as const;
@@ -62,9 +64,7 @@ const Sidebar = () => {
         </div>
 
         {/* User Account */}
-        <div className="p-3 border-t border-gray-200">
-          <Account isCollapsed={isCollapsed} />
-        </div>
+        <SidebarAccountDropdown isCollapsed={isCollapsed} />
 
         {/* Collapse Toggle */}
         <button
@@ -96,31 +96,5 @@ const PageLinks = ({ isCollapsed }: PageLinksProps) => {
     </nav>
   );
 };
-
-interface AccountProps {
-  isCollapsed: boolean;
-}
-
-const Account = memo(({ isCollapsed }: AccountProps) => {
-  if (isCollapsed) return null;
-
-  const user = {
-    name: "User Name",
-    email: "user@example.com",
-    initial: "U",
-  };
-
-  return (
-    <div className="flex items-center gap-x-3">
-      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600">{user.initial}</div>
-      <div className="overflow-hidden">
-        <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-        <p className="text-xs text-gray-500 truncate">{user.email}</p>
-      </div>
-    </div>
-  );
-});
-
-Account.displayName = "Account";
 
 export default Sidebar;

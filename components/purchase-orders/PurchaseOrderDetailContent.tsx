@@ -4,26 +4,36 @@ import { Button, Divider, Dropdown, MenuProps, Tag } from "antd";
 import { CalendarDays, Clock3, CreditCard, MoreHorizontal, PackageCheck, Pencil, Receipt, RotateCcw, Trash2, Truck, WalletCards } from "lucide-react";
 import { GoBack } from "@/components/ui/GoBack";
 import { formatDate } from "@/lib/dateUtils";
+import { useGetPaymentTermsQuery } from "@/lib/redux/services";
+import { getPaymentTermLabel } from "@/lib/payment-terms";
 import { Purchase } from "@/types/index";
 import PurchaseOrderDetailTables from "./PurchaseOrderDetailTables";
+import { Payment } from "@/types/transaction";
+import { PurchaseLandedCost } from "@/types/purchase";
+import { PurchaseStockEvent } from "@/types/purchase";
 
 interface PurchaseOrderDetailContentProps {
   purchase: Purchase;
   currency: string;
   canEdit: boolean;
   canReceive: boolean;
-  canReturn: boolean;
-  isDeleting: boolean;
+  isCancelling: boolean;
+  isCancelled: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onReopen: () => void;
   onReceive: () => void;
-  onReturn: () => void;
   onAddLandedCost: () => void;
   onRecordPayment: () => void;
-  onEditFulfillment: (event: any) => void;
-  onDeleteFulfillment: (event: any) => void;
-  onEditReturn: (event: any) => void;
-  onDeleteReturn: (event: any) => void;
+  onRefund: () => void;
+  onIssueCredit: () => void;
+  onWriteOff: () => void;
+  onEditFulfillment: (event: PurchaseStockEvent) => void;
+  onDeleteFulfillment: (event: PurchaseStockEvent) => void;
+  onEditPayment: (payment: Payment) => void;
+  onDeletePayment: (payment: Payment) => void;
+  onEditLandedCost: (landedCost: PurchaseLandedCost) => void;
+  onDeleteLandedCost: (landedCost: PurchaseLandedCost) => void;
 }
 
 export default function PurchaseOrderDetailContent({
@@ -31,19 +41,25 @@ export default function PurchaseOrderDetailContent({
   currency,
   canEdit,
   canReceive,
-  canReturn,
-  isDeleting,
+  isCancelling,
+  isCancelled,
   onEdit,
   onDelete,
+  onReopen,
   onReceive,
-  onReturn,
   onAddLandedCost,
   onRecordPayment,
+  onRefund,
+  onIssueCredit,
+  onWriteOff,
   onEditFulfillment,
   onDeleteFulfillment,
-  onEditReturn,
-  onDeleteReturn,
+  onEditPayment,
+  onDeletePayment,
+  onEditLandedCost,
+  onDeleteLandedCost,
 }: PurchaseOrderDetailContentProps) {
+  const { data: paymentTerms } = useGetPaymentTermsQuery();
   const moreItems: MenuProps["items"] = [
     {
       key: "edit",
@@ -52,14 +68,6 @@ export default function PurchaseOrderDetailContent({
       label: "Edit Purchase",
       onClick: onEdit,
     },
-    {
-      key: "return",
-      disabled: !canReturn,
-      icon: <RotateCcw size={15} />,
-      label: "Return Items",
-      onClick: onReturn,
-    },
-
     {
       key: "landed_cost",
       disabled: Boolean(purchase.locked),
@@ -92,10 +100,29 @@ export default function PurchaseOrderDetailContent({
       key: "delete",
       icon: <Trash2 size={15} />,
       danger: true,
-      label: "Delete Purchase",
+      disabled: isCancelling,
+      label: "Cancel Purchase",
       onClick: onDelete,
     },
   ];
+
+  const handleMoreClick: MenuProps["onClick"] = ({ key }) => {
+    if (key === "refund") {
+      onRefund();
+      return;
+    }
+    if (key === "issue_credit") {
+      onIssueCredit();
+      return;
+    }
+    if (key === "write_off") {
+      onWriteOff();
+      return;
+    }
+    if (key === "delete") {
+      onDelete();
+    }
+  };
 
   const supplierName = purchase.contactId?.name || purchase.contactId?.displayName || "Supplier not set";
   const supplierMeta = [purchase.contactId?.email, purchase.contactId?.phone].filter(Boolean).join(" · ") || "No contact details provided";
@@ -113,9 +140,16 @@ export default function PurchaseOrderDetailContent({
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{purchase.purchaseNumber}</h1>
 
-                <Tag className="!m-0 !rounded-full !px-2 capitalize" color={receiptTone}>
-                  {purchase.receiptStatus.replaceAll("_", " ")}
-                </Tag>
+                {!isCancelled && (
+                  <Tag className="!m-0 !rounded-full !px-2 capitalize" color={receiptTone}>
+                    {purchase.receiptStatus.replaceAll("_", " ")}
+                  </Tag>
+                )}
+                {isCancelled && (
+                  <Tag className="!m-0 !rounded-full !px-2" color="red">
+                    Cancelled
+                  </Tag>
+                )}
               </div>
               <p className="mt-2 max-w-xl text-sm text-gray-500">
                 Created {formatDate(purchase.createdAt)} by {purchase.createdBy?.name || "-"}
@@ -123,22 +157,31 @@ export default function PurchaseOrderDetailContent({
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-2">
-            <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<PackageCheck size={15} />} disabled={!canReceive} onClick={onReceive}>
-              Fulfill
-            </Button>
-            <Button type="primary" className="!shadow-none  !bg-[#f7c855] !text-black !font-semibold" icon={<CreditCard size={15} />} disabled={Boolean(purchase.locked)} onClick={onRecordPayment}>
-              Record Payment
-            </Button>
+            {isCancelled ? (
+              <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" onClick={onReopen}>
+                Reopen Purchase
+              </Button>
+            ) : (
+              <>
+                <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<PackageCheck size={15} />} disabled={!canReceive} onClick={onReceive}>
+                  Fulfill
+                </Button>
+                <Button type="primary" className="!shadow-none  !bg-[#f7c855] !text-black !font-semibold" icon={<CreditCard size={15} />} disabled={Boolean(purchase.locked)} onClick={onRecordPayment}>
+                  Record Payment
+                </Button>
 
-            <Dropdown menu={{ items: moreItems }} placement="bottomRight">
-              <Button type="text" className="!bg-gray-200/80 " icon={<MoreHorizontal size={15} />} />
-            </Dropdown>
+                <Dropdown menu={{ items: moreItems, onClick: handleMoreClick }} placement="bottomRight">
+                  <Button type="text" className="!bg-gray-200/80 " icon={<MoreHorizontal size={15} />} />
+                </Dropdown>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       <div className="pt-7">
         <div className=" px-4 md:px-8">
+          {isCancelled && <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">This purchase has been cancelled and is currently view-only. Reopen it to make changes.</div>}
           <div className="grid gap-4 sm:grid-cols-2">
             <IdentityPanel label="Supplier" title={supplierName} description={supplierMeta} />
             <IdentityPanel label="Destination" title={locationName} description={locationMeta} />
@@ -149,7 +192,7 @@ export default function PurchaseOrderDetailContent({
             <Detail className="border-r border-b pb-5 sm:pb-0 sm:border-b-0 border-gray-200 pr-5" icon={<CalendarDays size={17} />} label="Ordered" value={formatDate(purchase.date)} />
             <Detail className="pl-5 sm:border-r border-b pb-5 sm:pb-0 sm:border-b-0  border-gray-200 sm:pr-5" icon={<Truck size={17} />} label="Deliver by" value={formatDate(purchase.deliveryDate)} />
             <Detail className="border-r pt-5 sm:pt-0 border-gray-200 pr-5 sm:pl-5" icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(purchase.dueDate)} />
-            <Detail className="pl-5 pt-5 sm:pt-0" icon={<WalletCards size={17} />} label="Terms" value={purchase.paymentTerms || "-"} />
+            <Detail className="pl-5 pt-5 sm:pt-0" icon={<WalletCards size={17} />} label="Terms" value={getPaymentTermLabel(purchase.paymentTerms, paymentTerms || [])} />
           </div>
           <Divider className="!my-5 " />
         </div>
@@ -164,10 +207,13 @@ export default function PurchaseOrderDetailContent({
         <PurchaseOrderDetailTables
           purchase={purchase}
           currency={currency}
+          isCancelled={isCancelled}
           onEditFulfillment={onEditFulfillment}
           onDeleteFulfillment={onDeleteFulfillment}
-          onEditReturn={onEditReturn}
-          onDeleteReturn={onDeleteReturn}
+          onEditPayment={onEditPayment}
+          onDeletePayment={onDeletePayment}
+          onEditLandedCost={onEditLandedCost}
+          onDeleteLandedCost={onDeleteLandedCost}
         />
       </div>
     </section>
@@ -192,7 +238,10 @@ function Detail({ icon, label, value, className = "" }: { icon: React.ReactNode;
   return (
     <div className={`min-w-0 ${className}`}>
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400 ">{label}</p>
-      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
+      <div className="mt-1 flex items-center gap-2 text-sm font-medium text-gray-900">
+        {icon}
+        <span>{value}</span>
+      </div>
     </div>
   );
 }

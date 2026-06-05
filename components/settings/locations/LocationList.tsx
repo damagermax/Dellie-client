@@ -152,7 +152,7 @@ export default function LocationList({ onSelect }: { onSelect: (location: Locati
 
   return (
     <div className="  pb-32 ">
-      <div className=" py-5 px-5  sticky -top-[calc(6.5rem)] border-b border-blue-100 -bg-gray-100   ">
+      <div className=" py-5 px-5 hidden  sticky -top-[calc(6.5rem)] border-b border-blue-100 -bg-gray-100   ">
         <p className=" text-gray-600   hidden  mb-4 ">Use locations to track inventory across different spaces at your business (e.g., Warehouse A, Warehouse B, etc.).</p>
         <div className="flex items-center gap-3">
           <Checkbox />

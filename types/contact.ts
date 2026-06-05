@@ -14,7 +14,15 @@ export interface Contact {
   displayName?: string;
   email?: string;
   phone?: string;
+  mobile?: string;
   addresses?: Address[];
+  roles?: ContactRole[];
+  note?: string;
+  paymentTerms?: string;
+  currencyId?: string | { id: string; code: string; name?: string };
+  createdBy?: { id: string; name: string; email?: string };
+  createdAt?: string;
+  updatedAt?: string;
   status: ContactStatus;
 }
 

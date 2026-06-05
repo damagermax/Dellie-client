@@ -8,6 +8,8 @@ interface SaleSummaryProps {
 }
 
 export default function SaleSummary({ sale }: SaleSummaryProps) {
+  const isCancelled = Boolean(sale.isDeleted);
+  const isQuote = sale.status === "draft" && !isCancelled;
   const currency = sale.currencyId?.code || "";
   const paid = Math.max(Number(sale.amount) - Number(sale.balance), 0);
   const discountedSubtotal = Math.max(Number(sale.subTotal) - Number(sale.discountAmount || 0), 0);
@@ -24,9 +26,21 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
       <div className="border-b border-gray-200 pb-6">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-base font-medium text-gray-900">Sale Summary</h2>
-          <Tag className="px-3 !rounded-full capitalize" color={sale.paymentStatus === "paid" ? "green" : sale.paymentStatus === "partial" ? "orange" : "blue"}>
-            {sale.paymentStatus}
-          </Tag>
+          <div className="flex items-center gap-2">
+            {!isCancelled && !isQuote && (
+              <Tag className="px-3 !rounded-full capitalize" color={sale.paymentStatus === "paid" ? "green" : sale.paymentStatus === "partial" ? "orange" : "blue"}>
+                {sale.paymentStatus}
+              </Tag>
+            )}
+            {!isCancelled && isQuote && (
+              <Tag className="px-3 !rounded-full" color="purple">
+                Estimate
+              </Tag>
+            )}
+            <Tag className="px-3 !rounded-full" color={sale.source === "POS" ? "green" : sale.source === "Online Store" ? "blue" : sale.source === "Sales Order" ? "gold" : "default"}>
+              {sale.source || "Manual Sale"}
+            </Tag>
+          </div>
         </div>
         <Summary label="Items Total" value={`${currency} ${Number(sale.subTotal).toFixed(2)}`} />
         <Summary label="Discount" value={`- ${currency} ${Number(sale.discountAmount || 0).toFixed(2)}`} />

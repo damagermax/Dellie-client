@@ -74,13 +74,42 @@ export function ActionDropdown({ menu, openEditModal, onDelete, onActivate, onDe
       : []),
   ];
 
+  const handleClick: MenuProps["onClick"] = ({ key }) => {
+    const selectedItem = items.find((item) => item && "key" in item && item.key === key) as any;
+
+    if (key === "edit") {
+      openEditModal?.();
+      return;
+    }
+    if (key === "delete") {
+      if (onDelete) {
+        onDelete();
+        return;
+      }
+    }
+    if (key === "deactivate") {
+      if (onDeactivate) {
+        onDeactivate();
+        return;
+      }
+    }
+    if (key === "activate") {
+      if (onActivate) {
+        onActivate();
+        return;
+      }
+    }
+
+    selectedItem?.onClick?.();
+  };
+
   return (
     <div className="flex gap-x-3 items-center justify-end">
       {/* <div onClick={openEditModal} className="p-[2px] rounded-full bg-gray-100 text-gray-500 cursor-pointer w-[2rem] flex items-center justify-center h-[2rem]">
         <GrEdit size={12} />
       </div> */}
 
-      <Dropdown arrow={{ pointAtCenter: true }} menu={{ items }} trigger={["click"]} placement="bottomRight">
+      <Dropdown arrow={{ pointAtCenter: true }} menu={{ items, onClick: handleClick }} trigger={["click"]} placement="bottomRight">
         <div className="p-[2px] rounded-full bg-gray-100 text-gray-600 cursor-pointer w-[2rem] flex items-center justify-center h-[2rem]">
           <RiMoreLine size={15} />
         </div>

@@ -5,10 +5,9 @@ import {
   Purchase,
   PurchaseQueryParams,
   PurchasesResponse,
-  ReturnPurchaseInput,
+  UpdatePurchaseLandedCostInput,
   UpdatePurchaseFulfillmentInput,
   UpdatePurchaseInput,
-  UpdatePurchaseReturnInput,
 } from "@/types/index";
 import { baseApi, TAG_TYPES } from "./baseApi";
 
@@ -34,12 +33,12 @@ export const purchasesApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `purchases/${id}`, method: "DELETE" }),
       invalidatesTags: (result, error, id) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
     }),
+    reopenPurchase: builder.mutation<Purchase, string>({
+      query: (id) => ({ url: `purchases/${id}/reopen`, method: "POST" }),
+      invalidatesTags: (result, error, id) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+    }),
     fulfillPurchase: builder.mutation<Purchase, FulfillPurchaseInput>({
       query: ({ id, ...body }) => ({ url: `purchases/${id}/fulfillments`, method: "POST", body }),
-      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
-    }),
-    returnPurchaseStock: builder.mutation<Purchase, ReturnPurchaseInput>({
-      query: ({ id, ...body }) => ({ url: `purchases/${id}/returns`, method: "POST", body }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
     }),
     updatePurchaseFulfillment: builder.mutation<Purchase, UpdatePurchaseFulfillmentInput>({
@@ -50,16 +49,16 @@ export const purchasesApi = baseApi.injectEndpoints({
       query: ({ id, fulfillmentId }) => ({ url: `purchases/${id}/fulfillments/${fulfillmentId}`, method: "DELETE" }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
     }),
-    updatePurchaseReturn: builder.mutation<Purchase, UpdatePurchaseReturnInput>({
-      query: ({ id, returnId, ...body }) => ({ url: `purchases/${id}/returns/${returnId}`, method: "PATCH", body }),
-      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
-    }),
-    deletePurchaseReturn: builder.mutation<Purchase, { id: string; returnId: string }>({
-      query: ({ id, returnId }) => ({ url: `purchases/${id}/returns/${returnId}`, method: "DELETE" }),
-      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
-    }),
     addPurchaseLandedCost: builder.mutation<Purchase, AddPurchaseLandedCostInput>({
       query: ({ id, ...body }) => ({ url: `purchases/${id}/landed-costs`, method: "POST", body }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+    }),
+    updatePurchaseLandedCost: builder.mutation<Purchase, UpdatePurchaseLandedCostInput>({
+      query: ({ id, landedCostId, ...body }) => ({ url: `purchases/${id}/landed-costs/${landedCostId}`, method: "PATCH", body }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+    }),
+    deletePurchaseLandedCost: builder.mutation<Purchase, { id: string; landedCostId: string }>({
+      query: ({ id, landedCostId }) => ({ url: `purchases/${id}/landed-costs/${landedCostId}`, method: "DELETE" }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
     }),
   }),
@@ -71,11 +70,11 @@ export const {
   useGetPurchaseQuery,
   useUpdatePurchaseMutation,
   useDeletePurchaseMutation,
+  useReopenPurchaseMutation,
   useFulfillPurchaseMutation,
-  useReturnPurchaseStockMutation,
   useUpdatePurchaseFulfillmentMutation,
   useDeletePurchaseFulfillmentMutation,
-  useUpdatePurchaseReturnMutation,
-  useDeletePurchaseReturnMutation,
   useAddPurchaseLandedCostMutation,
+  useUpdatePurchaseLandedCostMutation,
+  useDeletePurchaseLandedCostMutation,
 } = purchasesApi;

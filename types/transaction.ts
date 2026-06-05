@@ -25,10 +25,11 @@ export interface ApplyPaymentInput {
   type: TransactionType;
   date: Date;
   linkTransactionId: string;
-  reference?: string;
+  note?: string;
   rate?: number;
   amount: number;
   accountId?: string;
+  paymentMethodId?: string;
 }
 
 export interface UpdateAppliedPaymentInput extends Partial<ApplyPaymentInput> {
@@ -58,7 +59,17 @@ export interface Payment {
   currency: { code: string; id: string };
   paidFrom?: { name: string; id: string };
   paidTo?: { name: string; id: string };
+  paymentMethod?: { name: string; id: string };
+  note?: string;
   createdBy: { name: string; id: string };
+}
+
+export type UpdatePaymentInput = UpdateAppliedPaymentInput;
+
+export interface TransactionAttachment {
+  url: string;
+  key: string;
+  type?: string;
 }
 
 export interface UpdateExpenseInput {
@@ -86,7 +97,10 @@ export interface Transaction {
   currency?: { code: string; id: string };
   category?: { name: string; id: string };
   contact?: { name: string; displayName: string; id: string };
+  paymentMethod?: { name: string; id: string };
+  reference?: string;
   createdBy?: { name: string; id: string };
+  attachments?: TransactionAttachment[];
   createdAt?: Date;
   updatedAt?: Date;
 }

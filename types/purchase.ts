@@ -55,6 +55,7 @@ export interface Purchase extends Omit<CreatePurchaseInput, "contactId" | "locat
   status: "open" | "closed" | "draft";
   receiptStatus: PurchaseReceiptStatus;
   locked?: boolean;
+  isDeleted?: boolean;
   contactId?: { id: string; name: string; displayName?: string; email?: string; phone?: string };
   locationId?: { id: string; name: string; address?: string };
   currencyId?: { id: string; code: string; name?: string };
@@ -100,21 +101,9 @@ export interface FulfillPurchaseInput {
   items: PurchaseOperationItemInput[];
 }
 
-export interface ReturnPurchaseInput {
-  id: string;
-  items: (PurchaseOperationItemInput & { reason?: string })[];
-}
-
 export interface UpdatePurchaseFulfillmentInput {
   id: string;
   fulfillmentId: string;
-  quantity: number;
-  date: string;
-}
-
-export interface UpdatePurchaseReturnInput {
-  id: string;
-  returnId: string;
   quantity: number;
   date: string;
 }
@@ -132,6 +121,10 @@ export interface AddPurchaseLandedCostInput {
   appliesTo?: PurchaseLandedCostScope;
   contactId?: string;
   lineItemIds?: string[];
+}
+
+export interface UpdatePurchaseLandedCostInput extends AddPurchaseLandedCostInput {
+  landedCostId: string;
 }
 
 export interface PurchaseStockEvent {

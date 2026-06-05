@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Modal, message } from "antd";
+import { Modal, Tag, message } from "antd";
 import type { TableProps } from "antd/es/table";
 import { GrEdit } from "react-icons/gr";
 import { HiOutlineTrash } from "react-icons/hi2";
@@ -11,7 +11,7 @@ import { LuEye, LuFileText } from "react-icons/lu";
 import { ReceiptText } from "lucide-react";
 import SaleFormModal from "@/components/orders/SaleFormModal";
 import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/SaleShareDocumentModal";
-import { saleApiError, visibleSaleDeleteRestrictions } from "@/components/orders/saleUtils";
+import { saleApiError, saleDocumentNumber, visibleSaleDeleteRestrictions } from "@/components/orders/saleUtils";
 import SettingsDrawer from "@/components/settings/SettingsDrawer";
 import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdown";
 import { AddButton } from "@/components/ui/AppButtons";
@@ -21,8 +21,16 @@ import AppTable from "@/components/ui/AppTable";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import useToggle from "@/hooks/UseToggle";
 import { formatDate } from "@/lib/dateUtils";
-import { useDeleteSaleMutation, useGetSalesQuery } from "@/lib/redux/services";
+import { useConvertSaleQuoteMutation, useDeleteSaleMutation, useGetSalesQuery, useReopenSaleMutation } from "@/lib/redux/services";
 import { Sale, SaleQueryParams } from "@/types/index";
+
+const saleSourceLabel = (source?: string) => source || "Manual Sale";
+const saleSourceColor = (source?: string) => {
+  if (source === "POS") return "green";
+  if (source === "Online Store") return "blue";
+  if (source === "Sales Order") return "gold";
+  return "default";
+};
 
 export default function SalesPage() {
   const router = useRouter();
@@ -31,36 +39,40 @@ export default function SalesPage() {
   const [selectedSale, setSelectedSale] = useState<Sale>();
   const [shareDocumentType, setShareDocumentType] = useState<SaleDocumentType>();
   const [deletingSaleId, setDeletingSaleId] = useState<string>();
+  const [reopeningSaleId, setReopeningSaleId] = useState<string>();
+  const [convertingSaleId, setConvertingSaleId] = useState<string>();
   const [query, setQuery] = useState<SaleQueryParams>({ page: 1, limit: 20 });
   const { data, error, isLoading, isError } = useGetSalesQuery(query, { refetchOnMountOrArgChange: true });
-  const [deleteSale] = useDeleteSaleMutation();
+  const [cancelSale] = useDeleteSaleMutation();
+  const [reopenSale] = useReopenSaleMutation();
+  const [convertSaleQuote] = useConvertSaleQuoteMutation();
 
-  const confirmDelete = (sale: Sale) => {
+  const confirmCancel = (sale: Sale) => {
     if (deletingSaleId === sale.id) return;
     const restrictions = visibleSaleDeleteRestrictions(sale);
     if (restrictions.length) {
       Modal.warning({
-        title: `${sale.saleNumber} cannot be deleted`,
-        content: `This sale cannot be deleted because ${restrictions.join(", ")}.`,
+        title: `${saleDocumentNumber(sale)} cannot be cancelled`,
+        content: `This sale cannot be cancelled because ${restrictions.join(", ")}.`,
       });
       return;
     }
     Modal.confirm({
-      title: `Delete ${sale.saleNumber}?`,
-      content: "Stock deducted by this sale will be restored. This action cannot be undone.",
-      okText: "Delete",
+      title: `Cancel ${saleDocumentNumber(sale)}?`,
+      content: "All related transactions will be reversed. This action cannot be undone.",
+      okText: "Cancel",
       okType: "danger",
       onOk: async () => {
         setDeletingSaleId(sale.id);
         try {
-          await deleteSale(sale.id).unwrap();
-          message.success("Sale deleted and stock restored.");
+          await cancelSale(sale.id).unwrap();
+          message.success("Sale cancelled and related transactions reversed.");
           if (selectedSale?.id === sale.id) {
             if (editOpen) toggleEdit();
             setSelectedSale(undefined);
           }
         } catch (error) {
-          message.error(saleApiError(error, "Sale could not be deleted."));
+          message.error(saleApiError(error, "Sale could not be cancelled."));
           throw error;
         } finally {
           setDeletingSaleId(undefined);
@@ -69,18 +81,67 @@ export default function SalesPage() {
     });
   };
 
+  const reopen = async (sale: Sale) => {
+    if (reopeningSaleId === sale.id) return;
+    setReopeningSaleId(sale.id);
+    try {
+      await reopenSale(sale.id).unwrap();
+      message.success("Sale reopened.");
+    } catch (error) {
+      message.error(saleApiError(error, "Sale could not be reopened."));
+    } finally {
+      setReopeningSaleId(undefined);
+    }
+  };
+
+  const convert = async (sale: Sale) => {
+    if (convertingSaleId === sale.id) return;
+    setConvertingSaleId(sale.id);
+    try {
+      await convertSaleQuote(sale.id).unwrap();
+      message.success("Quote converted to sale.");
+    } catch (error) {
+      message.error(saleApiError(error, "Quote could not be converted."));
+    } finally {
+      setConvertingSaleId(undefined);
+    }
+  };
+
   const columns: TableProps<Sale>["columns"] = [
     {
-      title: "Sale Number",
+      title: "# Number",
       key: "saleNumber",
       className: "!pl-8",
       render: (_, sale) => (
-        <Link href={`/orders/${sale.id}`} className="font-medium !text-gray-700 hover:!text-indigo-600">
-          {sale.saleNumber}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/orders/${sale.id}`} className="font-medium !text-gray-700 hover:!text-indigo-600">
+            {saleDocumentNumber(sale)}
+          </Link>
+          <Tag className="!m-0 !rounded-full !px-2" color={saleSourceColor(sale.source)}>
+            {saleSourceLabel(sale.source)}
+          </Tag>
+        </div>
       ),
     },
-    { title: "Customer", key: "customer", render: (_, sale) => sale.contactId?.name || sale.contactId?.displayName || "-" },
+    {
+      title: "Status",
+      key: "status",
+      render: (_, sale) =>
+        sale.isDeleted ? (
+          <Tag className="!m-0 !rounded-full !px-2" color="red">
+            Cancelled
+          </Tag>
+        ) : sale.status === "draft" ? (
+          <Tag className="!m-0 !rounded-full !px-2" color="purple">
+            Estimate
+          </Tag>
+        ) : (
+          <Tag className="!m-0 !rounded-full !px-2 capitalize" color={sale.receiptStatus === "received" ? "green" : sale.receiptStatus === "partially_received" ? "gold" : "blue"}>
+            {sale.receiptStatus.replaceAll("_", " ")}
+          </Tag>
+        ),
+    },
+    { title: "Customer", key: "customer", render: (_, sale) => sale.contactId?.name || sale.contactId?.displayName || "Walk-in Customer" },
     { title: "Date", key: "date", render: (_, sale) => formatDate(sale.date) },
     { title: "Expected Delivery", key: "deliveryDate", render: (_, sale) => formatDate(sale.deliveryDate) },
     { title: "Location", key: "location", render: (_, sale) => sale.locationId?.name || "-" },
@@ -100,37 +161,72 @@ export default function SalesPage() {
                 label: <DropdownItemLabel icon={<LuEye size={15} />} text="View" />,
                 onClick: () => router.push(`/orders/${sale.id}`),
               },
-              {
-                key: "edit",
-                label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Edit" />,
-                disabled: Boolean(sale.locked || sale.receiptStatus === "received" || sale.returnedItems?.length),
-                onClick: () => {
-                  setSelectedSale(sale);
-                  toggleEdit();
-                },
-              },
-              {
-                key: "invoice",
-                label: <DropdownItemLabel icon={<LuFileText size={15} />} text="Share Invoice" />,
-                onClick: () => {
-                  setSelectedSale(sale);
-                  setShareDocumentType("invoice");
-                },
-              },
-              {
-                key: "receipt",
-                label: <DropdownItemLabel icon={<ReceiptText size={15} />} text="Share Receipt" />,
-                onClick: () => {
-                  setSelectedSale(sale);
-                  setShareDocumentType("receipt");
-                },
-              },
-              {
-                key: "delete",
-                label: <DropdownItemLabel icon={<HiOutlineTrash size={15} />} text="Delete" danger />,
-                disabled: deletingSaleId === sale.id,
-                onClick: () => confirmDelete(sale),
-              },
+              ...(sale.isDeleted
+                ? [
+                    {
+                      key: "reopen",
+                      label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Reopen" />,
+                      disabled: reopeningSaleId === sale.id,
+                      onClick: () => reopen(sale),
+                    },
+                  ]
+                : sale.status === "draft"
+                  ? [
+                      {
+                        key: "convert",
+                        label: <DropdownItemLabel icon={<ReceiptText size={15} />} text="Convert to Sale" />,
+                        disabled: convertingSaleId === sale.id,
+                        onClick: () => convert(sale),
+                      },
+                      {
+                        key: "edit",
+                        label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Edit" />,
+                        disabled: Boolean(sale.locked),
+                        onClick: () => {
+                          setSelectedSale(sale);
+                          toggleEdit();
+                        },
+                      },
+                      {
+                        key: "delete",
+                        label: <DropdownItemLabel icon={<HiOutlineTrash size={15} />} text="Cancel" danger />,
+                        disabled: deletingSaleId === sale.id,
+                        onClick: () => confirmCancel(sale),
+                      },
+                    ]
+                  : [
+                      {
+                        key: "edit",
+                        label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Edit" />,
+                        disabled: Boolean(sale.locked || sale.receiptStatus === "received"),
+                        onClick: () => {
+                          setSelectedSale(sale);
+                          toggleEdit();
+                        },
+                      },
+                      {
+                        key: "invoice",
+                        label: <DropdownItemLabel icon={<LuFileText size={15} />} text="Share Invoice" />,
+                        onClick: () => {
+                          setSelectedSale(sale);
+                          setShareDocumentType("invoice");
+                        },
+                      },
+                      {
+                        key: "receipt",
+                        label: <DropdownItemLabel icon={<ReceiptText size={15} />} text="Share Receipt" />,
+                        onClick: () => {
+                          setSelectedSale(sale);
+                          setShareDocumentType("receipt");
+                        },
+                      },
+                      {
+                        key: "delete",
+                        label: <DropdownItemLabel icon={<HiOutlineTrash size={15} />} text="Cancel" danger />,
+                        disabled: deletingSaleId === sale.id,
+                        onClick: () => confirmCancel(sale),
+                      },
+                    ]),
             ],
           }}
         />
@@ -157,14 +253,7 @@ export default function SalesPage() {
 
       {formOpen && <SaleFormModal open={formOpen} toggle={toggleForm} />}
       {editOpen && selectedSale && <SaleFormModal open={editOpen} toggle={toggleEdit} sale={selectedSale} />}
-      {shareDocumentType && selectedSale && (
-        <SaleShareDocumentModal
-          open={Boolean(shareDocumentType)}
-          toggle={() => setShareDocumentType(undefined)}
-          sale={selectedSale}
-          type={shareDocumentType}
-        />
-      )}
+      {shareDocumentType && selectedSale && <SaleShareDocumentModal open={Boolean(shareDocumentType)} toggle={() => setShareDocumentType(undefined)} sale={selectedSale} type={shareDocumentType} />}
     </div>
   );
 }

@@ -5,11 +5,13 @@ export function saleApiError(error: any, fallback: string) {
   return Array.isArray(message) ? message.join(" ") : message || fallback;
 }
 
+export function saleDocumentNumber(sale: Sale) {
+  return sale.documentNumber || (sale.status === "draft" ? sale.quoteNumber || sale.saleNumber : sale.saleNumber || sale.quoteNumber) || "";
+}
+
 export function visibleSaleDeleteRestrictions(sale: Sale) {
-  const adjustedBalance = Math.round(Number(sale.balance || 0) * 100) !== Math.round(Number(sale.amount || 0) * 100);
   const restrictions: string[] = [];
 
   if (sale.locked) restrictions.push("it is locked");
-  if (sale.payments?.length || adjustedBalance) restrictions.push("payments have been recorded");
   return restrictions;
 }

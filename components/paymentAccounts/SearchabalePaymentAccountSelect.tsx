@@ -1,7 +1,7 @@
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { useGetPaymentAccountsQuery } from "@/lib/redux/services";
 import { PaymentAccountQueryParams } from "@/types/index";
-import { Select, Spin } from "antd";
+import { Select } from "antd";
 import { useState } from "react";
 import { AccountType } from "@/types/payment-account";
 
@@ -10,9 +10,10 @@ import { IoWalletOutline } from "react-icons/io5";
 import { RiBankLine } from "react-icons/ri";
 
 interface Props {
-  value?: string[];
-  onChange?: (value: string[]) => void;
+  value?: string;
+  onChange?: (value?: string) => void;
   onAddPaymentAccount?: () => void;
+  allowClear?: boolean;
 }
 
 const PaymentAccountIconMap = {
@@ -21,14 +22,12 @@ const PaymentAccountIconMap = {
   [AccountType.CASH]: <BsCashCoin />,
 };
 
-export function SearchablePaymentAccountSelect({ value, onChange, onAddPaymentAccount }: Props) {
+export function SearchablePaymentAccountSelect({ value, onChange, onAddPaymentAccount, allowClear = false }: Props) {
   const [paymentAccountQuery, setPaymentAccountQuery] = useState<PaymentAccountQueryParams>({});
 
   const debounceCategoriesQuery = useDebouncedValue(paymentAccountQuery);
 
-  const { data, isSuccess, isLoading } = useGetPaymentAccountsQuery(debounceCategoriesQuery);
-
-  console.log({ isLoading, data }, "=====================");
+  const { data, isLoading } = useGetPaymentAccountsQuery(debounceCategoriesQuery);
 
   return (
     <Select
@@ -36,6 +35,7 @@ export function SearchablePaymentAccountSelect({ value, onChange, onAddPaymentAc
       showSearch
       labelInValue={false}
       value={value}
+      allowClear={allowClear}
       loading={isLoading}
       onChange={(newValues) => {
         onChange?.(newValues);
@@ -44,7 +44,7 @@ export function SearchablePaymentAccountSelect({ value, onChange, onAddPaymentAc
       filterOption={false}
       onSearch={(value) => setPaymentAccountQuery({ search: value })}
       // notFoundContent={isLoading ? <Spin size="small" /> : <span>No payment accounts found</span>}
-      dropdownRender={(menu) => (
+      popupRender={(menu) => (
         <>
           {onAddPaymentAccount && (
             <div

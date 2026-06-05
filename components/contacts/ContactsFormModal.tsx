@@ -1,24 +1,23 @@
 "use client";
 
 import { useCreateContactMutation, useUpdateContactMutation, useGetContactQuery } from "@/lib/redux/services";
-import { Contact, CreateContactInput, ContactRole, UpdateContactInput } from "@/types/contact";
+import { Contact, CreateContactInput, UpdateContactInput } from "@/types/contact";
 import { InputFormItem, PhoneInputFormItem, DatePickerFormItem, TextAreaFormItem } from "../ui/AppFormItems";
 import { AppModal, ModalProps } from "../ui/AppModal";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Form } from "antd";
 
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
 
 interface ContactsFormModalProps extends ModalProps {
   initialValues?: Contact;
+  onSaved?: () => void;
 }
 
 type ContactsFormValues = CreateContactInput | UpdateContactInput;
 
-const roleKeys = Object.values(ContactRole);
-
-export default function ContactsFormModal({ open, toggle, initialValues }: ContactsFormModalProps) {
-  const storeCurrencyId = JSON.parse(localStorage.getItem("user")!)?.store?.currencyId;
+export default function ContactsFormModal({ open, toggle, initialValues, onSaved }: ContactsFormModalProps) {
+  const storeCurrencyId = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}")?.store?.currencyId : undefined;
 
   const [contactsForm] = Form.useForm();
 
@@ -27,35 +26,28 @@ export default function ContactsFormModal({ open, toggle, initialValues }: Conta
   const [createContact, { isLoading: isCreating, isSuccess: createSuccess }] = useCreateContactMutation();
   const [updateContact, { isLoading: isUpdating, isSuccess: updateSuccess }] = useUpdateContactMutation();
 
-  const [selectedRoles, setSelectedRoles] = useState<ContactRole[]>([]);
-
-  const toggleRole = (role: ContactRole) => {
-    setSelectedRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
-  };
-
   useEffect(() => {
     if (!initialValues) {
       contactsForm.setFieldsValue({ currencyId: storeCurrencyId });
     }
-  }, [initialValues]);
+  }, [contactsForm, initialValues, storeCurrencyId]);
 
   useEffect(() => {
     if (contactData && isSuccess) {
       contactsForm.setFieldsValue(contactData);
     }
-  }, [contactData, isSuccess]);
+  }, [contactData, contactsForm, isSuccess]);
 
   useEffect(() => {
     if (updateSuccess || createSuccess) {
       contactsForm.resetFields();
+      onSaved?.();
       toggle();
     }
-  }, [updateSuccess, createSuccess]);
+  }, [contactsForm, createSuccess, onSaved, toggle, updateSuccess]);
 
   const handleSubmit = async (values: ContactsFormValues) => {
     if (isCreating || isUpdating) return;
-
-    const roles = selectedRoles;
 
     if (initialValues?.id) {
       await updateContact({ id: initialValues?.id, ...values });

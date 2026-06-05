@@ -1,21 +1,18 @@
 "use client";
 
-import { Button, Divider, Tag } from "antd";
-import { CreditCard, PackageCheck, Receipt, RotateCcw } from "lucide-react";
-import { BaseButton } from "@/components/ui/AppButtons";
+import { Divider, Tag } from "antd";
 import { Purchase } from "@/types/index";
 
 interface PurchaseOrderSummaryProps {
   purchase: Purchase;
-  canReceive: boolean;
-  canReturn: boolean;
-  onReceive: () => void;
-  onReturn: () => void;
-  onAddLandedCost: () => void;
-  onRecordPayment: () => void;
+  canReceive?: boolean;
+  onReceive?: () => void;
+  onAddLandedCost?: () => void;
+  onRecordPayment?: () => void;
 }
 
-export default function PurchaseOrderSummary({ purchase, canReceive, canReturn, onReceive, onReturn, onAddLandedCost, onRecordPayment }: PurchaseOrderSummaryProps) {
+export default function PurchaseOrderSummary({ purchase }: PurchaseOrderSummaryProps) {
+  const isCancelled = Boolean(purchase.isDeleted);
   const currency = purchase.currencyId?.code || "";
   const paid = Math.max(Number(purchase.amount) - Number(purchase.balance), 0);
   const discountedSubtotal = Math.max(Number(purchase.subTotal) - Number(purchase.discountAmount || 0), 0);
@@ -33,9 +30,11 @@ export default function PurchaseOrderSummary({ purchase, canReceive, canReturn, 
         <div className="mb-5 flex justify-between items-center">
           <h2 className=" text-base font-medium text-gray-900">Purchase Summary</h2>
 
-          <Tag className=" px-3 !rounded-full capitalize" color={purchase.paymentStatus === "paid" ? "green" : purchase.paymentStatus === "partial" ? "orange" : "blue"}>
-            {purchase.paymentStatus}
-          </Tag>
+          {!isCancelled && (
+            <Tag className=" px-3 !rounded-full capitalize" color={purchase.paymentStatus === "paid" ? "green" : purchase.paymentStatus === "partial" ? "orange" : "blue"}>
+              {purchase.paymentStatus}
+            </Tag>
+          )}
         </div>
         <Summary label="Items Total" value={`${currency} ${purchase.subTotal.toFixed(2)}`} />
         <Summary label="Discount" value={`- ${currency} ${Number(purchase.discountAmount || 0).toFixed(2)}`} />
@@ -51,22 +50,6 @@ export default function PurchaseOrderSummary({ purchase, canReceive, canReturn, 
         <Divider className="my-3" />
         <Summary label="Balance" value={`${currency} ${purchase.balance.toFixed(2)}`} strong />
       </div>
-
-      {/* <div className="pt-6">
-        <h2 className="mb-4 text-base font-medium text-gray-900">Actions</h2>
-        <div className="grid gap-3">
-          <Button icon={<PackageCheck size={15} />} disabled={!canReceive} onClick={onReceive}>
-            Receive Stock
-          </Button>
-          <Button icon={<RotateCcw size={15} />} disabled={!canReturn} onClick={onReturn}>
-            Return Stock
-          </Button>
-          <Button icon={<Receipt size={15} />} disabled={Boolean(purchase.locked)} onClick={onAddLandedCost}>
-            Add Landed Cost
-          </Button>
-          <BaseButton icon={<CreditCard size={15} />} label="Record Payment" size="middle" onClick={onRecordPayment} />
-        </div>
-      </div> */}
     </aside>
   );
 }

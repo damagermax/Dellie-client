@@ -34,11 +34,17 @@ export const PaymentAccountsApi = baseApi.injectEndpoints({
       providesTags: [TAG_TYPES.PAYMENT_ACCOUNTS],
     }),
 
-    getLocation: builder.query<Location, string>({
-      query: (id) => `gl-accounts/${id}`,
+    getPaymentAccount: builder.query<PaymentAccount, string>({
+      query: (id) => `payment-accounts/${id}`,
       providesTags: (result, error, id) => [{ type: TAG_TYPES.PAYMENT_ACCOUNT, id }],
     }),
   }),
 });
 
-export const { useCreatePaymentAccountMutation, useUpdatePaymentAccountMutation, useDeletePaymentAccountMutation, useGetPaymentAccountsQuery } = PaymentAccountsApi;
+export const {
+  useCreatePaymentAccountMutation,
+  useUpdatePaymentAccountMutation,
+  useDeletePaymentAccountMutation,
+  useGetPaymentAccountsQuery,
+  useGetPaymentAccountQuery,
+} = PaymentAccountsApi;

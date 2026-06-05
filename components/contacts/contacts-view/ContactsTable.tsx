@@ -1,4 +1,5 @@
 import type { TableProps } from "antd/es/table";
+import Link from "next/link";
 
 import { IoCopyOutline } from "react-icons/io5";
 import { ImEnlarge } from "react-icons/im";
@@ -9,37 +10,11 @@ import { ContactViewItemAction } from "./ContactsView";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
 import AppTag from "@/components/ui/AppTag";
 import { PhoneDisplay } from "@/components/ui/DisplayPhoneNumber";
+import { getContactColor, getContactInitials } from "../contactUtils";
 
 interface ContactTableProp extends ContactViewItemAction {
   contacts: Contact[];
 }
-
-export function getInitials(name: string) {
-  if (!name) return "";
-
-  // Split the name by spaces
-  const words = name.trim().split(/\s+/);
-
-  // Take the first character of the first two words
-  const initials = words
-    .slice(0, 2) // only first two words
-    .map((word) => word[0].toUpperCase())
-    .join("");
-
-  return initials;
-}
-
-const getRandomColor = (text: string) => {
-  const colors = ["#F44336", "#E91E63", "#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#03A9F4", "#009688", "#4CAF50", "#8BC34A", "#FF9800", "#FF5722"];
-
-  let hash = 0;
-
-  for (let i = 0; i < text.length; i++) {
-    hash = text.charCodeAt(i) + ((hash << 5) - hash);
-  }
-
-  return colors[Math.abs(hash) % colors.length];
-};
 
 export default function ContactsTable({ contacts, onDelete, openEditModal, onActivate, onDeactivate }: ContactTableProp) {
   const columns: TableProps<Contact>["columns"] = [
@@ -54,14 +29,16 @@ export default function ContactsTable({ contacts, onDelete, openEditModal, onAct
           <div
             className="w-[30px] rounded-full h-[30px] flex items-center justify-center text-white font-medium"
             style={{
-              backgroundColor: getRandomColor(name || contact.displayName),
+              backgroundColor: getContactColor(name || contact.displayName),
             }}
           >
-            {getInitials(name || contact.displayName)}
+            {getContactInitials(name || contact.displayName)}
           </div>
           <div>
-            <div className=" capitalize text-sm text-gray-900">{name || contact.displayName}</div>
-            <p className=" text-xs">Customer, Vendor</p>
+            <Link href={`/contacts/${contact.id}`} className="capitalize text-sm text-gray-900 hover:text-black hover:underline">
+              {name || contact.displayName}
+            </Link>
+            <p className="text-xs capitalize">{contact.roles?.length ? contact.roles.join(", ") : "No roles assigned"}</p>
           </div>
         </div>
       ),
@@ -95,11 +72,11 @@ export default function ContactsTable({ contacts, onDelete, openEditModal, onAct
       key: "lastActivity",
       dataIndex: "lastActivity",
       width: "15%",
-      render: (value) => (
-        <p className=" flex items-center gap-x-2 cursor-pointer">
+      render: (_, contact) => (
+        <Link href={`/contacts/${contact.id}`} className="flex items-center gap-x-2 text-gray-700 hover:text-black">
           2026, May 20
           <ImEnlarge className=" text-[12px] text-gray-400/60 font-light " />
-        </p>
+        </Link>
       ),
     },
 
@@ -122,7 +99,7 @@ export default function ContactsTable({ contacts, onDelete, openEditModal, onAct
 
   return (
     <>
-      <AppTable columns={columns} dataSource={contacts || []} className="custom-table" />
+      <AppTable columns={columns} dataSource={contacts || []} className="custom-table" rowKey="id" />
     </>
   );
 }
