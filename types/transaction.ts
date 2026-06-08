@@ -125,6 +125,12 @@ export interface ExpenseQueryParams {
   limit?: number;
   search?: string | "";
   category?: string;
+  categoryId?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
   amount?: number;
 }
 

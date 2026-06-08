@@ -1,15 +1,12 @@
 "use client";
 
-import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdown";
+import { ActionDropdown } from "@/components/ui/ActionDropdown";
 import AppTable from "@/components/ui/AppTable";
 import type { TableProps } from "antd/es/table";
-import { TbReplace } from "react-icons/tb";
 import { Category, CategoryType } from "@/types/category";
-import Image from "next/image";
-import { CategoriesViewItemAction } from "./CategoriesList";
-import PreviewImage from "@/components/ui/PreviewImage";
+import { CategoriesListItemAction } from "./CategoriesList";
 
-interface CategoriesTableProps extends CategoriesViewItemAction {
+interface CategoriesTableProps extends CategoriesListItemAction {
   categories: Category[];
 }
 

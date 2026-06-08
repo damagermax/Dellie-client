@@ -13,9 +13,10 @@ export interface PaymentViewItemAction {
 interface PaymentsViewProps {
   query?: any;
   payments?: Payment[];
+  canManage?: boolean;
 }
 
-const PaymentView = ({ payments }: PaymentsViewProps) => {
+const PaymentView = ({ payments, canManage = true }: PaymentsViewProps) => {
   const [deletePayment, { isLoading }] = useDeleteTransactionActionMutation();
 
   const [selectedPayment, setSelectedPayment] = useState<Payment>();
@@ -33,7 +34,7 @@ const PaymentView = ({ payments }: PaymentsViewProps) => {
   return (
     <div>
       {openPaymentModal && <PaymentFormModal initialValues={selectedPayment} open={openPaymentModal} toggle={togglePaymentModal} />}
-      <PaymentTable payments={payments!!} onDelete={handleDeletePayment} openEditModal={openEditPaymentModal} />
+      <PaymentTable payments={payments!!} canManage={canManage} onDelete={handleDeletePayment} openEditModal={openEditPaymentModal} />
     </div>
   );
 };

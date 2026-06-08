@@ -424,7 +424,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
           <AppTable columns={productColumns} dataSource={lineItems || []} rowKey={(record: ProductLineItem) => record.id} />
           {searchProduct}
 
-          {lineItems.length > 0 && (
+          {
             <div className=" pb-4 px-5  w-full mt-8 grid grid-cols-3">
               <div></div>
               <div></div>
@@ -492,7 +492,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
                 </div>
               </div>
             </div>
-          )}
+          }
         </Form>
       </AppModal>
 

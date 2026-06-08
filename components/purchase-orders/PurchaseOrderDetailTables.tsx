@@ -15,6 +15,7 @@ type PurchaseTableView = "items" | "fulfillments" | "landedCosts" | "payments";
 interface PurchaseOrderDetailTablesProps {
   purchase: Purchase;
   currency: string;
+  canManage?: boolean;
   isCancelled: boolean;
   onEditFulfillment: (event: PurchaseStockEvent) => void;
   onDeleteFulfillment: (event: PurchaseStockEvent) => void;
@@ -67,6 +68,7 @@ const tableOptions = [
 export default function PurchaseOrderDetailTables({
   purchase,
   currency,
+  canManage = false,
   isCancelled,
   onEditFulfillment,
   onDeleteFulfillment,
@@ -105,7 +107,7 @@ export default function PurchaseOrderDetailTables({
       align: "right",
       className: "!pr-8",
       width: 80,
-      render: (_, event) => (isCancelled ? null : <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />),
+      render: (_, event) => (isCancelled || !canManage ? null : <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />),
     },
   ];
   const costColumns: TableProps<PurchaseLandedCost>["columns"] = [
@@ -124,10 +126,10 @@ export default function PurchaseOrderDetailTables({
       align: "right",
       className: "!pr-8",
       width: 80,
-      render: (_, cost) => (isCancelled ? null : <ActionDropdown openEditModal={() => onEditLandedCost(cost)} onDelete={() => onDeleteLandedCost(cost)} />),
+      render: (_, cost) => (isCancelled || !canManage ? null : <ActionDropdown openEditModal={() => onEditLandedCost(cost)} onDelete={() => onDeleteLandedCost(cost)} />),
     },
   ];
-  const paymentColumns: TableProps<any>["columns"] = [
+  const paymentColumns: TableProps<Payment>["columns"] = [
     { title: "Date", key: "date", className: "!pl-8", render: (_, payment) => formatDate(payment.date) },
     { title: "Reference", dataIndex: "reference", key: "reference", render: (reference) => reference || "-" },
     { title: "Type", dataIndex: "type", key: "type", render: (type: string) => type?.replaceAll("_", " ") || "Payment" },
@@ -139,14 +141,14 @@ export default function PurchaseOrderDetailTables({
       align: "right",
       className: "!pr-8",
       width: 80,
-      render: (_, payment) => (isCancelled ? null : <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} />),
+      render: (_, payment) => (isCancelled || !canManage ? null : <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} />),
     },
   ];
   const tables = {
     items: { title: "Line Items", columns: itemColumns, data: purchase.lineItems },
     fulfillments: { title: "Fulfillment History", columns: fulfillmentColumns, data: purchase.fulfilledItems || [] },
     landedCosts: { title: "Landed Costs", columns: costColumns, data: purchase.landedCosts || [] },
-    payments: { title: "Payments", columns: paymentColumns, data: (purchase.payments || []) as any[] },
+    payments: { title: "Payments", columns: paymentColumns, data: (purchase.payments || []) as Payment[] },
   };
   const current = tables[view];
 
@@ -191,6 +193,7 @@ export default function PurchaseOrderDetailTables({
               view={view}
               purchase={purchase}
               currency={currency}
+              canManage={canManage}
               isCancelled={isCancelled}
               onEditFulfillment={onEditFulfillment}
               onDeleteFulfillment={onDeleteFulfillment}
@@ -201,7 +204,7 @@ export default function PurchaseOrderDetailTables({
             />
           </div>
           <div className="hidden md:block">
-              <AppTable columns={current.columns || []} dataSource={current.data as any[]} rowKey="id" pagination={false} scrollX={900} />
+              <AppTable columns={current.columns || []} dataSource={current.data} rowKey="id" pagination={false} scrollX={900} />
           </div>
           </>
         ) : (
@@ -218,6 +221,7 @@ function MobilePurchaseList({
   view,
   purchase,
   currency,
+  canManage,
   isCancelled,
   onEditFulfillment,
   onDeleteFulfillment,
@@ -229,6 +233,7 @@ function MobilePurchaseList({
   view: PurchaseTableView;
   purchase: Purchase;
   currency: string;
+  canManage: boolean;
   isCancelled: boolean;
   onEditFulfillment: (event: PurchaseStockEvent) => void;
   onDeleteFulfillment: (event: PurchaseStockEvent) => void;
@@ -263,8 +268,8 @@ function MobilePurchaseList({
         {(purchase.fulfilledItems || []).map((event) => (
           <MobileCard key={event.id}>
             <div className="flex items-start justify-between gap-3">
-              <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
-              {!isCancelled && <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />}
+            <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+              {!isCancelled && canManage && <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />}
             </div>
             <div className="mt-2 text-[13px] text-gray-500 flex items-center justify-between gap-3">
               <span>Qty {Number(event.quantity).toLocaleString()}</span>
@@ -284,7 +289,7 @@ function MobilePurchaseList({
             <div className="flex items-start justify-between gap-4">
               <p className="text-base  font-medium text-gray-900">{cost.name}</p>
 
-              {!isCancelled && <ActionDropdown openEditModal={() => onEditLandedCost(cost)} onDelete={() => onDeleteLandedCost(cost)} />}
+              {!isCancelled && canManage && <ActionDropdown openEditModal={() => onEditLandedCost(cost)} onDelete={() => onDeleteLandedCost(cost)} />}
             </div>
 
             <p className="mt-3 shrink-0 text-base font-semibold text-gray-900">
@@ -302,14 +307,14 @@ function MobilePurchaseList({
 
   return (
     <div className="grid gap-3  pb-6">
-      {((purchase.payments || []) as any[]).map((payment, index) => (
+      {((purchase.payments || []) as Payment[]).map((payment, index) => (
         <MobileCard key={payment.id || index}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-base font-semibold capitalize text-gray-900">{payment.type?.replaceAll("_", " ") || "Payment"}</p>
                 <p className="mt-1 text-xs text-gray-500">{formatDate(payment.date)}</p>
               </div>
-            {!isCancelled && <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} />}
+            {!isCancelled && canManage && <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} />}
           </div>
           <p className="mt-3 shrink-0 text-base font-semibold text-gray-900">
             {currency} {Number(payment.amount || 0).toFixed(2)}
@@ -335,15 +340,6 @@ function MobileProductHeader({ name, sku, imageUrl }: { name: string; sku?: stri
         <p className="line-clamp-2 text-sm  text-gray-900">{name}</p>
         {sku && <p className="mt-1 text-xs text-gray-500">SKU: {sku}</p>}
       </div>
-    </div>
-  );
-}
-
-function MobileStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-gray-50 px-3 py-2">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
     </div>
   );
 }

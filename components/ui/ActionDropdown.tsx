@@ -1,9 +1,11 @@
-import { Dropdown, Flex, MenuProps } from "antd";
+import { Flex, MenuProps } from "antd";
 import { GrEdit } from "react-icons/gr";
 import { HiOutlineTrash } from "react-icons/hi2";
 import { LuEyeOff } from "react-icons/lu";
-import { RiMoreLine } from "react-icons/ri";
 import { ReactNode } from "react";
+import ResponsiveActionMenu from "./ResponsiveActionMenu";
+
+type ActionMenuItem = NonNullable<MenuProps["items"]>[number] & { onClick?: () => void };
 
 export interface ActionDropdownProps {
   menu?: MenuProps;
@@ -75,7 +77,7 @@ export function ActionDropdown({ menu, openEditModal, onDelete, onActivate, onDe
   ];
 
   const handleClick: MenuProps["onClick"] = ({ key }) => {
-    const selectedItem = items.find((item) => item && "key" in item && item.key === key) as any;
+    const selectedItem = items.find((item): item is ActionMenuItem => Boolean(item && "key" in item && item.key === key));
 
     if (key === "edit") {
       openEditModal?.();
@@ -103,17 +105,5 @@ export function ActionDropdown({ menu, openEditModal, onDelete, onActivate, onDe
     selectedItem?.onClick?.();
   };
 
-  return (
-    <div className="flex gap-x-3 items-center justify-end">
-      {/* <div onClick={openEditModal} className="p-[2px] rounded-full bg-gray-100 text-gray-500 cursor-pointer w-[2rem] flex items-center justify-center h-[2rem]">
-        <GrEdit size={12} />
-      </div> */}
-
-      <Dropdown arrow={{ pointAtCenter: true }} menu={{ items, onClick: handleClick }} trigger={["click"]} placement="bottomRight">
-        <div className="p-[2px] rounded-full bg-gray-100 text-gray-600 cursor-pointer w-[2rem] flex items-center justify-center h-[2rem]">
-          <RiMoreLine size={15} />
-        </div>
-      </Dropdown>
-    </div>
-  );
+  return <ResponsiveActionMenu items={items} onClick={handleClick} />;
 }

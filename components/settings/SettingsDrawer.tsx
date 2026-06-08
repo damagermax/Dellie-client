@@ -19,6 +19,8 @@ import { PaymentMethod } from "@/types/payment-method";
 import PricingGroupsList from "./PricingGroupsList";
 import PricingGroupsForm from "./PricingGroupsForm";
 import { PricingGroup } from "@/types/pricing-group";
+import CategoriesFormModal from "../categories/CategoriesFormModal";
+import { CategoryType } from "@/types/category";
 
 const SettingsDrawer = () => {
   const [selectedTab, setSelectedTab] = useState("Taxes");
@@ -30,7 +32,8 @@ const SettingsDrawer = () => {
     { key: "Taxes", label: "Taxes" },
     { key: "Locations", label: "Locations" },
     { key: "Discount", label: "Discounts" },
-    { key: "Categories", label: "Categories" },
+    { key: "product_categories", label: "Product Categories" },
+    { key: "expense_categories", label: "Expense Categories" },
     { key: "payment_term", label: "Payment Terms" },
     { key: "payment_method", label: "Payment Method" },
     { key: "pricing_group", label: "Pricing Groups" },
@@ -93,14 +96,15 @@ const SettingsDrawer = () => {
               {selectedTab == "Taxes" && <TaxList onSelect={setSelectedItem as (tax: Tax) => void} />}
               {selectedTab == "Locations" && <LocationList onSelect={setSelectedItem as (location: Location) => void} />}
               {selectedTab == "Discount" && <DiscountsList />}
-              {selectedTab == "Categories" && <CategoriesList query={{}} />}
+              {selectedTab == "product_categories" && <CategoriesList query={{ type: CategoryType.PRODUCT }} />}
+              {selectedTab == "expense_categories" && <CategoriesList query={{ type: CategoryType.EXPENSE }} />}
               {selectedTab == "payment_term" && <PaymentTermsList onSelect={setSelectedItem as (paymentTerm: PaymentTerm) => void} />}
               {selectedTab == "payment_method" && <PaymentMethodsList onSelect={setSelectedItem as (paymentMethod: PaymentMethod) => void} />}
               {selectedTab == "pricing_group" && <PricingGroupsList onSelect={setSelectedItem as (pricingGroup: PricingGroup) => void} />}
             </div>
           </div>
 
-          {(selectedTab == "Taxes" || selectedTab == "Locations" || selectedTab == "payment_term" || selectedTab == "payment_method" || selectedTab == "pricing_group") && (
+          {(selectedTab == "Taxes" || selectedTab == "Locations" || selectedTab == "payment_term" || selectedTab == "payment_method" || selectedTab == "pricing_group" || selectedTab == "product_categories" || selectedTab == "expense_categories") && (
             <FloatButton
               type="primary"
               icon={<LuPlus />}
@@ -115,6 +119,8 @@ const SettingsDrawer = () => {
 
       {selectedTab == "Taxes" && <TaxesDrawer initialValue={selectedItem as Tax} open={openForm} toggle={toggleOpenForm} />}
       {selectedTab == "Locations" && <LocationsFormModal initialValues={selectedItem as Location} open={openForm} toggle={toggleOpenForm} />}
+      {selectedTab == "product_categories" && <CategoriesFormModal type={CategoryType.PRODUCT} open={openForm} toggle={toggleOpenForm} />}
+      {selectedTab == "expense_categories" && <CategoriesFormModal type={CategoryType.EXPENSE} open={openForm} toggle={toggleOpenForm} />}
       {selectedTab == "payment_term" && <PaymentTermsForm initialValues={selectedItem as PaymentTerm} open={openForm} toggle={toggleOpenForm} />}
       {selectedTab == "payment_method" && <PaymentMethodsForm initialValues={selectedItem as PaymentMethod} open={openForm} toggle={toggleOpenForm} />}
       {selectedTab == "pricing_group" && <PricingGroupsForm initialValues={selectedItem as PricingGroup} open={openForm} toggle={toggleOpenForm} />}

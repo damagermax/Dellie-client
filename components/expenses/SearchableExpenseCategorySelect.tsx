@@ -21,7 +21,7 @@ export function SearchableExpenseCategorySelect({ value, type, onChange, onAddCa
     setCategoriesQuery((prev) => ({ ...prev, ...values }));
   };
 
-  const { data: categories, isSuccess, isLoading } = useGetCategoriesQuery(debounceExpenseCategoriesQuery);
+  const { data: categories, isLoading } = useGetCategoriesQuery(debounceExpenseCategoriesQuery);
 
   return (
     <>

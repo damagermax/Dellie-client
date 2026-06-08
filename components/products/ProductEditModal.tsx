@@ -12,6 +12,7 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import { RiSearchLine } from "react-icons/ri";
 import { Trash2 } from "lucide-react";
 import { ITEM_TYPE } from "./ProductFormModal";
+import { CategoryType } from "@/types/category";
 
 type BundleItemInput = {
   productId: string;
@@ -411,10 +412,10 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
             <div className="px-5">
               {![ITEM_TYPE.BUNDLE, ITEM_TYPE.PACKAGING].includes(itemType) && (
                 <>
-                  <div className="grid grid-cols-1 gap-x-5 md:grid-cols-3">
-                    <Form.Item label="Category" name="categoryId">
-                      <SearchableCategorySelect />
-                    </Form.Item>
+                    <div className="grid grid-cols-1 gap-x-5 md:grid-cols-3">
+                      <Form.Item label="Category" name="categoryId">
+                        <SearchableCategorySelect type={CategoryType.PRODUCT} />
+                      </Form.Item>
 
                     <Form.Item label="Cost Price" name="costPrice">
                       <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} placeholder="0.0" />

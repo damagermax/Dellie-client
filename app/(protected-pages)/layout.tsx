@@ -11,13 +11,21 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const dispatch = useDispatch();
   const router = useRouter();
   const { data: currentUser, error, isError, isSuccess } = useGetCurrentUserQuery();
-  const authenticationRequired = isError && (error as any)?.status === 401;
+  const authenticationRequired = isError && typeof error === "object" && error !== null && "status" in error && (error as { status?: number }).status === 401;
 
   useEffect(() => {
     if (currentUser && isSuccess) {
-      dispatch(setCurrentUser({ user: { ...currentUser }, store: currentUser.store }));
+      dispatch(
+        setCurrentUser({
+          user: { ...currentUser },
+          store: currentUser.store,
+          stores: currentUser.stores || [],
+          activeStoreId: currentUser.activeStoreId || currentUser.store?.id || null,
+          permissions: currentUser.permissions || [],
+        }),
+      );
     }
-  }, [currentUser, isSuccess]);
+  }, [currentUser, dispatch, isSuccess]);
 
   useEffect(() => {
     if (authenticationRequired) {

@@ -1,5 +1,4 @@
 "use client";
-import { AddButton, BaseButton } from "@/components/ui/AppButtons";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 
 import ProductFormModal from "@/components/products/ProductFormModal";
@@ -9,39 +8,32 @@ import { useState } from "react";
 
 import { ProductQueryParams } from "@/types/product";
 
-import AppViewSegments, { ViewType } from "@/components/ui/AppViewSegments";
 import { ProductsFilters } from "@/components/products/ProductsFilters";
 import SettingsDrawer from "@/components/settings/SettingsDrawer";
+import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
+import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import { Button, Dropdown, MenuProps, Space } from "antd";
 import { IoEllipsisVertical } from "react-icons/io5";
 import { TbDatabaseImport, TbDatabaseExport } from "react-icons/tb";
 import { TiPrinter } from "react-icons/ti";
 import { BiMessageSquareEdit } from "react-icons/bi";
+import { usePermissions } from "@/hooks/usePermissions";
+import { StorePermission } from "@/types/store-access";
 
 export default function ProductsPage() {
+  const { ready, hasPermission } = usePermissions();
   const [openProductForm, toggleProductForm] = useToggle();
-  const [view, setView] = useState<ViewType>("table");
+  const view = "table";
 
-  const [productsQuery, setProductsQuery] = useState<ProductQueryParams>({});
+  const [productsQuery, setProductsQuery] = useState<ProductQueryParams>({ page: 1, limit: 20 });
 
   const handleFilterChange = (values: Partial<ProductQueryParams>) => {
-    setProductsQuery((prev) => ({ ...prev, ...values }));
+    setProductsQuery((prev) => ({ ...prev, ...values, page: 1 }));
   };
 
   const handleFilterRest = () => {
-    setProductsQuery({});
+    setProductsQuery({ page: 1, limit: 20 });
   };
-
-  const items = [
-    {
-      key: "1",
-      label: "Stock Adjustments",
-    },
-    {
-      key: "2",
-      label: "Stock Count",
-    },
-  ];
 
   const actionItems = [
     {
@@ -71,21 +63,20 @@ export default function ProductsPage() {
     console.log("click", e);
   };
 
+  if (!ready) return <AppViewLoader loading />;
+
+  if (!hasPermission(StorePermission.PRODUCTS_VIEW)) {
+    return <AccessDeniedView title="Products" description="You do not have permission to view the products module." />;
+  }
+
   return (
     <div>
-      <div className="py-8 px-8 flex justify-between w-full">
-        <div className=" flex items-center gap-x-2">
+      <div className="flex w-full flex-col gap-4 px-4 py-5 md:flex-row md:justify-between md:px-8 md:py-8">
+        <div className="flex w-full items-center gap-x-2 md:w-auto">
           <AppSearch placeholder="Search categories" onReset={handleFilterRest} onSearchChange={handleFilterChange} menu={{ items: ProductsFilters({ onChange: handleFilterChange, filters: productsQuery }) }} />
         </div>
 
-        <div className=" flex items-center justify-between  gap-3 ">
-          {/* <Space.Compact>
-            <Button>Stock Transfer</Button>
-            <Dropdown menu={{ items, onClick: onMenuClick }} placement="bottomRight">
-              <Button icon={<IoEllipsisVertical />} />
-            </Dropdown>
-          </Space.Compact> */}
-
+        <div className="flex items-center justify-between gap-3">
           <Space.Compact>
             <Button type="primary" size="middle" className=" !shadow-none" onClick={toggleProductForm}>
               Add Product
@@ -100,7 +91,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <ProductView view={view} query={productsQuery} />
+      <ProductView view={view} query={productsQuery} onQueryChange={setProductsQuery} />
 
       {openProductForm && <ProductFormModal open={openProductForm} toggle={toggleProductForm} />}
     </div>

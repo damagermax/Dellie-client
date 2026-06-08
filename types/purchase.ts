@@ -87,6 +87,13 @@ export interface PurchaseQueryParams {
   limit?: number;
   search?: string;
   status?: "open" | "closed" | "draft";
+  fulfillmentStatus?: PurchaseReceiptStatus;
+  paymentStatus?: "paid" | "partial" | "unpaid";
+  supplierId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export type PurchasesResponse = PaginatedResponse<Purchase>;

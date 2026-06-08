@@ -1,20 +1,21 @@
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { useGetCategoriesQuery } from "@/lib/redux/services";
-import { CategoriesQueryParams, CategoryStatus } from "@/types/category";
+import { CategoriesQueryParams, CategoryStatus, CategoryType } from "@/types/category";
 import { Select, Spin } from "antd";
 import { useState } from "react";
 
 interface SearchableCategorySelectProps {
   value?: string[];
   onChange?: (value: string[]) => void;
+  type?: CategoryType;
 }
 
-export function SearchableCategorySelect({ value, onChange }: SearchableCategorySelectProps) {
-  const [categoriesQuery, setCategoriesQuery] = useState<CategoriesQueryParams>({});
+export function SearchableCategorySelect({ value, onChange, type = CategoryType.PRODUCT }: SearchableCategorySelectProps) {
+  const [categoriesQuery, setCategoriesQuery] = useState<CategoriesQueryParams>({ type });
 
   const debounceCategoriesQuery = useDebouncedValue(categoriesQuery);
 
-  const { data: categories, isSuccess, isLoading } = useGetCategoriesQuery(debounceCategoriesQuery);
+  const { data: categories, isLoading } = useGetCategoriesQuery(debounceCategoriesQuery);
 
   return (
     <Select
@@ -27,7 +28,7 @@ export function SearchableCategorySelect({ value, onChange }: SearchableCategory
       }}
       className="w-full"
       filterOption={false}
-      onSearch={(value) => setCategoriesQuery({ search: value })}
+      onSearch={(value) => setCategoriesQuery({ search: value, type })}
       notFoundContent={isLoading ? <Spin size="small" /> : "No results found"}
       options={categories?.data?.map((cat) => ({
         value: cat.id,

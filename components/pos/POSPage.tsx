@@ -3,24 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Badge, Button, Divider, Drawer, Form, Input, InputNumber, Select, message } from "antd";
-import {
-  Beef,
-  CakeSlice,
-  Coffee,
-  Drumstick,
-  Flame,
-  Fish,
-  PackageSearch,
-  Salad,
-  Search,
-  ShoppingBag,
-  ShoppingCart,
-  Sandwich,
-  Sparkles,
-  UtensilsCrossed,
-  WalletCards,
-  X,
-} from "lucide-react";
+import { Beef, CakeSlice, Coffee, Drumstick, Flame, Fish, PackageSearch, Salad, Search, ShoppingBag, ShoppingCart, Sandwich, Sparkles, UtensilsCrossed, WalletCards, X } from "lucide-react";
 import ContactsFormModal from "@/components/contacts/ContactsFormModal";
 import { SearchableContactSelect } from "@/components/contacts/SeachableContactSelect";
 import { SearchableLocationSelect } from "@/components/location/SearchableLocationSelect";
@@ -82,21 +65,12 @@ function paymentStatus(total: number, paid: number) {
   return "partial";
 }
 
-function getCategoryIcon(name: string): ReactNode {
-  const value = name.toLowerCase();
-  if (value.includes("fish") || value.includes("sea")) return <Fish size={21} strokeWidth={2.1} />;
-  if (value.includes("chicken") || value.includes("poultry")) return <Drumstick size={21} strokeWidth={2.1} />;
-  if (value.includes("steak") || value.includes("beef")) return <Beef size={21} strokeWidth={2.1} />;
-  if (value.includes("salad") || value.includes("veggie") || value.includes("veget")) return <Salad size={21} strokeWidth={2.1} />;
-  if (value.includes("dessert") || value.includes("cake") || value.includes("sweet")) return <CakeSlice size={21} strokeWidth={2.1} />;
-  if (value.includes("drink") || value.includes("beverage") || value.includes("cocktail") || value.includes("coffee")) return <Coffee size={21} strokeWidth={2.1} />;
-  if (value.includes("spicy") || value.includes("hot")) return <Flame size={21} strokeWidth={2.1} />;
-  if (value.includes("appetizer") || value.includes("starter") || value.includes("snack")) return <Sandwich size={21} strokeWidth={2.1} />;
-  return <UtensilsCrossed size={21} strokeWidth={2.1} />;
-}
-
 function isTrackedInventory(type?: string) {
   return ["STOCK", "PACKAGING", "BUNDLE"].includes(String(type || ""));
+}
+
+function getProductImage(product: { imageUrl?: string | null; images?: string[] | null; media?: { url?: string | null }[] | null; productUrl?: string | null }) {
+  return product.imageUrl || product.media?.[0]?.url || product.images?.[0] || product.productUrl || undefined;
 }
 
 function SummaryRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
@@ -211,10 +185,7 @@ export default function POSPage() {
     }
   }, [form]);
 
-  const getCartItem = useCallback(
-    (productId: string) => cart.find((item) => item.productId === productId),
-    [cart],
-  );
+  const getCartItem = useCallback((productId: string) => cart.find((item) => item.productId === productId), [cart]);
 
   const setCartQuantity = useCallback((product: (typeof visibleProducts)[number], quantity: number) => {
     setCart((current) => {
@@ -234,7 +205,7 @@ export default function POSPage() {
           productId: product.id,
           name: product.name,
           sku: product.sku,
-          imageUrl: product.imageUrl || undefined,
+          imageUrl: getProductImage(product),
           unitPrice: Number(product.sellingPrice || 0),
           quantity,
           availableStock: product.availableStock,
@@ -368,7 +339,6 @@ export default function POSPage() {
           amount: Number(payment.amount),
           accountId: payment.accountId,
           rate: Number(values.rate || 1),
-          reference: payment.reference,
         };
         await createPayment(paymentPayload).unwrap();
       }
@@ -392,98 +362,131 @@ export default function POSPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f5fb] p-3 md:p-4">
-      <div className="mx-auto max-w-[1760px] rounded-[28px] border border-[#e7e3ee] bg-white shadow-[0_22px_70px_rgba(15,23,42,0.09)]">
-        <div className="border-b border-[#ece8f2] px-3 py-3 md:px-4 md:py-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <Input
-              size="large"
-              allowClear
-              prefix={<Search size={18} className="text-[#7a39cc]" />}
-              placeholder="Search menu here..."
-              className="!h-14 !w-full !rounded-full !border-[#dad6e2] !bg-white !px-4 !text-[16px] lg:!max-w-[560px]"
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.target.value)}
-            />
+    <div className="min-h-screen  ">
+      <div className="flex h-screen w-full items-start  -bg-[#f7f8fd] ">
+        <div className="mx-auto  h-screen overflow-scroll  w-full lg:w-[75%] border-r border-gray-200  bg-[#F5F5F5] ">
+          <div className="sticky top-0 z-10 ">
+            <div className="border-b bg-gray-50 border-[#ece8f2] px-3 py-3 ">
+              <div className="flex flex-col gap-3 md:flex-row lg:items-center lg:justify-between">
+                <div>k</div>
 
-            <Button
-              size="large"
-              className="!h-14 !rounded-full !border-0 !bg-gradient-to-b !from-[#8f5ae0] !to-[#6e38c6] !px-8 !text-[16px] !font-semibold !text-white !shadow-[0_14px_28px_rgba(111,56,197,0.32)]"
-              onClick={() => setOrderDrawerOpen(true)}
-            >
-              New Order
-            </Button>
-          </div>
-        </div>
-
-        <div className="border-b border-[#ece8f2] px-3 py-4 md:px-4">
-          <div className="flex gap-4 overflow-x-auto pb-1">
-            <CategoryCard
-              title="All Menu"
-              count={allProducts.length}
-              active={!categoryId}
-              onClick={() => setCategoryId(undefined)}
-              icon={<ShoppingBag size={21} strokeWidth={2.1} />}
-            />
-            {categories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                title={category.name}
-                count={categoryCounts.get(category.id) || 0}
-                active={categoryId === category.id}
-                onClick={() => setCategoryId(category.id)}
-                icon={getCategoryIcon(category.name)}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="px-3 py-4 md:px-4 md:py-5">
-          <AppViewLoader loading={productsLoading || categoriesLoading} />
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
-            {visibleProducts.map((product) => {
-              const quantity = getCartItem(product.id)?.quantity || 0;
-              const trackedInventory = isTrackedInventory(product.type);
-              const unavailable = trackedInventory && Number(product.availableStock || 0) <= 0;
-
-              return (
-                <ProductCard
-                  key={product.id}
-                  name={product.name}
-                  imageUrl={product.imageUrl || undefined}
-                  price={formatPosPrice(Number(product.sellingPrice || 0))}
-                  quantity={quantity}
-                  available={!unavailable}
-                  onDecrease={() => subtractQuantity(product)}
-                  onIncrease={() => addQuantity(product)}
+                <Input
+                  size="middle"
+                  allowClear
+                  prefix={<Search size={18} className="text-gray-500" />}
+                  placeholder="Search item here..."
+                  className=" !w-[40%] !rounded-lg !border-[#dad6e2] !bg-gray-200 !px-4 !text-[16px] lg:!max-w-[360px]"
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
                 />
-              );
-            })}
+
+                <div>k</div>
+
+                {/* <Button className="!h-14 !rounded-full !border-0 !bg-gradient-to-b !from-[#8f5ae0] !to-[#6e38c6] !px-8 !text-[16px] !font-semibold !text-white !shadow-[0_14px_28px_rgba(111,56,197,0.32)]" onClick={() => setOrderDrawerOpen(true)}>
+                New Order
+              </Button> */}
+              </div>
+            </div>
+
+            <div className=" px-3 bg-[#F5F5F5] py-4 md:px-4">
+              <div className="flex gap-4 overflow-x-auto ">
+                <CategoryCard title="All Menu" count={allProducts.length} active={!categoryId} onClick={() => setCategoryId(undefined)} />
+                {categories.map((category) => (
+                  <CategoryCard key={category.id} title={category.name} count={categoryCounts.get(category.id) || 0} active={categoryId === category.id} onClick={() => setCategoryId(category.id)} />
+                ))}
+              </div>
+            </div>
           </div>
 
-          {!visibleProducts.length && !productsLoading && (
-            <div className="mt-5 rounded-[26px] border border-dashed border-[#dbd6e2] bg-[#fafafa] px-6 py-16 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f2e9ff] text-[#7a39cc]">
-                <PackageSearch size={30} />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-gray-950">No products found</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">
-                Try a different search term or switch category. Products matching the current system data will appear here.
-              </p>
+          <div className="px-3  md:px-4 ">
+            <AppViewLoader loading={productsLoading || categoriesLoading} />
+
+            <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 ">
+              {visibleProducts.map((product) => {
+                const quantity = getCartItem(product.id)?.quantity || 0;
+                const trackedInventory = isTrackedInventory(product.type);
+                const unavailable = trackedInventory && Number(product.availableStock || 0) <= 0;
+
+                return (
+                  <ProductCard
+                    key={product.id}
+                    name={product.name}
+                    imageUrl={getProductImage(product)}
+                    price={formatPosPrice(Number(product.sellingPrice || 0))}
+                    quantity={quantity}
+                    available={!unavailable}
+                    onDecrease={() => subtractQuantity(product)}
+                    onIncrease={() => addQuantity(product)}
+                  />
+                );
+              })}
             </div>
-          )}
+
+            {!visibleProducts.length && !productsLoading && (
+              <div className="mt-5 rounded-[26px] border border-dashed border-[#dbd6e2] bg-[#fafafa] px-6 py-16 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f2e9ff] text-[#7a39cc]">
+                  <PackageSearch size={30} />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold text-gray-950">No products found</h3>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-gray-500">Try a different search term or switch category. Products matching the current system data will appear here.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className=" lg:flex flex-col justify-between  hidden lg:h-full  lg:w-[25%]">
+          <div>
+            <div className="p-[15.5px] border-b border-gray-200  flex justify-between">
+              <p className="text-xl font-medium">Cart</p>
+
+              <p className="text-sm flex items-center font-medium px-2 rounded-md bg-red-50 text-red-500">Clear Items</p>
+            </div>
+            <div className="">
+              <div className=" max-h-[50vh] overflow-y-scroll">
+                {cart.length ? (
+                  cart.map((item) => (
+                    <div key={item.id} className=" cursor-pointer border-b border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f9fafb_100%)] p-2 px-3 ">
+                      <div className="flex gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm  font-medium text-gray-950">{item.name}</p>
+                            </div>
+                            {/* <button type="button" className="mt-0.5 rounded-full p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" onClick={() => removeCartItem(item.id)}>
+                              <X size={16} />
+                            </button> */}
+                          </div>
+
+                          <div className=" flex justify-between items-center w-full">
+                            <p className="text-xs   tracking-[0.16em] font-normal text-gray-600">
+                              GHS {item.unitPrice || "-"} <span className=" text-[10px]">x {item.quantity}</span>
+                            </p>
+
+                            <p className="text-green-900 font-semibold"> GHS {item.quantity * item.unitPrice || "-"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className=" bg-gradient-to-br from-gray-50 to-white px-4 py-10 text-center">
+                    <ShoppingCart className="mx-auto text-gray-300" size={44} />
+                    <p className="mt-3 text-sm font-medium text-gray-700">Your cart is empty</p>
+                    <p className="mt-1 text-xs text-gray-500">Use the product grid to build the order.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className=" flex  border-2 mx-4 mb-3 rounded-sm overflow-clip  border-[#2d837d]">
+            <button className=" py-2 w-full  text-[#2d837d] cursor-pointer font-medium text-base ">Save Cart</button>
+            <button className=" py-2 w-full  text-white cursor-pointer font-medium text-base  bg-[#2d837d]">Checkout</button>
+          </div>
         </div>
       </div>
 
-      <Drawer
-        title="Current Order"
-        open={orderDrawerOpen}
-        onClose={() => setOrderDrawerOpen(false)}
-        width={520}
-        destroyOnClose
-        styles={{ body: { padding: 0, background: "#f7f8fd" } }}
-      >
+      <Drawer title="Current Order" open={orderDrawerOpen} onClose={() => setOrderDrawerOpen(false)} width={520} destroyOnClose styles={{ body: { padding: 0, background: "#f7f8fd" } }}>
         <div className="space-y-4 p-4">
           <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
             <div className="border-b border-gray-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 px-4 py-4">
@@ -598,20 +601,8 @@ export default function POSPage() {
                       />
                       <Button danger icon={<X size={14} />} onClick={() => removePaymentRow(payment.id)} />
                     </div>
-                    <InputNumber
-                      min={0}
-                      controls={false}
-                      className="mt-2 !w-full"
-                      placeholder="Amount"
-                      value={payment.amount}
-                      onChange={(value) => updatePaymentRow(payment.id, { amount: Number(value || 0) })}
-                    />
-                    <Input
-                      className="mt-2"
-                      placeholder="Reference"
-                      value={payment.reference}
-                      onChange={(event) => updatePaymentRow(payment.id, { reference: event.target.value })}
-                    />
+                    <InputNumber min={0} controls={false} className="mt-2 !w-full" placeholder="Amount" value={payment.amount} onChange={(value) => updatePaymentRow(payment.id, { amount: Number(value || 0) })} />
+                    <Input className="mt-2" placeholder="Reference" value={payment.reference} onChange={(event) => updatePaymentRow(payment.id, { reference: event.target.value })} />
                     <p className="mt-2 text-xs text-gray-400">Payment {index + 1}</p>
                   </div>
                 ))}
@@ -635,9 +626,7 @@ export default function POSPage() {
               <SummaryRow label="Subtotal" value={formatMoney(selectedCurrencyCode, subtotal)} />
               <SummaryRow label="Discounts" value={`- ${formatMoney(selectedCurrencyCode, discounts)}`} />
               {selectedTax ? (
-                selectedTax.items.map((tax) => (
-                  <SummaryRow key={`${tax.name}-${tax.value}`} label={`${tax.name} ${tax.value}%`} value={formatMoney(selectedCurrencyCode, taxableSubtotal * (Number(tax.value) / 100))} />
-                ))
+                selectedTax.items.map((tax) => <SummaryRow key={`${tax.name}-${tax.value}`} label={`${tax.name} ${tax.value}%`} value={formatMoney(selectedCurrencyCode, taxableSubtotal * (Number(tax.value) / 100))} />)
               ) : (
                 <SummaryRow label="Taxes" value={formatMoney(selectedCurrencyCode, taxAmount)} />
               )}

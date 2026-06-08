@@ -6,6 +6,11 @@ export enum ContactStatus {
 export interface ContactQueryParams {
   search?: string | "";
   status?: ContactStatus;
+  role?: ContactRole;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface Contact {
@@ -13,10 +18,17 @@ export interface Contact {
   name: string;
   displayName?: string;
   email?: string;
+  userId?: string;
   phone?: string;
   mobile?: string;
   addresses?: Address[];
   roles?: ContactRole[];
+  employeeAccess?: {
+    role?: string;
+    permissions?: string[];
+    status?: "pending" | "active" | "disabled";
+    isDefault?: boolean;
+  };
   note?: string;
   paymentTerms?: string;
   currencyId?: string | { id: string; code: string; name?: string };
@@ -43,15 +55,27 @@ export interface UpdateContactInput extends Partial<CreateContactInput> {
   defaultCurrencyId?: string;
 }
 
+export interface EmployeeAccessInput {
+  role?: string;
+  permissions?: string[];
+}
+
+export interface EmployeeAccessResponse {
+  contact: Contact;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+    phone?: string;
+    isActive: boolean;
+  };
+  message: string;
+}
+
 export enum ContactRole {
   CUSTOMER = "customer",
   SUPPLIER = "supplier",
-  WHOLESALER = "wholesaler",
   EMPLOYEE = "employee",
-  DISTRIBUTOR = "distributor",
-  RETAILER = "retailer",
-  PARTNER = "partner",
-  CONTRACTOR = "contractor",
 }
 
 export interface Address {

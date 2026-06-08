@@ -1,6 +1,6 @@
 import { baseApi } from "./baseApi";
 
-import { ChangePasswordInput, ForgotPasswordInput, LoginUserInput, RegisterUserInput, AuthResponse, RestPasswordInput } from "@/types/index";
+import { ChangePasswordInput, ForgotPasswordInput, LoginUserInput, RegisterUserInput, AuthResponse, RestPasswordInput, CurrentUser } from "@/types/index";
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -24,10 +24,17 @@ export const authApi = baseApi.injectEndpoints({
         method: "POST",
       }),
     }),
-    me: builder.query<void, void>({
+    me: builder.query<CurrentUser, void>({
       query: () => ({
         url: "auth/me",
         method: "GET",
+      }),
+    }),
+    switchStore: builder.mutation<AuthResponse, { storeId: string }>({
+      query: (body) => ({
+        url: "auth/switch-store",
+        method: "POST",
+        body,
       }),
     }),
 
@@ -57,4 +64,4 @@ export const authApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useLogoutMutation, useMeQuery, useChangePasswordMutation, useForgotPasswordMutation, useResetPasswordMutation } = authApi;
+export const { useLoginMutation, useRegisterMutation, useLogoutMutation, useMeQuery, useChangePasswordMutation, useForgotPasswordMutation, useResetPasswordMutation, useSwitchStoreMutation } = authApi;

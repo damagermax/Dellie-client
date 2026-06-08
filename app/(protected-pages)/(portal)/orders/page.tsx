@@ -4,12 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Modal, Tag, message } from "antd";
+import type { MenuProps } from "antd";
 import type { TableProps } from "antd/es/table";
 import { GrEdit } from "react-icons/gr";
 import { HiOutlineTrash } from "react-icons/hi2";
 import { LuEye, LuFileText } from "react-icons/lu";
 import { ReceiptText } from "lucide-react";
 import SaleFormModal from "@/components/orders/SaleFormModal";
+import SalesMobileList from "@/components/orders/SalesMobileList";
 import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/SaleShareDocumentModal";
 import { saleApiError, saleDocumentNumber, visibleSaleDeleteRestrictions } from "@/components/orders/saleUtils";
 import SettingsDrawer from "@/components/settings/SettingsDrawer";
@@ -17,9 +19,13 @@ import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdow
 import { AddButton } from "@/components/ui/AppButtons";
 import { AppNotFoundView } from "@/components/ui/AppNotFoundView";
 import { AppSearch } from "@/components/ui/AppSearchInput";
+import AppPaginationFooter from "@/components/ui/AppPaginationFooter";
 import AppTable from "@/components/ui/AppTable";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
+import MobileInfiniteScrollFooter from "@/components/ui/MobileInfiniteScrollFooter";
+import MobileListShimmer from "@/components/ui/MobileListShimmer";
 import useToggle from "@/hooks/UseToggle";
+import { useMobileInfiniteList } from "@/hooks/useMobileInfiniteList";
 import { formatDate } from "@/lib/dateUtils";
 import { useConvertSaleQuoteMutation, useDeleteSaleMutation, useGetSalesQuery, useReopenSaleMutation } from "@/lib/redux/services";
 import { Sale, SaleQueryParams } from "@/types/index";
@@ -42,7 +48,9 @@ export default function SalesPage() {
   const [reopeningSaleId, setReopeningSaleId] = useState<string>();
   const [convertingSaleId, setConvertingSaleId] = useState<string>();
   const [query, setQuery] = useState<SaleQueryParams>({ page: 1, limit: 20 });
-  const { data, error, isLoading, isError } = useGetSalesQuery(query, { refetchOnMountOrArgChange: true });
+  const { data, error, isLoading, isError, isFetching } = useGetSalesQuery(query, { refetchOnMountOrArgChange: true });
+  const meta = data?.meta;
+  const mobileList = useMobileInfiniteList({ query, response: data, isFetching, setQuery });
   const [cancelSale] = useDeleteSaleMutation();
   const [reopenSale] = useReopenSaleMutation();
   const [convertSaleQuote] = useConvertSaleQuoteMutation();
@@ -107,6 +115,80 @@ export default function SalesPage() {
     }
   };
 
+  const getSaleActions = (sale: Sale): MenuProps["items"] => [
+    {
+      key: "view",
+      label: <DropdownItemLabel icon={<LuEye size={15} />} text="View" />,
+      onClick: () => router.push(`/orders/${sale.id}`),
+    },
+    ...(sale.isDeleted
+      ? [
+          {
+            key: "reopen",
+            label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Reopen" />,
+            disabled: reopeningSaleId === sale.id,
+            onClick: () => reopen(sale),
+          },
+        ]
+      : sale.status === "draft"
+        ? [
+            {
+              key: "convert",
+              label: <DropdownItemLabel icon={<ReceiptText size={15} />} text="Convert to Sale" />,
+              disabled: convertingSaleId === sale.id,
+              onClick: () => convert(sale),
+            },
+            {
+              key: "edit",
+              label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Edit" />,
+              disabled: Boolean(sale.locked),
+              onClick: () => {
+                setSelectedSale(sale);
+                toggleEdit();
+              },
+            },
+            {
+              key: "delete",
+              label: <DropdownItemLabel icon={<HiOutlineTrash size={15} />} text="Cancel" danger />,
+              disabled: deletingSaleId === sale.id,
+              onClick: () => confirmCancel(sale),
+            },
+          ]
+        : [
+            {
+              key: "edit",
+              label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Edit" />,
+              disabled: Boolean(sale.locked || sale.receiptStatus === "received"),
+              onClick: () => {
+                setSelectedSale(sale);
+                toggleEdit();
+              },
+            },
+            {
+              key: "invoice",
+              label: <DropdownItemLabel icon={<LuFileText size={15} />} text="Share Invoice" />,
+              onClick: () => {
+                setSelectedSale(sale);
+                setShareDocumentType("invoice");
+              },
+            },
+            {
+              key: "receipt",
+              label: <DropdownItemLabel icon={<ReceiptText size={15} />} text="Share Receipt" />,
+              onClick: () => {
+                setSelectedSale(sale);
+                setShareDocumentType("receipt");
+              },
+            },
+            {
+              key: "delete",
+              label: <DropdownItemLabel icon={<HiOutlineTrash size={15} />} text="Cancel" danger />,
+              disabled: deletingSaleId === sale.id,
+              onClick: () => confirmCancel(sale),
+            },
+          ]),
+  ];
+
   const columns: TableProps<Sale>["columns"] = [
     {
       title: "# Number",
@@ -143,7 +225,7 @@ export default function SalesPage() {
     },
     { title: "Customer", key: "customer", render: (_, sale) => sale.contactId?.name || sale.contactId?.displayName || "Walk-in Customer" },
     { title: "Date", key: "date", render: (_, sale) => formatDate(sale.date) },
-    { title: "Expected Delivery", key: "deliveryDate", render: (_, sale) => formatDate(sale.deliveryDate) },
+    // { title: "Expected Delivery", key: "deliveryDate", render: (_, sale) => formatDate(sale.deliveryDate) },
     { title: "Location", key: "location", render: (_, sale) => sale.locationId?.name || "-" },
     { title: "Total Amount", key: "amount", render: (_, sale) => `${sale.currencyId?.code || ""} ${Number(sale.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
     { title: "Balance", key: "balance", render: (_, sale) => `${sale.currencyId?.code || ""} ${Number(sale.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
@@ -155,79 +237,7 @@ export default function SalesPage() {
       render: (_, sale) => (
         <ActionDropdown
           menu={{
-            items: [
-              {
-                key: "view",
-                label: <DropdownItemLabel icon={<LuEye size={15} />} text="View" />,
-                onClick: () => router.push(`/orders/${sale.id}`),
-              },
-              ...(sale.isDeleted
-                ? [
-                    {
-                      key: "reopen",
-                      label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Reopen" />,
-                      disabled: reopeningSaleId === sale.id,
-                      onClick: () => reopen(sale),
-                    },
-                  ]
-                : sale.status === "draft"
-                  ? [
-                      {
-                        key: "convert",
-                        label: <DropdownItemLabel icon={<ReceiptText size={15} />} text="Convert to Sale" />,
-                        disabled: convertingSaleId === sale.id,
-                        onClick: () => convert(sale),
-                      },
-                      {
-                        key: "edit",
-                        label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Edit" />,
-                        disabled: Boolean(sale.locked),
-                        onClick: () => {
-                          setSelectedSale(sale);
-                          toggleEdit();
-                        },
-                      },
-                      {
-                        key: "delete",
-                        label: <DropdownItemLabel icon={<HiOutlineTrash size={15} />} text="Cancel" danger />,
-                        disabled: deletingSaleId === sale.id,
-                        onClick: () => confirmCancel(sale),
-                      },
-                    ]
-                  : [
-                      {
-                        key: "edit",
-                        label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Edit" />,
-                        disabled: Boolean(sale.locked || sale.receiptStatus === "received"),
-                        onClick: () => {
-                          setSelectedSale(sale);
-                          toggleEdit();
-                        },
-                      },
-                      {
-                        key: "invoice",
-                        label: <DropdownItemLabel icon={<LuFileText size={15} />} text="Share Invoice" />,
-                        onClick: () => {
-                          setSelectedSale(sale);
-                          setShareDocumentType("invoice");
-                        },
-                      },
-                      {
-                        key: "receipt",
-                        label: <DropdownItemLabel icon={<ReceiptText size={15} />} text="Share Receipt" />,
-                        onClick: () => {
-                          setSelectedSale(sale);
-                          setShareDocumentType("receipt");
-                        },
-                      },
-                      {
-                        key: "delete",
-                        label: <DropdownItemLabel icon={<HiOutlineTrash size={15} />} text="Cancel" danger />,
-                        disabled: deletingSaleId === sale.id,
-                        onClick: () => confirmCancel(sale),
-                      },
-                    ]),
-            ],
+            items: getSaleActions(sale),
           }}
         />
       ),
@@ -236,20 +246,31 @@ export default function SalesPage() {
 
   return (
     <div>
-      <h3 className="pageTittle px-8">Sales</h3>
+      <h3 className="pageTittle px-4 md:px-8">Sales</h3>
       <hr className="border-gray-200/80" />
-      <div className="flex w-full justify-between px-8 py-8">
+      <div className="flex w-full flex-col gap-4 px-4 py-5 md:flex-row md:justify-between md:px-8 md:py-8">
         <AppSearch placeholder="Search sale number..." onReset={() => setQuery({ page: 1, limit: 20 })} onSearchChange={(values) => setQuery((current) => ({ ...current, ...values, page: 1 }))} />
-        <div className="flex gap-x-5">
+        <div className="flex gap-x-3 md:gap-x-5">
           <AddButton onClick={toggleForm} label="New Sale" />
           <SettingsDrawer />
         </div>
       </div>
 
-      <AppViewLoader loading={isLoading} />
+      <div className="hidden md:block">
+        <AppViewLoader loading={isLoading} />
+      </div>
       {isError && <p className="px-8 py-8 text-sm text-red-600">{saleApiError(error, "Sales could not be loaded.")}</p>}
       {!isError && <AppNotFoundView dataLength={data?.data?.length || 0} loading={isLoading} query={{ search: query.search }} entity="Sale" />}
-      {!isError && <AppTable columns={columns} dataSource={data?.data || []} rowKey="id" />}
+      {!isError && (
+        <>
+          <div className="hidden md:block">
+            <AppTable columns={columns} dataSource={data?.data || []} rowKey="id" pagination={false} />
+            <AppPaginationFooter entity="sales" dataLength={data?.data?.length || 0} meta={meta} page={data?.page || query.page} limit={data?.limit || query.limit} total={data?.total} onChange={(page, limit) => setQuery((current) => ({ ...current, page, limit }))} />
+          </div>
+          {isLoading ? <MobileListShimmer showAvatar={false} /> : <SalesMobileList sales={mobileList.items} getActions={getSaleActions} />}
+          <MobileInfiniteScrollFooter entity="sales" dataLength={mobileList.items.length} hasNextPage={mobileList.hasNextPage} isFetching={isFetching && !isLoading} sentinelRef={mobileList.sentinelRef} onLoadMore={mobileList.loadNextPage} />
+        </>
+      )}
 
       {formOpen && <SaleFormModal open={formOpen} toggle={toggleForm} />}
       {editOpen && selectedSale && <SaleFormModal open={editOpen} toggle={toggleEdit} sale={selectedSale} />}

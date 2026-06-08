@@ -10,13 +10,15 @@ import { ContactViewItemAction } from "./ContactsView";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
 import AppTag from "@/components/ui/AppTag";
 import { PhoneDisplay } from "@/components/ui/DisplayPhoneNumber";
-import { getContactColor, getContactInitials } from "../contactUtils";
+import { formatContactRole, getContactColor, getContactInitials } from "../contactUtils";
+import { Tag } from "antd";
 
 interface ContactTableProp extends ContactViewItemAction {
   contacts: Contact[];
+  pagination?: TableProps<Contact>["pagination"];
 }
 
-export default function ContactsTable({ contacts, onDelete, openEditModal, onActivate, onDeactivate }: ContactTableProp) {
+export default function ContactsTable({ contacts, onDelete, openEditModal, onActivate, onDeactivate, pagination }: ContactTableProp) {
   const columns: TableProps<Contact>["columns"] = [
     {
       title: "Name",
@@ -38,7 +40,10 @@ export default function ContactsTable({ contacts, onDelete, openEditModal, onAct
             <Link href={`/contacts/${contact.id}`} className="capitalize text-sm text-gray-900 hover:text-black hover:underline">
               {name || contact.displayName}
             </Link>
-            <p className="text-xs capitalize">{contact.roles?.length ? contact.roles.join(", ") : "No roles assigned"}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <p className="text-xs capitalize">{contact.roles?.length ? contact.roles.map((role) => formatContactRole(role)).join(", ") : "No roles assigned"}</p>
+              {contact.userId && <Tag className="!m-0 !rounded-full !px-2 text-[10px]" color="purple">Login enabled</Tag>}
+            </div>
           </div>
         </div>
       ),
@@ -99,7 +104,7 @@ export default function ContactsTable({ contacts, onDelete, openEditModal, onAct
 
   return (
     <>
-      <AppTable columns={columns} dataSource={contacts || []} className="custom-table" rowKey="id" />
+      <AppTable columns={columns} dataSource={contacts || []} className="custom-table" rowKey="id" pagination={pagination} />
     </>
   );
 }

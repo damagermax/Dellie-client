@@ -1,3 +1,6 @@
+import { CurrentUser } from "./user";
+import { StoreAccess } from "./store-access";
+
 export interface RegisterUserInput {
   email: string;
   password: string;
@@ -25,6 +28,8 @@ export interface ForgotPasswordInput {
 
 export interface AuthResponse {
   accessToken: string;
-  refreshToken: string;
-  user: {};
+  refreshToken?: string;
+  user: CurrentUser;
+  stores?: StoreAccess[];
+  activeStore?: StoreAccess;
 }

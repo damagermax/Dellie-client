@@ -56,6 +56,9 @@ export interface ProductQueryParams {
   type?: "STOCK" | "NON_STOCK" | "SERVICE" | "BUNDLE" | "PACKAGING";
   categoryId?: string;
   purchasable?: boolean;
+  stockStatus?: "in_stock" | "out_of_stock";
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
   page?: number;
   limit?: number;
 }

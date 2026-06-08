@@ -10,16 +10,20 @@ import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/Sa
 import SaleStockOperationModal from "@/components/orders/SaleStockOperationModal";
 import TransactionItemEditModal from "@/components/transactions/TransactionItemEditModal";
 import { saleApiError, saleDocumentNumber, visibleSaleDeleteRestrictions } from "@/components/orders/saleUtils";
+import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import useToggle from "@/hooks/UseToggle";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useConvertSaleQuoteMutation, useDeleteSaleFulfillmentMutation, useDeleteSaleMutation, useDeleteTransactionActionMutation, useGetSaleQuery, useReopenSaleMutation, useUpdateSaleFulfillmentMutation } from "@/lib/redux/services";
 import { TransactionType } from "@/types/transaction";
 import { Payment } from "@/types/transaction";
 import { PurchaseStockEvent } from "@/types/purchase";
+import { StorePermission } from "@/types/store-access";
 import { useState } from "react";
 
 export default function SaleDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
+  const { ready, hasAnyPermission, hasPermission } = usePermissions();
   const [editOpen, toggleEdit] = useToggle();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [fulfillOpen, toggleFulfill] = useToggle();
@@ -29,7 +33,9 @@ export default function SaleDetailPage() {
   const [selectedPayment, setSelectedPayment] = useState<Payment>();
   const [editingItem, setEditingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | null>(null);
   const [deletingItem, setDeletingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | null>(null);
-  const { data: sale, isLoading, isError, refetch } = useGetSaleQuery(orderId, { refetchOnMountOrArgChange: true });
+  const canViewSale = hasAnyPermission([StorePermission.SALES_VIEW, StorePermission.SALES_MANAGE]);
+  const canManageSale = hasPermission(StorePermission.SALES_MANAGE);
+  const { data: sale, isLoading, isError, refetch } = useGetSaleQuery(orderId, { skip: !orderId || !ready || !canViewSale, refetchOnMountOrArgChange: true });
   const [cancelSale, { isLoading: isCancelling }] = useDeleteSaleMutation();
   const [reopenSale, { isLoading: isReopening }] = useReopenSaleMutation();
   const [convertSaleQuote, { isLoading: isConverting }] = useConvertSaleQuoteMutation();
@@ -124,7 +130,8 @@ export default function SaleDetailPage() {
     }
   };
 
-  if (isLoading) return <AppViewLoader loading />;
+  if (!ready || isLoading) return <AppViewLoader loading />;
+  if (!canViewSale) return <AccessDeniedView title="Sales" description="You do not have permission to view this sale." />;
   if (isError || !sale) return <p className="px-8 py-10 text-sm text-red-600">This sale could not be loaded.</p>;
 
   const isCancelled = Boolean(sale.isDeleted);
@@ -179,6 +186,7 @@ export default function SaleDetailPage() {
         <SaleDetailContent
           sale={sale}
           currency={sale.currencyId?.code || ""}
+          canManage={canManageSale}
           canEdit={canEdit}
           canFulfill={canFulfill}
           isQuote={isQuote}

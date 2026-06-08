@@ -10,16 +10,20 @@ import TransactionItemEditModal from "@/components/transactions/TransactionItemE
 import PurchaseOrderSummary from "@/components/purchase-orders/PurchaseOrderSummary";
 import { purchaseApiError, visiblePurchaseDeleteRestrictions } from "@/components/purchase-orders/purchaseDetailUtils";
 import PaymentFormModal from "@/components/payment/PaymentFormModel";
+import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import useToggle from "@/hooks/UseToggle";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useDeletePurchaseFulfillmentMutation, useDeletePurchaseLandedCostMutation, useDeletePurchaseMutation, useDeleteTransactionActionMutation, useGetPurchaseQuery, useReopenPurchaseMutation, useUpdatePurchaseFulfillmentMutation } from "@/lib/redux/services";
 import { TransactionType } from "@/types/transaction";
 import { Payment } from "@/types/transaction";
 import { PurchaseLandedCost, PurchaseStockEvent } from "@/types/purchase";
+import { StorePermission } from "@/types/store-access";
 import { useState } from "react";
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
+  const { ready, hasAnyPermission, hasPermission } = usePermissions();
   const [editOpen, toggleEdit] = useToggle();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [fulfillOpen, toggleFulfill] = useToggle();
@@ -30,7 +34,9 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
   const [selectedLandedCost, setSelectedLandedCost] = useState<PurchaseLandedCost>();
   const [editingItem, setEditingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | null>(null);
   const [deletingItem, setDeletingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | null>(null);
-  const { data: purchase, isLoading, isError, refetch } = useGetPurchaseQuery(id, { refetchOnMountOrArgChange: true });
+  const canViewPurchase = hasAnyPermission([StorePermission.PURCHASES_VIEW, StorePermission.PURCHASES_MANAGE]);
+  const canManagePurchase = hasPermission(StorePermission.PURCHASES_MANAGE);
+  const { data: purchase, isLoading, isError, refetch } = useGetPurchaseQuery(id, { skip: !id || !ready || !canViewPurchase, refetchOnMountOrArgChange: true });
   const [cancelPurchase, { isLoading: isCancelling }] = useDeletePurchaseMutation();
   const [reopenPurchase, { isLoading: isReopening }] = useReopenPurchaseMutation();
   const [updatePurchaseFulfillment, { isLoading: isUpdatingFulfillment }] = useUpdatePurchaseFulfillmentMutation();
@@ -140,7 +146,8 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
-  if (isLoading) return <AppViewLoader loading />;
+  if (!ready || isLoading) return <AppViewLoader loading />;
+  if (!canViewPurchase) return <AccessDeniedView title="Purchases" description="You do not have permission to view this purchase." />;
   if (isError || !purchase) return <p className="px-8 py-10 text-sm text-red-600">This purchase could not be loaded.</p>;
 
   const isCancelled = Boolean(purchase.isDeleted);
@@ -202,6 +209,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
         <PurchaseOrderDetailContent
           purchase={purchase}
           currency={currency}
+          canManage={canManagePurchase}
           canEdit={canEdit}
           canReceive={canReceive}
           isCancelling={isCancelling}

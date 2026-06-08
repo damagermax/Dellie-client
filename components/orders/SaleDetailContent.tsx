@@ -15,6 +15,7 @@ import { saleDocumentNumber } from "./saleUtils";
 interface SaleDetailContentProps {
   sale: Sale;
   currency: string;
+  canManage?: boolean;
   canEdit: boolean;
   canFulfill: boolean;
   isQuote: boolean;
@@ -40,6 +41,7 @@ interface SaleDetailContentProps {
 export default function SaleDetailContent({
   sale,
   currency,
+  canManage = false,
   canEdit,
   canFulfill,
   isQuote,
@@ -72,51 +74,17 @@ export default function SaleDetailContent({
 
   const moreItems: MenuProps["items"] = isQuote
     ? [
-        {
-          key: "edit",
-          disabled: !canEdit,
-          icon: <Pencil size={15} />,
-          label: "Edit Quote",
-          onClick: onEdit,
-        },
-        {
-          type: "divider",
-        },
-        {
-          key: "delete",
-          icon: <Trash2 size={15} />,
-          danger: true,
-          disabled: isCancelling,
-          label: "Cancel Quote",
-          onClick: onDelete,
-        },
-      ]
-    : [
-        {
-          key: "edit",
-          disabled: !canEdit,
-          icon: <Pencil size={15} />,
-          label: "Edit Sale",
-          onClick: onEdit,
-        },
-        {
-          key: "refund",
-          icon: <RotateCcw size={15} />,
-          label: "Refund Payment",
-        },
-        {
-          key: "issue_credit",
-          icon: <RotateCcw size={15} />,
-          label: "Issue Credit",
-        },
-        {
-          key: "write_off",
-          icon: <Receipt size={15} />,
-          label: "Write Off Balance",
-        },
-        {
-          type: "divider",
-        },
+        ...(canManage
+          ? [
+              {
+                key: "edit",
+                disabled: !canEdit,
+                icon: <Pencil size={15} />,
+                label: "Edit Quote",
+                onClick: onEdit,
+              },
+            ]
+          : []),
         {
           key: "invoice",
           icon: <FileText size={15} />,
@@ -129,17 +97,76 @@ export default function SaleDetailContent({
           label: "Share Receipt",
           onClick: () => onShare("receipt"),
         },
+        ...(canManage
+          ? [
+              {
+                type: "divider",
+              },
+              {
+                key: "delete",
+                icon: <Trash2 size={15} />,
+                danger: true,
+                disabled: isCancelling,
+                label: "Cancel Quote",
+                onClick: onDelete,
+              },
+            ]
+          : []),
+      ]
+    : [
+        ...(canManage
+          ? [
+              {
+                key: "edit",
+                disabled: !canEdit,
+                icon: <Pencil size={15} />,
+                label: "Edit Sale",
+                onClick: onEdit,
+              },
+              {
+                key: "refund",
+                icon: <RotateCcw size={15} />,
+                label: "Refund Payment",
+              },
+              {
+                key: "issue_credit",
+                icon: <RotateCcw size={15} />,
+                label: "Issue Credit",
+              },
+              {
+                key: "write_off",
+                icon: <Receipt size={15} />,
+                label: "Write Off Balance",
+              },
+            ]
+          : []),
         {
-          type: "divider",
+          key: "invoice",
+          icon: <FileText size={15} />,
+          label: "Share Invoice",
+          onClick: () => onShare("invoice"),
         },
         {
-          key: "delete",
-          icon: <Trash2 size={15} />,
-          danger: true,
-          disabled: isCancelling,
-          label: "Cancel Sale",
-          onClick: onDelete,
+          key: "receipt",
+          icon: <ReceiptText size={15} />,
+          label: "Share Receipt",
+          onClick: () => onShare("receipt"),
         },
+        ...(canManage
+          ? [
+              {
+                type: "divider",
+              },
+              {
+                key: "delete",
+                icon: <Trash2 size={15} />,
+                danger: true,
+                disabled: isCancelling,
+                label: "Cancel Sale",
+                onClick: onDelete,
+              },
+            ]
+          : []),
       ];
 
   const handleMoreClick: MenuProps["onClick"] = ({ key }) => {
@@ -201,21 +228,27 @@ export default function SaleDetailContent({
               </Button>
             ) : isQuote ? (
               <>
-                <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" loading={isConverting} icon={<ReceiptText size={15} />} onClick={onConvert}>
-                  Convert to Sale
-                </Button>
+                {canManage && (
+                  <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" loading={isConverting} icon={<ReceiptText size={15} />} onClick={onConvert}>
+                    Convert to Sale
+                  </Button>
+                )}
                 <Dropdown menu={{ items: moreItems, onClick: handleMoreClick }} placement="bottomRight">
                   <Button type="text" className="!bg-gray-200/80" icon={<MoreHorizontal size={15} />} />
                 </Dropdown>
               </>
             ) : (
               <>
-                <Button type="primary" className="!border-2 !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<PackageCheck size={15} />} disabled={!canFulfill} onClick={onFulfill}>
-                  Fulfill
-                </Button>
-                <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<CreditCard size={15} />} disabled={Boolean(sale.locked)} onClick={onRecordPayment}>
-                  Record Payment
-                </Button>
+                {canManage && (
+                  <>
+                    <Button type="primary" className="!border-2 !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<PackageCheck size={15} />} disabled={!canFulfill} onClick={onFulfill}>
+                      Fulfill
+                    </Button>
+                    <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<CreditCard size={15} />} disabled={Boolean(sale.locked)} onClick={onRecordPayment}>
+                      Record Payment
+                    </Button>
+                  </>
+                )}
                 <Dropdown menu={{ items: moreItems, onClick: handleMoreClick }} placement="bottomRight">
                   <Button type="text" className="!bg-gray-200/80" icon={<MoreHorizontal size={15} />} />
                 </Dropdown>
@@ -248,7 +281,7 @@ export default function SaleDetailContent({
             <p className="text-sm leading-6 text-gray-700">{sale.note}</p>
           </div>
         )}
-        <SaleDetailTables sale={sale} currency={currency} isCancelled={isCancelled} onEditFulfillment={onEditFulfillment} onDeleteFulfillment={onDeleteFulfillment} onEditPayment={onEditPayment} onDeletePayment={onDeletePayment} />
+        <SaleDetailTables sale={sale} currency={currency} canManage={canManage} isCancelled={isCancelled} onEditFulfillment={onEditFulfillment} onDeleteFulfillment={onDeleteFulfillment} onEditPayment={onEditPayment} onDeletePayment={onDeletePayment} />
       </div>
     </section>
   );

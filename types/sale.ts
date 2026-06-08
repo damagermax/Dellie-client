@@ -67,6 +67,14 @@ export interface SaleQueryParams {
   limit?: number;
   search?: string;
   status?: "open" | "closed" | "draft";
+  fulfillmentStatus?: PurchaseReceiptStatus;
+  paymentStatus?: "paid" | "partial" | "unpaid";
+  customerId?: string;
+  source?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export type SalesResponse = PaginatedResponse<Sale>;

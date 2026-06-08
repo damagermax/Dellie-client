@@ -2,6 +2,9 @@ import React, { memo } from "react";
 import { Dropdown, type MenuProps } from "antd";
 
 import { FiSettings, FiHelpCircle, FiLogOut } from "react-icons/fi";
+import { useSelector } from "react-redux";
+
+import { RootState } from "@/lib/store";
 
 const items: MenuProps["items"] = [
   {
@@ -27,6 +30,8 @@ interface AccountProps {
 }
 
 const SidebarAccountDropdown = ({ isCollapsed }: AccountProps) => {
+  const currentUser = useSelector((state: RootState) => state.currentUser);
+
   const onMenuClick: MenuProps["onClick"] = ({ key }) => {
     switch (key) {
       case "settings":
@@ -44,29 +49,24 @@ const SidebarAccountDropdown = ({ isCollapsed }: AccountProps) => {
   };
 
   return (
-    <Dropdown menu={{ items }} placement="top">
+    <Dropdown menu={{ items, onClick: onMenuClick }} placement="top">
       <div className="p-3 border-t border-gray-200">
-        <Account isCollapsed={isCollapsed} />
+        <Account isCollapsed={isCollapsed} user={currentUser.user} />
       </div>
     </Dropdown>
   );
 };
 
-const Account = memo(({ isCollapsed }: AccountProps) => {
+const Account = memo(({ isCollapsed, user }: AccountProps & { user: { name?: string; email?: string } | null }) => {
   if (isCollapsed) return null;
-
-  const user = {
-    name: "User Name",
-    email: "user@example.com",
-    initial: "U",
-  };
+  const initial = user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U";
 
   return (
     <div className="flex items-center gap-x-3">
-      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600">{user.initial}</div>
+      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-600">{initial}</div>
       <div className="overflow-hidden">
-        <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+        <p className="text-sm font-medium text-gray-900 truncate">{user?.name || "Account"}</p>
+        <p className="text-xs text-gray-500 truncate">{user?.email || "Signed in"}</p>
       </div>
     </div>
   );

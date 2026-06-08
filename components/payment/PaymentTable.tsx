@@ -9,9 +9,10 @@ import { PaymentViewItemAction } from "./PaymentView";
 
 interface Props extends PaymentViewItemAction {
   payments: Payment[];
+  canManage?: boolean;
 }
 
-const PaymentTable = ({ payments, openEditModal, onDelete }: Props) => {
+const PaymentTable = ({ payments, openEditModal, onDelete, canManage = true }: Props) => {
   const columns: TableProps<Payment>["columns"] = [
     {
       title: "Date",
@@ -61,7 +62,7 @@ const PaymentTable = ({ payments, openEditModal, onDelete }: Props) => {
       align: "right",
       className: "!pr-8",
       width: 140,
-      render: (id, record) => <ActionDropdown openEditModal={() => openEditModal(record)} onDelete={() => onDelete(id)} />,
+      render: (id, record) => (canManage ? <ActionDropdown openEditModal={() => openEditModal(record)} onDelete={() => onDelete(id)} /> : null),
     },
   ];
   return (

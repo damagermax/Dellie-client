@@ -18,6 +18,7 @@ import { ProductListItem } from "@/types/index";
 import { RiSearchLine } from "react-icons/ri";
 import PreviewImage from "../ui/PreviewImage";
 import { Trash2 } from "lucide-react";
+import { CategoryType } from "@/types/category";
 
 interface BundleItemInput {
   productId: string;
@@ -67,14 +68,14 @@ const ItemType = [
     description: "Non-physical offering like work or time-based service.",
     key: ITEM_TYPE.SERVICE,
   },
-  {
-    title: "Bundle",
-    description: "Group of items or services sold together as one package.",
-    key: ITEM_TYPE.BUNDLE,
-  },
+  // {
+  //   title: "Bundle",
+  //   description: "Group of items or services sold together as one package.",
+  //   key: ITEM_TYPE.BUNDLE,
+  // },
 
   {
-    title: "Repacking",
+    title: "Packaging",
     description: "Sell this product as packs, cartons, or cases using stock from a stock product.",
     key: ITEM_TYPE.PACKAGING,
   },
@@ -573,7 +574,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
                   <>
                     <div className=" grid grid-cols-2 gap-x-5">
                       <Form.Item label="Category" name="categoryId">
-                        <SearchableCategorySelect />
+                        <SearchableCategorySelect type={CategoryType.PRODUCT} />
                       </Form.Item>
 
                       <div className=" grid grid-cols-2  gap-x-5">

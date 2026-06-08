@@ -1,15 +1,22 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-import { User, Store } from "@/types/index";
+import { CurrentUser, Store } from "@/types/index";
+import { StoreAccess, StorePermission } from "@/types/store-access";
 
 interface CurrentUserState {
-  user: User | null;
+  user: CurrentUser | null;
   store: Store | null;
+  stores: StoreAccess[];
+  activeStoreId: string | null;
+  permissions: StorePermission[];
 }
 
 const initialState: CurrentUserState = {
   user: null,
   store: null,
+  stores: [],
+  activeStoreId: null,
+  permissions: [],
 };
 
 const userSlice = createSlice({
@@ -19,7 +26,7 @@ const userSlice = createSlice({
     setCurrentUser: (state, action: PayloadAction<CurrentUserState>) => {
       return { ...state, ...action.payload };
     },
-    clearUser: (state) => {
+    clearUser: () => {
       return initialState;
     },
   },

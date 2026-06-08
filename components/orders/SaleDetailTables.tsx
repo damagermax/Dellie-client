@@ -15,6 +15,7 @@ type SaleTableView = "items" | "fulfillments" | "payments";
 interface SaleDetailTablesProps {
   sale: Sale;
   currency: string;
+  canManage?: boolean;
   isCancelled: boolean;
   onEditFulfillment: (event: PurchaseStockEvent) => void;
   onDeleteFulfillment: (event: PurchaseStockEvent) => void;
@@ -61,7 +62,7 @@ const tableOptions = [
   { label: <SegmentLabel icon={<CreditCard size={15} />} text="Payments" />, value: "payments" },
 ];
 
-export default function SaleDetailTables({ sale, currency, isCancelled, onEditFulfillment, onDeleteFulfillment, onEditPayment, onDeletePayment }: SaleDetailTablesProps) {
+export default function SaleDetailTables({ sale, currency, canManage = false, isCancelled, onEditFulfillment, onDeleteFulfillment, onEditPayment, onDeletePayment }: SaleDetailTablesProps) {
   const [view, setView] = React.useState<SaleTableView>("items");
   const itemColumns: TableProps<PurchaseLineItem>["columns"] = [
     { title: "Product", key: "productName", className: "!pl-8", width: "45%", render: (_, line) => <ProductCell name={line.productName} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} /> },
@@ -81,10 +82,10 @@ export default function SaleDetailTables({ sale, currency, isCancelled, onEditFu
       align: "right",
       className: "!pr-8",
       width: 80,
-      render: (_, event) => (isCancelled ? null : <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />),
+      render: (_, event) => (isCancelled || !canManage ? null : <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />),
     },
   ];
-  const paymentColumns: TableProps<any>["columns"] = [
+  const paymentColumns: TableProps<Payment>["columns"] = [
     { title: "Date", key: "date", className: "!pl-8", render: (_, payment) => formatDate(payment.date) },
     { title: "Reference", dataIndex: "reference", key: "reference", render: (reference) => reference || "-" },
     { title: "Type", dataIndex: "type", key: "type", render: (type: string) => type?.replaceAll("_", " ") || "Payment" },
@@ -96,13 +97,13 @@ export default function SaleDetailTables({ sale, currency, isCancelled, onEditFu
       align: "right",
       className: "!pr-8",
       width: 80,
-      render: (_, payment) => (isCancelled ? null : <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} />),
+      render: (_, payment) => (isCancelled || !canManage ? null : <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} />),
     },
   ];
   const tables = {
     items: { title: "Line Items", columns: itemColumns, data: sale.lineItems },
     fulfillments: { title: "Fulfillment History", columns: fulfillmentColumns, data: sale.fulfilledItems || [] },
-    payments: { title: "Payments", columns: paymentColumns, data: (sale.payments || []) as any[] },
+    payments: { title: "Payments", columns: paymentColumns, data: (sale.payments || []) as Payment[] },
   };
   const current = tables[view];
 
@@ -122,7 +123,7 @@ export default function SaleDetailTables({ sale, currency, isCancelled, onEditFu
       </div>
       <div>
         {current.data.length ? (
-          <AppTable columns={current.columns || []} dataSource={current.data as any[]} rowKey="id" pagination={false} scrollX={860} />
+          <AppTable columns={current.columns || []} dataSource={current.data} rowKey="id" pagination={false} scrollX={860} />
         ) : (
           <div className="border-t border-gray-200 py-12">
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`No ${current.title.toLowerCase()} recorded`} />

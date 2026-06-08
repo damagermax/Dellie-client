@@ -15,14 +15,19 @@ export interface Category {
   name: string;
   description?: string;
   status?: CategoryStatus;
+  showInStorefront?: boolean;
+  showInPOS?: boolean;
   parent?: string;
 }
 
 export interface CategoryCreateInput {
   name: string;
   type: CategoryType;
-  parentId?: String;
+  parentId?: string;
   description?: string;
+  status?: CategoryStatus;
+  showInStorefront?: boolean;
+  showInPOS?: boolean;
 }
 
 export interface CategoryUpdateInput extends Partial<CategoryCreateInput> {

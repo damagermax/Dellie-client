@@ -27,6 +27,7 @@ export default function ContactSummary({ contact }: ContactSummaryProps) {
         <Summary label="Legal Name" value={contact.name || "-"} />
         <Summary label="Currency" value={currency} />
         <Summary label="Payment Terms" value={contact.paymentTerms || "-"} />
+        <Summary label="Login Access" value={contact.userId ? "Enabled" : "Disabled"} />
         <Divider className="my-3" />
         <Summary label="Created" value={formatDate(contact.createdAt)} />
         <Summary label="Updated" value={formatDate(contact.updatedAt)} />

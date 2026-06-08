@@ -4,7 +4,7 @@ import { Table, TableProps } from "antd";
 import { useEffect, useState } from "react";
 
 interface AppTableProps<T> extends Omit<TableProps<T>, "dataSource" | "columns" | "pagination"> {
-  columns: any[];
+  columns: TableProps<T>["columns"];
   dataSource: T[];
   pageSize?: number;
   scrollY?: number;
@@ -23,6 +23,7 @@ const AppTable = <T extends object>({ columns, dataSource, pageSize = 100, scrol
 
   // Handle pagination prop
   const pagination = typeof paginationProp === "boolean" ? (paginationProp ? { pageSize } : false) : { pageSize, ...paginationProp };
+  const shouldShowPagination = typeof paginationProp === "boolean" ? dataSource.length > 10 && paginationProp : Boolean(paginationProp);
 
   if (!isMounted) {
     return <div className="w-full" style={{ height: scrollY }} />;
@@ -34,7 +35,7 @@ const AppTable = <T extends object>({ columns, dataSource, pageSize = 100, scrol
         <div className="min-w-full">
           <hr className=" border-gray-200/80" />
 
-          <Table<T> size="middle" columns={columns} dataSource={dataSource} className={className} pagination={dataSource.length > 10 ? pagination : false} scroll={{ x: scrollX }} rowKey="key" {...rest} />
+          <Table<T> size="middle" columns={columns} dataSource={dataSource} className={className} pagination={shouldShowPagination ? pagination : false} scroll={{ x: scrollX }} rowKey="key" {...rest} />
         </div>
       </div>
     );

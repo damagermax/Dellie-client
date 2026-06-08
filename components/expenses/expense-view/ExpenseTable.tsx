@@ -2,20 +2,19 @@
 
 import AppTable from "@/components/ui/AppTable";
 import type { TableProps } from "antd/es/table";
-import { ActionDropdown, DropdownItemLabel } from "../../ui/ActionDropdown";
-import AppTag from "../../ui/AppTag";
+import { ActionDropdown } from "../../ui/ActionDropdown";
 
 import { ExpenseViewItemAction } from "./ExpenseView";
 import { Expense } from "@/types/transaction";
 import { formatDate } from "@/lib/dateUtils";
 import Link from "next/link";
-import PreviewImage from "@/components/ui/PreviewImage";
 
 interface ExpenseTableProps extends ExpenseViewItemAction {
   expenses: Expense[];
+  pagination?: TableProps<Expense>["pagination"];
 }
 
-export default function ExpenseTable({ expenses, onDelete, openEditModal }: ExpenseTableProps) {
+export default function ExpenseTable({ expenses, onDelete, openEditModal, pagination }: ExpenseTableProps) {
   const columns: TableProps<Expense>["columns"] = [
     {
       title: "Description",
@@ -61,7 +60,6 @@ export default function ExpenseTable({ expenses, onDelete, openEditModal }: Expe
 
       render: (_, record) => {
         const paid = record.balance && record.balance >= 0;
-        const owing = record.balance && record.balance < 0;
         return (
           <p className={`line-clamp-1 text-ellipsis capitalize  font-semibold  w-fit px-2 py-0 rounded-xl  ${paid && "border border-amber-600 text-amber-600"}`}>
             {record.currency?.code} {record.amount?.toLocaleString()}
@@ -97,7 +95,7 @@ export default function ExpenseTable({ expenses, onDelete, openEditModal }: Expe
 
   return (
     <>
-      <AppTable columns={columns} dataSource={expenses ? expenses : []} className="custom-table" rowClassName="hover:bg-gray-50" />
+      <AppTable columns={columns} dataSource={expenses ? expenses : []} className="custom-table" rowClassName="hover:bg-gray-50" pagination={pagination} rowKey="id" />
     </>
   );
 }

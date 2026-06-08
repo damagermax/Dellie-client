@@ -44,14 +44,11 @@ export default function ContactDetailContent({ contact, isDeleting, onEdit, onDe
 
   return (
     <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
-      <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-4 pb-7 pt-5 md:px-8">
+      <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-4  py-5 md:px-8">
         <div className="flex flex-wrap items-start justify-center gap-5 md:justify-between">
           <div className="flex w-full items-start gap-x-4 md:w-fit">
             <GoBack />
             <div className="flex min-w-0 items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white" style={{ backgroundColor: getContactColor(title) }}>
-                {getContactInitials(title)}
-              </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="break-words text-2xl font-semibold tracking-normal text-gray-950">{title}</h1>
@@ -85,15 +82,15 @@ export default function ContactDetailContent({ contact, isDeleting, onEdit, onDe
 
           <Divider className="!mt-6" />
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
-            <Detail className="border-b border-r border-gray-200 pb-5 pr-5 sm:border-b-0 sm:pb-0" icon={<Mail size={17} />} label="Email" value={contact.email || "-"} />
-            <Detail className="border-b border-gray-200 pb-5 pl-5 sm:border-b-0 sm:border-r sm:pr-5 sm:pb-0" icon={<Phone size={17} />} label="Work Phone" value={contact.phone ? <PhoneDisplay phone={contact.phone} /> : "-"} />
-            <Detail className="border-r border-gray-200 pr-5 pt-5 sm:pl-5 sm:pt-0" icon={<Smartphone size={17} />} label="Mobile" value={contact.mobile ? <PhoneDisplay phone={contact.mobile} /> : "-"} />
+            <Detail className="border-b border-r border-gray-200 pb-5 pr-5 sm:border-b-0 sm:pb-0" icon={<Phone size={17} />} label="Work Phone" value={contact.phone ? <PhoneDisplay phone={contact.phone} /> : "-"} />
+            <Detail className="border-b border-gray-200 pb-5 pl-5 sm:border-b-0 sm:border-r sm:pr-5 sm:pb-0" icon={<Smartphone size={17} />} label="Mobile" value={contact.mobile ? <PhoneDisplay phone={contact.mobile} /> : "-"} />
+            <Detail className="border-r border-gray-200 pr-5 pt-5 sm:pl-5 sm:pt-0" icon={<Mail size={17} />} label="Email" value={contact.email || "-"} />
             <Detail className="pl-5 pt-5 sm:pt-0" icon={<WalletCards size={17} />} label="Currency" value={currency} />
           </div>
           <Divider className="!my-5" />
         </div>
 
-        <div className="px-4 pb-8 md:px-8">
+        <div className="px-4 hidden pb-8 md:px-8">
           <div className="grid gap-6 lg:grid-cols-2">
             <section>
               <p className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-gray-400">Addresses</p>
@@ -119,6 +116,27 @@ export default function ContactDetailContent({ contact, isDeleting, onEdit, onDe
               </div>
             </section>
           </div>
+
+          {contact.userId && (
+            <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-400">Employee Access</p>
+                  <p className="mt-1 text-sm text-gray-600">{contact.userId ? "Login access is enabled for this contact." : "This contact does not have login access."}</p>
+                  {contact.employeeAccess?.permissions?.length ? <p className="mt-2 text-xs text-gray-500">Permissions: {contact.employeeAccess.permissions.join(", ")}</p> : null}
+                </div>
+                {contact.userId ? (
+                  <Tag className="!m-0 !rounded-full !px-3" color="purple">
+                    Enabled
+                  </Tag>
+                ) : (
+                  <Tag className="!m-0 !rounded-full !px-3" color="default">
+                    Disabled
+                  </Tag>
+                )}
+              </div>
+            </div>
+          )}
 
           {contact.note && (
             <div className="mt-8">

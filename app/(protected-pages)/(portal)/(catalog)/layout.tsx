@@ -1,34 +1,28 @@
 "use client";
-import { Menu } from "antd";
 import type { MenuProps } from "antd";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { usePermissions } from "@/hooks/usePermissions";
+import { StorePermission } from "@/types/store-access";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { ready, hasPermission } = usePermissions();
 
-  const items: MenuItem[] = [
-    {
-      label: <Link href={"/products"}>Products</Link>,
-      key: "/products",
-    },
+  const items: MenuItem[] = [];
+  if (hasPermission(StorePermission.PRODUCTS_VIEW)) {
+    items.push({ label: <Link href="/products">Products</Link>, key: "/products" });
+  }
+  items.push(
+    { label: <Link href="/tags">Categories</Link>, key: "/tags" },
+    { key: "/discounts", label: <Link href="/discounts">Discounts</Link> },
+  );
 
-    {
-      label: <Link href={"/tags"}>Categories</Link>,
-      key: "/tags",
-    },
+  const hasTabItem = items.find((item) => item && "key" in item && item.key === pathname);
 
-    {
-      key: "/discounts",
-      label: <Link href={"/discounts"}>Discounts</Link>,
-    },
-  ];
-
-  const hasTabItem = items.find((item: any) => item.key === pathname);
-
+  if (!ready) return <>{children}</>;
   if (!hasTabItem) return <>{children}</>;
 
   // const onClick: MenuProps["onClick"] = (e) => {

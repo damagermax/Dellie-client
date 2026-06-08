@@ -4,32 +4,33 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { memo, useCallback, useState } from "react";
 import { GoChevronLeft, GoChevronRight, GoCreditCard, GoTag } from "react-icons/go";
-import { RiGroupLine, RiSettings2Line, RiShoppingBag2Line } from "react-icons/ri";
+import { RiGroupLine, RiShoppingBag2Line } from "react-icons/ri";
 import { TbLayoutGridAdd } from "react-icons/tb";
 import { LuPackage2 } from "react-icons/lu";
 import { IoWalletOutline } from "react-icons/io5";
+import { useSelector } from "react-redux";
 
-import { FaBarcode } from "react-icons/fa";
 import SidebarAccountDropdown from "./SidebarAccountDropdown";
+import { StoreSelector } from "./dashboard/StoreSelector";
+import { RootState } from "@/lib/store";
+import { StorePermission } from "@/types/store-access";
 
 // Memoize the menu items to prevent unnecessary re-renders
 const MENU_ITEMS = [
-  // { title: "Quick Setup", link: "/setup", icon: <RxRocket /> },
   { title: "Dashboard", link: "/dashboard", icon: <TbLayoutGridAdd /> },
-  { title: "Catalog", link: "/products", icon: <LuPackage2 /> },
-  { title: "Purchases", link: "/purchases", icon: <RiShoppingBag2Line /> },
-  { title: "Sales", link: "/orders", icon: <GoTag /> },
-  // { title: "Inventory", link: "/inventory", icon: <FaBarcode /> },
-  { title: "Expenses", link: "/expenses", icon: <GoCreditCard /> },
-  { title: "Contacts", link: "/contacts", icon: <RiGroupLine /> },
-  { title: "Cash Book", link: "/wallet", icon: <IoWalletOutline /> },
-  { title: "POS", link: "/pos", icon: <IoWalletOutline /> },
+  { title: "Catalog", link: "/products", icon: <LuPackage2 />, permission: StorePermission.PRODUCTS_VIEW },
+  { title: "Purchases", link: "/purchases", icon: <RiShoppingBag2Line />, permission: StorePermission.PURCHASES_VIEW },
+  { title: "Sales", link: "/orders", icon: <GoTag />, permission: StorePermission.SALES_VIEW },
+  { title: "Expenses", link: "/expenses", icon: <GoCreditCard />, permission: StorePermission.EXPENSES_VIEW },
+  { title: "Contacts", link: "/contacts", icon: <RiGroupLine />, permission: StorePermission.CONTACTS_VIEW },
+  { title: "Cash Book", link: "/wallet", icon: <IoWalletOutline />, permission: StorePermission.PAYMENTS_VIEW },
+  { title: "POS", link: "/pos", icon: <IoWalletOutline />, permission: StorePermission.SALES_VIEW },
   // { title: "Transactions", link: "/transactions", icon: <GoCreditCard /> },
   // { title: "Settings", link: "/settings/my-store", icon: <RiSettings2Line /> },
 ] as const;
 
 // Memoized component to prevent unnecessary re-renders
-const MenuItem = memo(({ title, link, icon, isActive, isCollapsed }: { title: string; link: string; icon: React.ReactNode; isActive: boolean; isCollapsed: boolean }) => (
+const MenuItem = memo(({ title, link, icon, isActive, isCollapsed = true }: { title: string; link: string; icon: React.ReactNode; isActive: boolean; isCollapsed: boolean }) => (
   <li>
     <Link
       href={link}
@@ -50,7 +51,7 @@ const Sidebar = () => {
   const toggleSidebar = useCallback(() => setIsCollapsed((prev) => !prev), []);
 
   return (
-    <aside className={cn("h-screen bg-gray-100 hidden md:block   border-gray-200 transition-all duration-300 relative flex-shrink-0", isCollapsed ? "w-14" : "w-56")} aria-label="Sidebar navigation">
+    <aside className={cn("h-screen bg-gray-100 hidden md:block    border-gray-200 transition-all duration-300 relative flex-shrink-0", isCollapsed ? "w-14 " : "w-56 ")} aria-label="Sidebar navigation">
       <div className="h-full flex flex-col  px-3">
         {/* Logo Section */}
         <div className={cn("py-[1rem]  border-b-0 border-gray-200 flex   ", isCollapsed ? "justify-center hidden" : "px-2 gap-x-2")}>
@@ -59,6 +60,8 @@ const Sidebar = () => {
         </div>
 
         {/* Navigation Links */}
+        <StoreSelector />
+
         <div className="flex-1 overflow-y-auto py-4">
           <PageLinks isCollapsed={isCollapsed} />
         </div>
@@ -85,11 +88,12 @@ interface PageLinksProps {
 
 const PageLinks = ({ isCollapsed }: PageLinksProps) => {
   const pathname = usePathname();
+  const permissions = useSelector((state: RootState) => state.currentUser.permissions);
 
   return (
     <nav>
       <ul className="grid ">
-        {MENU_ITEMS.map(({ title, link, icon }, index) => (
+        {MENU_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission)).map(({ title, link, icon }, index) => (
           <MenuItem key={link + title + index} title={title} link={link} icon={icon} isActive={pathname === link} isCollapsed={isCollapsed} />
         ))}
       </ul>

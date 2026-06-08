@@ -1,10 +1,18 @@
 import { baseApi, TAG_TYPES } from "./baseApi";
 
-import { Contact, CreateContactInput, UpdateContactInput, ContactQueryParams, PaginatedResponse } from "../../../types";
+import {
+  Contact,
+  CreateContactInput,
+  UpdateContactInput,
+  ContactQueryParams,
+  PaginatedResponse,
+  EmployeeAccessInput,
+  EmployeeAccessResponse,
+} from "../../../types";
 
 export const contactsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createContact: builder.mutation<void, CreateContactInput>({
+    createContact: builder.mutation<any, CreateContactInput>({
       query: (body) => ({
         url: "contacts",
         method: "POST",
@@ -12,7 +20,7 @@ export const contactsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [TAG_TYPES.CONTACTS],
     }),
-    updateContact: builder.mutation<void, UpdateContactInput>({
+    updateContact: builder.mutation<Contact, UpdateContactInput>({
       query: (body) => ({
         url: `contacts/${body.id}`,
         method: "PUT",
@@ -36,7 +44,30 @@ export const contactsApi = baseApi.injectEndpoints({
       query: (id) => `contacts/${id}`,
       providesTags: (result, error, id) => [{ type: TAG_TYPES.CONTACT, id }],
     }),
+    enableEmployeeAccess: builder.mutation<EmployeeAccessResponse, { id: string; body: EmployeeAccessInput }>({
+      query: ({ id, body }) => ({
+        url: `contacts/${id}/employee-access`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.CONTACT, id }, TAG_TYPES.CONTACTS, TAG_TYPES.USER],
+    }),
+    disableEmployeeAccess: builder.mutation<EmployeeAccessResponse, string>({
+      query: (id) => ({
+        url: `contacts/${id}/employee-access`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, id) => [{ type: TAG_TYPES.CONTACT, id }, TAG_TYPES.CONTACTS, TAG_TYPES.USER],
+    }),
   }),
 });
 
-export const { useCreateContactMutation, useUpdateContactMutation, useDeleteContactMutation, useGetContactsQuery, useGetContactQuery } = contactsApi;
+export const {
+  useCreateContactMutation,
+  useUpdateContactMutation,
+  useDeleteContactMutation,
+  useGetContactsQuery,
+  useGetContactQuery,
+  useEnableEmployeeAccessMutation,
+  useDisableEmployeeAccessMutation,
+} = contactsApi;
