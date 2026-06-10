@@ -10,8 +10,8 @@ export enum TransactionType {
   REFUND = "refund",
   WRITE_OFF = "write_off",
   EXPENSE = "expense",
+  PURCHASE_LANDED_COST = "purchase_landed_cost",
   ACCOUNT_OPENING_BALANCE = "account_opening_balance",
-  OPENING_CONTACT_BALANCE = "opening_contact_balance",
 }
 
 export interface ExpenseCategory {
@@ -87,9 +87,12 @@ export interface UpdateExpenseInput {
 export interface Transaction {
   id?: string;
   title?: string;
+  type?: TransactionType;
+  typeLabel?: string;
   note?: string;
   date?: Date;
   status: string;
+  statusLabel?: string;
   amount?: number;
   baseAmount?: number;
   rate?: number;
@@ -98,6 +101,12 @@ export interface Transaction {
   category?: { name: string; id: string };
   contact?: { name: string; displayName: string; id: string };
   paymentMethod?: { name: string; id: string };
+  linkedDocumentSnapshot?: { id?: string; type: string; number: string; status?: string };
+  linkedTransactionId?: string;
+  formattedTotal?: string;
+  formattedBalance?: string;
+  createdAtFormatted?: string;
+  updatedAtFormatted?: string;
   reference?: string;
   createdBy?: { name: string; id: string };
   attachments?: TransactionAttachment[];
@@ -145,4 +154,14 @@ export interface ExpenseSummary {
   toBePaid: number;
   paid: number;
   total: number;
+}
+
+export interface ContactTransactionQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  dateFrom?: string;
+  dateTo?: string;
 }

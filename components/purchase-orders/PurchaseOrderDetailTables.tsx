@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/dateUtils";
 import { Payment, Purchase, PurchaseLandedCost, PurchaseLineItem, PurchaseStockEvent } from "@/types/index";
 
 type PurchaseTableView = "items" | "fulfillments" | "landedCosts" | "payments";
+type PurchaseTableRow = PurchaseLineItem | PurchaseStockEvent | PurchaseLandedCost | Payment;
 
 interface PurchaseOrderDetailTablesProps {
   purchase: Purchase;
@@ -65,18 +66,7 @@ const tableOptions = [
   { label: <SegmentLabel icon={<CreditCard size={15} />} text="Payments" />, value: "payments" },
 ];
 
-export default function PurchaseOrderDetailTables({
-  purchase,
-  currency,
-  canManage = false,
-  isCancelled,
-  onEditFulfillment,
-  onDeleteFulfillment,
-  onEditPayment,
-  onDeletePayment,
-  onEditLandedCost,
-  onDeleteLandedCost,
-}: PurchaseOrderDetailTablesProps) {
+export default function PurchaseOrderDetailTables({ purchase, currency, canManage = false, isCancelled, onEditFulfillment, onDeleteFulfillment, onEditPayment, onDeletePayment, onEditLandedCost, onDeleteLandedCost }: PurchaseOrderDetailTablesProps) {
   const [view, setView] = React.useState<PurchaseTableView>("items");
   const availableOptions = React.useMemo(() => tableOptions.filter((option) => option.value !== "landedCosts" || Boolean(purchase.landedCosts?.length)), [purchase.landedCosts?.length]);
   React.useEffect(() => {
@@ -112,6 +102,8 @@ export default function PurchaseOrderDetailTables({
   ];
   const costColumns: TableProps<PurchaseLandedCost>["columns"] = [
     { title: "Cost", dataIndex: "name", key: "name", className: "!pl-8" },
+    { title: "Paid To", dataIndex: "contactName", key: "contactName", render: (value: string) => value || "-" },
+    { title: "Date", key: "date", render: (_, cost) => (cost.date ? formatDate(cost.date) : "-") },
     {
       title: "Applied To",
       key: "appliesTo",
@@ -189,23 +181,29 @@ export default function PurchaseOrderDetailTables({
         {current.data.length ? (
           <>
             <div className="md:hidden">
-            <MobilePurchaseList
-              view={view}
-              purchase={purchase}
-              currency={currency}
-              canManage={canManage}
-              isCancelled={isCancelled}
-              onEditFulfillment={onEditFulfillment}
-              onDeleteFulfillment={onDeleteFulfillment}
-              onEditPayment={onEditPayment}
-              onDeletePayment={onDeletePayment}
-              onEditLandedCost={onEditLandedCost}
-              onDeleteLandedCost={onDeleteLandedCost}
-            />
-          </div>
-          <div className="hidden md:block">
-              <AppTable columns={current.columns || []} dataSource={current.data} rowKey="id" pagination={false} scrollX={900} />
-          </div>
+              <MobilePurchaseList
+                view={view}
+                purchase={purchase}
+                currency={currency}
+                canManage={canManage}
+                isCancelled={isCancelled}
+                onEditFulfillment={onEditFulfillment}
+                onDeleteFulfillment={onDeleteFulfillment}
+                onEditPayment={onEditPayment}
+                onDeletePayment={onDeletePayment}
+                onEditLandedCost={onEditLandedCost}
+                onDeleteLandedCost={onDeleteLandedCost}
+              />
+            </div>
+            <div className="hidden md:block">
+              <AppTable<PurchaseTableRow>
+                columns={(current.columns || []) as TableProps<PurchaseTableRow>["columns"]}
+                dataSource={current.data as unknown as PurchaseTableRow[]}
+                rowKey="id"
+                pagination={false}
+                scrollX={900}
+              />
+            </div>
           </>
         ) : (
           <div className="border-t border-gray-200 py-12">
@@ -268,7 +266,7 @@ function MobilePurchaseList({
         {(purchase.fulfilledItems || []).map((event) => (
           <MobileCard key={event.id}>
             <div className="flex items-start justify-between gap-3">
-            <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+              <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
               {!isCancelled && canManage && <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />}
             </div>
             <div className="mt-2 text-[13px] text-gray-500 flex items-center justify-between gap-3">
@@ -296,9 +294,14 @@ function MobilePurchaseList({
               {currency} {Number(cost.amount).toFixed(2)}
             </p>
             <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+              <span className="text-gray-500">{cost.contactName || "No contact"}</span>
+              <span className="text-gray-500">{cost.date ? formatDate(cost.date) : "-"}</span>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3 text-sm">
               <span className="text-gray-500 capitalize ">Allocation: {cost.allocationMethod.replaceAll("_", " ").toLowerCase()}</span>
               <span className="text-gray-500">{cost.appliesTo === "SELECTED_ITEMS" ? `${cost.lineItemIds.length} selected product${cost.lineItemIds.length === 1 ? "" : "s"}` : "All products"}</span>
             </div>
+            {cost.note ? <MobileTotal label="Note" value={cost.note} /> : null}
           </MobileCard>
         ))}
       </div>
@@ -309,17 +312,17 @@ function MobilePurchaseList({
     <div className="grid gap-3  pb-6">
       {((purchase.payments || []) as Payment[]).map((payment, index) => (
         <MobileCard key={payment.id || index}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-base font-semibold capitalize text-gray-900">{payment.type?.replaceAll("_", " ") || "Payment"}</p>
-                <p className="mt-1 text-xs text-gray-500">{formatDate(payment.date)}</p>
-              </div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-base font-semibold capitalize text-gray-900">{payment.type?.replaceAll("_", " ") || "Payment"}</p>
+              <p className="mt-1 text-xs text-gray-500">{formatDate(payment.date)}</p>
+            </div>
             {!isCancelled && canManage && <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} />}
           </div>
           <p className="mt-3 shrink-0 text-base font-semibold text-gray-900">
             {currency} {Number(payment.amount || 0).toFixed(2)}
           </p>
-          <MobileTotal label="Reference" value={payment.reference || "-"} />
+          <MobileTotal label="Note" value={payment.note || "-"} />
         </MobileCard>
       ))}
     </div>

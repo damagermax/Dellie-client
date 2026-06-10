@@ -18,12 +18,12 @@ export interface Contact {
   name: string;
   displayName?: string;
   email?: string;
-  userId?: string;
   phone?: string;
   mobile?: string;
   addresses?: Address[];
   roles?: ContactRole[];
   employeeAccess?: {
+    username?: string;
     role?: string;
     permissions?: string[];
     status?: "pending" | "active" | "disabled";
@@ -46,8 +46,6 @@ export interface CreateContactInput {
   roles?: ContactRole[];
   status: ContactStatus;
   currencyId: string;
-  balanceAmount?: number;
-  balanceRate: number;
 }
 
 export interface UpdateContactInput extends Partial<CreateContactInput> {
@@ -67,6 +65,7 @@ export interface EmployeeAccessResponse {
     email: string;
     name: string;
     phone?: string;
+    username?: string;
     isActive: boolean;
   };
   message: string;

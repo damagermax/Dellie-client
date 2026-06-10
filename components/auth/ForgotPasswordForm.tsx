@@ -6,13 +6,14 @@ import Link from "next/link";
 import { InputFormItem } from "../ui/AppFormItems";
 import { BaseButton } from "../ui/AppButtons";
 import { useForgotPasswordMutation } from "@/lib/redux/services";
+import { ForgotPasswordInput } from "@/types";
 
 export default function ForgotPasswordForm() {
   const [signinForm] = Form.useForm();
 
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: ForgotPasswordInput) => {
     await forgotPassword(values);
   };
 
@@ -20,18 +21,16 @@ export default function ForgotPasswordForm() {
     <div className=" w-full bg-white p-6 rounded-3xl">
       <p className=" text-center w-full pb-2 text-xl font-semibold">Forgot Password</p>
       <div className=" mb-6 text-center flex items-center justify-center">
-        {" "}
-        <p className=" w-[70%]">Enter your email address below and we’ll send you a link to reset your password.</p>
+        <p className=" w-[70%]">Enter your 8-character username to reset an employee account password. Owner accounts can still use their email here.</p>
       </div>
       <Form size="small" disabled={isLoading} form={signinForm} onFinish={handleSubmit} className="auth grid  gap-x-5" layout={"vertical"}>
         <InputFormItem
           variant="underlined"
-          label="Email"
-          name="email"
-          placeholder="maxwellxxx@gmail.com"
+          label="Username or Email"
+          name="username"
+          placeholder="maxwell1"
           rules={[
-            { required: true, message: "Please enter your email" },
-            { type: "email", message: "Please enter a valid email" },
+            { required: true, message: "Please enter your username or email" },
           ]}
         />
       </Form>

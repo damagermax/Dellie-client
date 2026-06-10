@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
 import { Badge, Button, Divider, Drawer, Form, Input, InputNumber, Select, message } from "antd";
-import { Beef, CakeSlice, Coffee, Drumstick, Flame, Fish, PackageSearch, Salad, Search, ShoppingBag, ShoppingCart, Sandwich, Sparkles, UtensilsCrossed, WalletCards, X } from "lucide-react";
+import { PackageSearch, Search, ShoppingCart, Sparkles, WalletCards, X } from "lucide-react";
 import ContactsFormModal from "@/components/contacts/ContactsFormModal";
 import { SearchableContactSelect } from "@/components/contacts/SeachableContactSelect";
 import { SearchableLocationSelect } from "@/components/location/SearchableLocationSelect";
@@ -18,6 +17,7 @@ import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/Sa
 import CategoryCard from "./CategoryCard";
 import ProductCard from "./ProductCard";
 import QuantityControl from "./QuantityControl";
+import { MdOutlineHistoryToggleOff, MdOutlineShareLocation } from "react-icons/md";
 
 type PosCartItem = {
   id: string;
@@ -102,12 +102,12 @@ export default function POSPage() {
   const { data: accounts } = useGetPaymentAccountsQuery({});
   const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery({ type: CategoryType.PRODUCT, status: CategoryStatus.ACTIVE });
   const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId, { skip: !selectedCurrencyId });
-  const { data: allProductsData } = useGetProductsQuery({ inPOS: true, limit: 500 });
+  const { data: allProductsData } = useGetProductsQuery({ inPOS: true, limit: 100 });
   const { data: filteredProductsData, isLoading: productsLoading } = useGetProductsQuery({
     search: debouncedSearch,
     inPOS: true,
     categoryId,
-    limit: 200,
+    limit: 100,
   });
   const [createSale, { isLoading: creatingSale }] = useCreateSaleMutation();
   const [createPayment, { isLoading: creatingPayment }] = useCreateTransactionActionMutation();
@@ -364,11 +364,16 @@ export default function POSPage() {
   return (
     <div className="min-h-screen  ">
       <div className="flex h-screen w-full items-start  -bg-[#f7f8fd] ">
-        <div className="mx-auto  h-screen overflow-scroll  w-full lg:w-[75%] border-r border-gray-200  bg-[#F5F5F5] ">
+        <div className="mx-auto  h-screen overflow-scroll  w-full lg:w-[70%] border-r border-gray-200  bg-[#F5F5F5] ">
           <div className="sticky top-0 z-10 ">
             <div className="border-b bg-gray-50 border-[#ece8f2] px-3 py-3 ">
-              <div className="flex flex-col gap-3 md:flex-row lg:items-center lg:justify-between">
-                <div>k</div>
+              <div className="flex  flex-col gap-3 md:flex-row lg:items-center lg:justify-between">
+                <div className=" px-3">
+                  <p className="font-medium text-xs flex items-center gap-1 text-gray-700">
+                    <MdOutlineShareLocation /> <span> POS Location</span>
+                  </p>
+                  <p className=" text-green-700 font-semibold">{defaultLocation?.name || "No location set"}</p>
+                </div>
 
                 <Input
                   size="middle"
@@ -380,7 +385,10 @@ export default function POSPage() {
                   onChange={(event) => setSearchValue(event.target.value)}
                 />
 
-                <div>k</div>
+                <div className=" text-lg font-semibold bg-gray-200/50 px-3 py-0.5 rounded-sm flex items-center gap-1 text-gray-700">
+                  <MdOutlineHistoryToggleOff />
+                  <p>History</p>
+                </div>
 
                 {/* <Button className="!h-14 !rounded-full !border-0 !bg-gradient-to-b !from-[#8f5ae0] !to-[#6e38c6] !px-8 !text-[16px] !font-semibold !text-white !shadow-[0_14px_28px_rgba(111,56,197,0.32)]" onClick={() => setOrderDrawerOpen(true)}>
                 New Order
@@ -434,7 +442,7 @@ export default function POSPage() {
           </div>
         </div>
 
-        <div className=" lg:flex flex-col justify-between  hidden lg:h-full  lg:w-[25%]">
+        <div className=" lg:flex flex-col justify-between  hidden lg:h-full  lg:w-[30%]">
           <div>
             <div className="p-[15.5px] border-b border-gray-200  flex justify-between">
               <p className="text-xl font-medium">Cart</p>
@@ -458,8 +466,10 @@ export default function POSPage() {
                           </div>
 
                           <div className=" flex justify-between items-center w-full">
-                            <p className="text-xs   tracking-[0.16em] font-normal text-gray-600">
-                              GHS {item.unitPrice || "-"} <span className=" text-[10px]">x {item.quantity}</span>
+                            <p className="text-xs    font-normal text-gray-600">
+                              {"("} GHS {item.unitPrice || "-"} <span className=" text-[10px]">x</span>
+                              {item.quantity}
+                              {")"}
                             </p>
 
                             <p className="text-green-900 font-semibold"> GHS {item.quantity * item.unitPrice || "-"}</p>
@@ -485,176 +495,6 @@ export default function POSPage() {
           </div>
         </div>
       </div>
-
-      <Drawer title="Current Order" open={orderDrawerOpen} onClose={() => setOrderDrawerOpen(false)} width={520} destroyOnClose styles={{ body: { padding: 0, background: "#f7f8fd" } }}>
-        <div className="space-y-4 p-4">
-          <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-            <div className="border-b border-gray-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 px-4 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-gray-950">Customer</h2>
-                  <p className="text-xs text-gray-500">Attach a customer or continue as walk-in.</p>
-                </div>
-                <Button type="text" className="!h-9 !rounded-full !border !border-gray-200 !bg-white/90 !px-3" icon={<ShoppingCart size={16} />} onClick={toggleCustomerOpen}>
-                  Add
-                </Button>
-              </div>
-            </div>
-            <div className="p-4">
-              <Form form={form} layout="vertical" initialValues={{ rate: 1 }}>
-                <Form.Item name="contactId" label="Walk-in or customer">
-                  <SearchableContactSelect onAddContact={toggleCustomerOpen} />
-                </Form.Item>
-                <div className="grid grid-cols-2 gap-3">
-                  <Form.Item name="locationId" label="Location" className="!mb-0" rules={[{ required: true, message: "Select location" }]}>
-                    <SearchableLocationSelect />
-                  </Form.Item>
-                  <Form.Item name="currencyId" label="Currency" className="!mb-0" rules={[{ required: true, message: "Select currency" }]}>
-                    <SearchableCurrenciesSelect />
-                  </Form.Item>
-                </div>
-                <Form.Item name="rate" label="Exchange rate" className="!mb-0 mt-3" rules={[{ required: true, message: "Enter exchange rate" }]}>
-                  <InputNumber className="!w-full" min={0.000001} controls={false} placeholder="1" />
-                </Form.Item>
-              </Form>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-            <div className="border-b border-gray-100 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 px-4 py-4 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold">Cart</h2>
-                  <p className="text-xs text-white/70">
-                    {totalItems} item{totalItems === 1 ? "" : "s"}
-                  </p>
-                </div>
-                <Badge count={cart.length} className="!text-white" />
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="space-y-3">
-                {cart.length ? (
-                  cart.map((item) => (
-                    <div key={item.id} className="rounded-[24px] border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f9fafb_100%)] p-3 shadow-sm">
-                      <div className="flex gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-gray-950">{item.name}</p>
-                              <p className="text-[11px] uppercase tracking-[0.16em] text-gray-400">{item.sku || "-"}</p>
-                            </div>
-                            <button type="button" className="mt-0.5 rounded-full p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" onClick={() => removeCartItem(item.id)}>
-                              <X size={16} />
-                            </button>
-                          </div>
-                          <div className="mt-2 flex items-center justify-between">
-                            <p className="text-sm font-semibold text-gray-900">{formatMoney(selectedCurrencyCode, item.unitPrice)}</p>
-                            <p className="text-xs text-gray-500">{typeof item.availableStock === "number" ? `${Number(item.availableStock || 0)} left` : "No stock tracking"}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <QuantityControl value={item.quantity} onDecrease={() => changeCartItemQuantity(item.id, -1)} onIncrease={() => changeCartItemQuantity(item.id, 1)} decreaseDisabled={item.quantity <= 0} />
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-[24px] border border-dashed border-gray-300 bg-gradient-to-br from-gray-50 to-white px-4 py-10 text-center">
-                    <ShoppingCart className="mx-auto text-gray-300" size={44} />
-                    <p className="mt-3 text-sm font-medium text-gray-700">Your cart is empty</p>
-                    <p className="mt-1 text-xs text-gray-500">Use the product grid to build the order.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-            <div className="border-b border-gray-100 bg-gradient-to-r from-white to-slate-50 px-4 py-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-gray-950">Payments</h2>
-                <Button type="text" icon={<WalletCards size={16} />} onClick={addPaymentRow}>
-                  Add payment
-                </Button>
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="space-y-3">
-                {payments.map((payment, index) => (
-                  <div key={payment.id} className="rounded-[24px] border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-3 shadow-sm">
-                    <div className="grid grid-cols-[1fr_auto] gap-2">
-                      <Select
-                        placeholder="Payment method"
-                        value={payment.accountId}
-                        onChange={(value) => updatePaymentRow(payment.id, { accountId: value })}
-                        options={paymentAccounts.map((account) => ({
-                          value: account.id,
-                          label: (
-                            <div className="flex items-center gap-2">
-                              <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold uppercase text-gray-500">{account.type.charAt(0)}</span>
-                              <span>{account.name}</span>
-                            </div>
-                          ),
-                        }))}
-                      />
-                      <Button danger icon={<X size={14} />} onClick={() => removePaymentRow(payment.id)} />
-                    </div>
-                    <InputNumber min={0} controls={false} className="mt-2 !w-full" placeholder="Amount" value={payment.amount} onChange={(value) => updatePaymentRow(payment.id, { amount: Number(value || 0) })} />
-                    <Input className="mt-2" placeholder="Reference" value={payment.reference} onChange={(event) => updatePaymentRow(payment.id, { reference: event.target.value })} />
-                    <p className="mt-2 text-xs text-gray-400">Payment {index + 1}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-hidden rounded-[28px] border border-gray-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-            <div className="border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white px-4 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-gray-950">Totals</h2>
-                  <p className="text-xs text-gray-500">A quick glance at the sale.</p>
-                </div>
-                <Button type="text" icon={<Sparkles size={16} />} onClick={toggleTaxSelector}>
-                  Tax
-                </Button>
-              </div>
-            </div>
-            <div className="p-4">
-              <SummaryRow label="Subtotal" value={formatMoney(selectedCurrencyCode, subtotal)} />
-              <SummaryRow label="Discounts" value={`- ${formatMoney(selectedCurrencyCode, discounts)}`} />
-              {selectedTax ? (
-                selectedTax.items.map((tax) => <SummaryRow key={`${tax.name}-${tax.value}`} label={`${tax.name} ${tax.value}%`} value={formatMoney(selectedCurrencyCode, taxableSubtotal * (Number(tax.value) / 100))} />)
-              ) : (
-                <SummaryRow label="Taxes" value={formatMoney(selectedCurrencyCode, taxAmount)} />
-              )}
-              <div className="mt-4 rounded-[24px] bg-gradient-to-br from-slate-950 to-indigo-950 px-4 py-4 text-white shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Grand Total</p>
-                <p className="mt-2 text-3xl font-semibold tracking-tight">{formatMoney(selectedCurrencyCode, grandTotal)}</p>
-                <p className="mt-1 text-sm text-white/65">Ready to collect from the customer.</p>
-              </div>
-              <Divider className="!my-3" />
-              <SummaryRow label="Total Paid" value={formatMoney(selectedCurrencyCode, totalPaid)} />
-              <SummaryRow label="Remaining Balance" value={formatMoney(selectedCurrencyCode, balance)} strong />
-              {change > 0 && <SummaryRow label="Change" value={formatMoney(selectedCurrencyCode, change)} />}
-
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <Button size="large" className="!h-11 !rounded-2xl" onClick={saveDraft}>
-                  Hold Sale
-                </Button>
-                <Button size="large" className="!h-11 !rounded-2xl" onClick={clearCart}>
-                  Clear Cart
-                </Button>
-              </div>
-              <Button size="large" type="primary" block className="mt-3 !h-12 !rounded-2xl !border-0 !bg-gradient-to-r !from-indigo-600 !to-violet-600 !shadow-lg !shadow-indigo-200" loading={loading} onClick={submitCheckout} disabled={!cart.length}>
-                Complete Sale
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Drawer>
 
       {customerOpen && <ContactsFormModal open={customerOpen} toggle={toggleCustomerOpen} />}
       {openTaxSelector && (

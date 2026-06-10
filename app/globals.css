@@ -41,6 +41,19 @@ body {
   font-weight: 400;
 }
 
+html,
+body,
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none;
+}
+
 .custom-table .ant-table-thead > tr > th {
   background-color: -#ffffff !important; /* Change to any color */
   text-transform: capitalize;

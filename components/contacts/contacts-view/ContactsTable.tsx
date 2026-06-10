@@ -42,7 +42,7 @@ export default function ContactsTable({ contacts, onDelete, openEditModal, onAct
             </Link>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <p className="text-xs capitalize">{contact.roles?.length ? contact.roles.map((role) => formatContactRole(role)).join(", ") : "No roles assigned"}</p>
-              {contact.userId && <Tag className="!m-0 !rounded-full !px-2 text-[10px]" color="purple">Login enabled</Tag>}
+              {contact.employeeAccess?.status && contact.employeeAccess.status !== "disabled" && <Tag className="!m-0 !rounded-full !px-2 text-[10px]" color="purple">Login enabled</Tag>}
             </div>
           </div>
         </div>

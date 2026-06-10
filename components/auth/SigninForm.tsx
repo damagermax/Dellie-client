@@ -38,13 +38,13 @@ export default function SigninForm() {
           rules={[
             {
               required: true,
-              message: "Enter your email!",
+              message: "Enter your username or email!",
             },
           ]}
           variant="underlined"
-          label="Email"
-          name="email"
-          placeholder="bambixx@gmail.com"
+          label="Username or Email"
+          name="identifier"
+          placeholder="maxwell1"
         />
 
         <InputFormItem
@@ -74,7 +74,7 @@ export default function SigninForm() {
 
       <div className=" text-center my-5">
         <Link href="/auth/signup" className=" text-center text-blue-800">
-          Don't have an account? create one!
+          Don&apos;t have an account? create one!
         </Link>
       </div>
 

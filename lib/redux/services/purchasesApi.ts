@@ -51,15 +51,15 @@ export const purchasesApi = baseApi.injectEndpoints({
     }),
     addPurchaseLandedCost: builder.mutation<Purchase, AddPurchaseLandedCostInput>({
       query: ({ id, ...body }) => ({ url: `purchases/${id}/landed-costs`, method: "POST", body }),
-      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.TRANSACTIONS, TAG_TYPES.CONTACTS],
     }),
     updatePurchaseLandedCost: builder.mutation<Purchase, UpdatePurchaseLandedCostInput>({
       query: ({ id, landedCostId, ...body }) => ({ url: `purchases/${id}/landed-costs/${landedCostId}`, method: "PATCH", body }),
-      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.TRANSACTIONS, TAG_TYPES.CONTACTS],
     }),
     deletePurchaseLandedCost: builder.mutation<Purchase, { id: string; landedCostId: string }>({
       query: ({ id, landedCostId }) => ({ url: `purchases/${id}/landed-costs/${landedCostId}`, method: "DELETE" }),
-      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.TRANSACTIONS, TAG_TYPES.CONTACTS],
     }),
   }),
 });

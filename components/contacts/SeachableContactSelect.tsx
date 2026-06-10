@@ -6,8 +6,8 @@ import { useState } from "react";
 import { IoPersonCircleOutline } from "react-icons/io5";
 
 interface SearchableContactSelectProps {
-  value?: string[];
-  onChange?: (value: string[]) => void;
+  value?: string | string[];
+  onChange?: (value: string | string[]) => void;
   onAddContact: () => void;
   mode?: "multiple" | undefined;
 }
@@ -17,7 +17,7 @@ export function SearchableContactSelect({ value, onChange, mode, onAddContact }:
 
   const debounceContactsQuery = useDebouncedValue(contactsQuery);
 
-  const { data: contacts, isSuccess, isLoading } = useGetContactsQuery(debounceContactsQuery);
+  const { data: contacts, isLoading } = useGetContactsQuery(debounceContactsQuery);
 
   return (
     <Select

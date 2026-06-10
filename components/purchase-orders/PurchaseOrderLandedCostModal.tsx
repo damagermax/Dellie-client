@@ -1,12 +1,16 @@
 "use client";
 
 import React from "react";
-import { Form, Input, InputNumber, Segmented, Select, Table, message } from "antd";
+import { DatePicker, Form, Input, InputNumber, Segmented, Select, Table, message } from "antd";
 import type { TableProps } from "antd/es/table";
 import { AppModal } from "@/components/ui/AppModal";
+import { SearchableContactSelect } from "@/components/contacts/SeachableContactSelect";
+import { SearchablePaymentMethodSelect } from "@/components/paymentMethods/SearchablePaymentMethodSelect";
+import { SearchablePaymentAccountSelect } from "@/components/paymentAccounts/SearchabalePaymentAccountSelect";
 import { useAddPurchaseLandedCostMutation, useUpdatePurchaseLandedCostMutation } from "@/lib/redux/services";
 import { Purchase, PurchaseLandedCost, PurchaseLandedCostAllocation, PurchaseLandedCostScope, PurchaseLineItem } from "@/types/index";
 import { purchaseApiError } from "./purchaseDetailUtils";
+import dayjs from "dayjs";
 
 interface PurchaseOrderLandedCostModalProps {
   open: boolean;
@@ -37,6 +41,9 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
     if (initialValues) {
       form.setFieldsValue({
         name: initialValues.name,
+        contactId: initialValues.contactId,
+        date: initialValues.date ? dayjs(initialValues.date) : dayjs(purchase.date),
+        note: initialValues.note,
         amount: initialValues.amount,
         allocationMethod: initialValues.allocationMethod,
         appliesTo: initialValues.appliesTo || "ALL_ITEMS",
@@ -48,11 +55,11 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
     }
 
     form.resetFields();
-    form.setFieldsValue({ allocationMethod: "BUY_VALUE", appliesTo: "ALL_ITEMS" });
+    form.setFieldsValue({ allocationMethod: "BUY_VALUE", appliesTo: "ALL_ITEMS", date: dayjs(purchase.date) });
     setSelectedLineItemIds([]);
     setProductSearch("");
     setSelectionError(false);
-  }, [initialValues, open, form]);
+  }, [initialValues, open, form, purchase.date]);
 
   const submit = async () => {
     const values = await form.validateFields().catch(() => null);
@@ -66,9 +73,14 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
       const payload = {
         id: purchase.id,
         name: values.name,
+        date: values.date.format("YYYY-MM-DD"),
         amount: Number(values.amount),
         allocationMethod: values.allocationMethod as PurchaseLandedCostAllocation,
         appliesTo: values.appliesTo as PurchaseLandedCostScope,
+        contactId: values.contactId,
+        note: values.note,
+        paymentMethodId: values.paymentMethodId,
+        accountId: values.accountId,
         ...(values.appliesTo === "SELECTED_ITEMS" ? { lineItemIds: selectedLineItemIds.map(String) } : {}),
         currencyId: purchase.currencyId.id,
         exchangeRate: Number(purchase.rate || 1),
@@ -104,6 +116,12 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
         </Form.Item>
 
         <div className="grid gap-4 md:grid-cols-2">
+          <Form.Item name="contactId" label="Paid To Contact" rules={[{ required: true, message: "Select the contact paid for this landed cost" }]}>
+            <SearchableContactSelect onAddContact={() => {}} />
+          </Form.Item>
+          <Form.Item name="date" label="Payment Date" rules={[{ required: true, message: "Select the payment date" }]}>
+            <DatePicker className="!w-full" format="DD MMM YYYY" />
+          </Form.Item>
           <Form.Item name="amount" label={`Amount (${purchase.currencyId?.code || ""})`} rules={[{ required: true, message: "Enter an amount" }]}>
             <InputNumber className="!w-full" min={0.01} controls={false} />
           </Form.Item>
@@ -115,7 +133,17 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
               ]}
             />
           </Form.Item>
+          <Form.Item name="paymentMethodId" label="Payment Method">
+            <SearchablePaymentMethodSelect allowClear />
+          </Form.Item>
+          <Form.Item name="accountId" label="Paid From Account">
+            <SearchablePaymentAccountSelect allowClear />
+          </Form.Item>
         </div>
+
+        <Form.Item name="note" label="Note">
+          <Input.TextArea rows={3} placeholder="Add a note for this landed cost" />
+        </Form.Item>
 
         <Form.Item name="appliesTo" label="Apply Cost To" rules={[{ required: true }]}>
           <Segmented

@@ -121,12 +121,16 @@ export type PurchaseLandedCostScope = "ALL_ITEMS" | "SELECTED_ITEMS";
 export interface AddPurchaseLandedCostInput {
   id: string;
   name: string;
+  date: string;
   amount: number;
   currencyId: string;
   exchangeRate: number;
   allocationMethod: PurchaseLandedCostAllocation;
   appliesTo?: PurchaseLandedCostScope;
   contactId?: string;
+  note?: string;
+  paymentMethodId?: string;
+  accountId?: string;
   lineItemIds?: string[];
 }
 
@@ -149,12 +153,18 @@ export interface PurchaseReturnEvent extends Omit<PurchaseStockEvent, "fulfilled
 
 export interface PurchaseLandedCost {
   id: string;
+  transactionId?: string;
   name: string;
+  date?: string;
+  note?: string;
   amount: number;
   baseAmount: number;
   exchangeRate: number;
   allocationMethod: PurchaseLandedCostAllocation;
   appliesTo?: PurchaseLandedCostScope;
   currencyId: string | { id: string; code: string; name?: string };
+  contactId?: string;
+  contactName?: string;
+  currencyCode?: string;
   lineItemIds: string[];
 }

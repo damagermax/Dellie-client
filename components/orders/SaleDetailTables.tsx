@@ -66,8 +66,10 @@ export default function SaleDetailTables({ sale, currency, canManage = false, is
   const [view, setView] = React.useState<SaleTableView>("items");
   const itemColumns: TableProps<PurchaseLineItem>["columns"] = [
     { title: "Product", key: "productName", className: "!pl-8", width: "45%", render: (_, line) => <ProductCell name={line.productName} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} /> },
-    { title: "Quantity", dataIndex: "quantity", key: "quantity" },
+    { title: "Ordered", dataIndex: "quantity", key: "quantity" },
     { title: "Fulfilled", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
+    { title: "Returned", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
+    { title: "Remaining", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
     { title: "Unit Price", key: "unitPrice", render: (_, line) => Number(line.unitPrice).toFixed(2) },
     { title: "Total", key: "total", className: "!pr-8", render: (_, line) => Number(line.total).toFixed(2) },
   ];

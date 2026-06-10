@@ -21,11 +21,11 @@ const kpiData = [
     tooltip: "Total revenue including taxes and shipping",
   },
   {
-    title: "Total Orders",
+    title: "Total Sales",
     value: 1845,
     change: 8.2,
     data: [100, 120, 150, 180, 200, 250, 300],
-    tooltip: "Total number of orders placed",
+    tooltip: "Total number of sales placed",
   },
   {
     title: "Average Order Value",
@@ -95,82 +95,6 @@ export default function DashboardPage() {
         <Col xs={24} lg={12}>
           <Card>
             <RecentOrders />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Additional Metrics */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={8}>
-          <Card title="Order Status">
-            <div className="space-y-4">
-              {[
-                { status: "Pending", count: 24, color: "bg-yellow-100 text-yellow-800" },
-                { status: "Processing", count: 18, color: "bg-blue-100 text-blue-800" },
-                { status: "Shipped", count: 32, color: "bg-purple-100 text-purple-800" },
-                { status: "Delivered", count: 156, color: "bg-green-100 text-green-800" },
-                { status: "Cancelled", count: 5, color: "bg-red-100 text-red-800" },
-              ].map((item, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-sm">{item.status}</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.color}`}>{item.count} orders</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} lg={8}>
-          <Card title="Today's Summary">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">New Orders</span>
-                <span className="font-medium">24</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Revenue</span>
-                <span className="font-medium">GHS 12,450.00</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Avg. Order Value</span>
-                <span className="font-medium">GHS 518.75</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Items Sold</span>
-                <span className="font-medium">84</span>
-              </div>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} lg={8}>
-          <Card title="Order Fulfillment">
-            <div className="space-y-4">
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>On Time Delivery</span>
-                  <span className="font-medium">94%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="h-2 rounded-full bg-green-500" style={{ width: "94%" }} />
-                </div>
-              </div>
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Order Accuracy</span>
-                  <span className="font-medium">98%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="h-2 rounded-full bg-blue-500" style={{ width: "98%" }} />
-                </div>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Avg. Processing Time</span>
-                <span className="font-medium">2.1h</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Return Rate</span>
-                <span className="font-medium text-green-600">1.2%</span>
-              </div>
-            </div>
           </Card>
         </Col>
       </Row>

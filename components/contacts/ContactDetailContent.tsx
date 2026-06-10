@@ -1,22 +1,27 @@
 "use client";
 
-import { Button, Divider, Dropdown, MenuProps, Tag } from "antd";
-import { Building2, CalendarDays, Mail, MapPinned, MoreHorizontal, Pencil, Phone, Smartphone, Trash2, UserRound, WalletCards } from "lucide-react";
+import { Button, Divider, Dropdown, Empty, MenuProps, Segmented, Tag } from "antd";
+import { Building2, CalendarDays, CreditCard, FileText, Mail, MapPinned, MoreHorizontal, PackageCheck, Pencil, Phone, Receipt, Smartphone, Trash2, UserRound, WalletCards } from "lucide-react";
 import { GoBack } from "@/components/ui/GoBack";
 import { PhoneDisplay } from "@/components/ui/DisplayPhoneNumber";
 import { formatDate } from "@/lib/dateUtils";
 import { Contact, ContactStatus } from "@/types/contact";
-import { formatContactAddress, getContactColor, getContactInitials } from "./contactUtils";
+import { formatContactAddress } from "./contactUtils";
+import { Transaction } from "@/types/transaction";
 
 interface ContactDetailContentProps {
   contact: Contact;
   isDeleting: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  transactions: Transaction[];
+  transactionsLoading: boolean;
+  transactionsError: boolean;
 }
 
-export default function ContactDetailContent({ contact, isDeleting, onEdit, onDelete }: ContactDetailContentProps) {
-  const title = contact.displayName || contact.name;
+export default function ContactDetailContent({ contact, isDeleting, onEdit, onDelete, transactions, transactionsLoading, transactionsError }: ContactDetailContentProps) {
+  const title = contact.name || contact.displayName;
+  const displayName = contact.displayName || contact.name;
   const legalName = contact.name && contact.name !== title ? contact.name : "Same as display name";
   const primaryAddress = formatContactAddress(contact.addresses?.[0]) || "No address provided";
   const currency = typeof contact.currencyId === "string" ? "-" : contact.currencyId?.code || "-";
@@ -40,6 +45,22 @@ export default function ContactDetailContent({ contact, isDeleting, onEdit, onDe
       label: "Delete Contact",
       onClick: onDelete,
     },
+  ];
+
+  function SegmentLabel({ icon, text }: { icon: React.ReactNode; text: string }) {
+    return (
+      <span className="flex items-center gap-x-2 px-1">
+        {icon}
+        <span>{text}</span>
+      </span>
+    );
+  }
+
+  const tableOptions = [
+    { label: <SegmentLabel icon={<FileText size={15} />} text="Overview" />, value: "items" },
+    { label: <SegmentLabel icon={<PackageCheck size={15} />} text="Transactions" />, value: "fulfillments" },
+    { label: <SegmentLabel icon={<Receipt size={15} />} text="Customer Account" />, value: "landedCosts" },
+    { label: <SegmentLabel icon={<CreditCard size={15} />} text="Employee Account" />, value: "payments" },
   ];
 
   return (
@@ -73,10 +94,10 @@ export default function ContactDetailContent({ contact, isDeleting, onEdit, onDe
         </div>
       </div>
 
-      <div className="pt-7">
+      <div className="pt-7 w-full">
         <div className="px-4 md:px-8">
           <div className="grid gap-4 sm:grid-cols-2">
-            <IdentityPanel label="Display Name" title={title} description={legalName} icon={<UserRound size={18} />} />
+            <IdentityPanel label="Display Name" title={displayName} description={legalName} icon={<UserRound size={18} />} />
             <IdentityPanel label="Primary Address" title="Address" description={primaryAddress} icon={<MapPinned size={18} />} />
           </div>
 
@@ -117,23 +138,18 @@ export default function ContactDetailContent({ contact, isDeleting, onEdit, onDe
             </section>
           </div>
 
-          {contact.userId && (
+          {contact.employeeAccess && contact.employeeAccess.status !== "disabled" && (
             <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-400">Employee Access</p>
-                  <p className="mt-1 text-sm text-gray-600">{contact.userId ? "Login access is enabled for this contact." : "This contact does not have login access."}</p>
+                  <p className="mt-1 text-sm text-gray-600">Login access is enabled for this contact.</p>
+                  {contact.employeeAccess?.username ? <p className="mt-2 text-xs text-gray-500">Username: {contact.employeeAccess.username}</p> : null}
                   {contact.employeeAccess?.permissions?.length ? <p className="mt-2 text-xs text-gray-500">Permissions: {contact.employeeAccess.permissions.join(", ")}</p> : null}
                 </div>
-                {contact.userId ? (
-                  <Tag className="!m-0 !rounded-full !px-3" color="purple">
-                    Enabled
-                  </Tag>
-                ) : (
-                  <Tag className="!m-0 !rounded-full !px-3" color="default">
-                    Disabled
-                  </Tag>
-                )}
+                <Tag className="!m-0 !rounded-full !px-3" color="purple">
+                  Enabled
+                </Tag>
               </div>
             </div>
           )}
@@ -142,6 +158,62 @@ export default function ContactDetailContent({ contact, isDeleting, onEdit, onDe
             <div className="mt-8">
               <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-amber-700">Note</p>
               <p className="text-sm leading-6 text-gray-700">{contact.note}</p>
+            </div>
+          )}
+        </div>
+
+        <div className=" flex  justify-center w-full">
+          <Segmented
+            shape="round"
+            options={tableOptions}
+            //value={view}
+            // onChange={(value) => setView(value as PurchaseTableView)}
+            className="[&_.ant-segmented-item-selected]:!bg-[#2d837d] [&_.ant-segmented-item-selected]:!text-white"
+            style={{ backgroundColor: "#ebebeb", padding: "5px" }}
+          />
+        </div>
+
+        <div className="mt-8 border-t border-gray-200 px-4 pb-8 pt-6 md:px-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-medium text-gray-900">Recent Transactions</h2>
+              <p className="mt-1 text-sm text-gray-500">Expenses and purchase landed costs linked to this contact.</p>
+            </div>
+          </div>
+
+          {transactionsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="border-b border-gray-100 py-4">
+                  <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+                  <div className="mt-2 h-3 w-28 animate-pulse rounded bg-gray-100" />
+                </div>
+              ))}
+            </div>
+          ) : transactionsError ? (
+            <p className="py-6 text-sm text-red-600">Transactions could not be loaded.</p>
+          ) : transactions.length ? (
+            <div className="divide-y divide-gray-100">
+              {transactions.map((transaction) => (
+                <div key={transaction.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{transaction.typeLabel || transaction.type?.replaceAll("_", " ")}</p>
+                    <p className="mt-1 text-sm text-gray-500">{transaction.note || transaction.linkedDocumentSnapshot?.number || "No note provided"}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      <span>{transaction.date ? formatDate(transaction.date) : "-"}</span>
+                      {transaction.linkedDocumentSnapshot?.number ? <span>Purchase {transaction.linkedDocumentSnapshot.number}</span> : null}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-left sm:text-right">
+                    <p className="text-sm font-semibold text-gray-900">{transaction.formattedTotal || "-"}</p>
+                    {transaction.statusLabel ? <p className="mt-1 text-xs text-gray-500">{transaction.statusLabel}</p> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="border-t border-gray-100 py-10">
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No transactions recorded for this contact." />
             </div>
           )}
         </div>

@@ -8,7 +8,7 @@ export interface RegisterUserInput {
 }
 
 export interface LoginUserInput {
-  email: string;
+  identifier: string;
   password: string;
 }
 
@@ -23,7 +23,7 @@ export interface RestPasswordInput {
 }
 
 export interface ForgotPasswordInput {
-  email: string;
+  username: string;
 }
 
 export interface AuthResponse {

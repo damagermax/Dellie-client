@@ -86,11 +86,11 @@ export default function PurchaseOrderDetailContent({
           icon: <RotateCcw size={15} />,
           label: "Refund Payment",
         },
-        {
-          key: "issue_credit",
-          icon: <RotateCcw size={15} />,
-          label: "Issue Credit",
-        },
+        // {
+        //   key: "issue_credit",
+        //   icon: <RotateCcw size={15} />,
+        //   label: "Issue Credit",
+        // },
         {
           key: "write_off",
           icon: <Receipt size={15} />,
@@ -115,10 +115,10 @@ export default function PurchaseOrderDetailContent({
       onRefund();
       return;
     }
-    if (key === "issue_credit") {
-      onIssueCredit();
-      return;
-    }
+    // if (key === "issue_credit") {
+    //   onIssueCredit();
+    //   return;
+    // }
     if (key === "write_off") {
       onWriteOff();
       return;

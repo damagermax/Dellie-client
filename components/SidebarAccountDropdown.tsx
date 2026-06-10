@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import { Dropdown, type MenuProps } from "antd";
+import { useRouter } from "next/navigation";
 
 import { FiSettings, FiHelpCircle, FiLogOut } from "react-icons/fi";
 import { useSelector } from "react-redux";
@@ -30,12 +31,13 @@ interface AccountProps {
 }
 
 const SidebarAccountDropdown = ({ isCollapsed }: AccountProps) => {
+  const router = useRouter();
   const currentUser = useSelector((state: RootState) => state.currentUser);
 
   const onMenuClick: MenuProps["onClick"] = ({ key }) => {
     switch (key) {
       case "settings":
-        // navigate to settings
+        router.push("/settings");
         break;
 
       case "help":

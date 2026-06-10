@@ -8,11 +8,13 @@ import {
   PaginatedResponse,
   EmployeeAccessInput,
   EmployeeAccessResponse,
+  Transaction,
+  ContactTransactionQueryParams,
 } from "../../../types";
 
 export const contactsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    createContact: builder.mutation<any, CreateContactInput>({
+    createContact: builder.mutation<{ contact: Contact }, CreateContactInput>({
       query: (body) => ({
         url: "contacts",
         method: "POST",
@@ -44,6 +46,10 @@ export const contactsApi = baseApi.injectEndpoints({
       query: (id) => `contacts/${id}`,
       providesTags: (result, error, id) => [{ type: TAG_TYPES.CONTACT, id }],
     }),
+    getContactTransactions: builder.query<PaginatedResponse<Transaction>, { id: string; params?: ContactTransactionQueryParams }>({
+      query: ({ id, params }) => ({ url: `contacts/${id}/transactions`, method: "GET", params }),
+      providesTags: (result, error, { id }) => [{ type: TAG_TYPES.CONTACT, id }, TAG_TYPES.TRANSACTIONS],
+    }),
     enableEmployeeAccess: builder.mutation<EmployeeAccessResponse, { id: string; body: EmployeeAccessInput }>({
       query: ({ id, body }) => ({
         url: `contacts/${id}/employee-access`,
@@ -68,6 +74,7 @@ export const {
   useDeleteContactMutation,
   useGetContactsQuery,
   useGetContactQuery,
+  useGetContactTransactionsQuery,
   useEnableEmployeeAccessMutation,
   useDisableEmployeeAccessMutation,
 } = contactsApi;

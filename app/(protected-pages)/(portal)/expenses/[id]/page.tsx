@@ -27,12 +27,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   const [paymentModalOpen, togglePaymentModal] = useToggle();
   const [paymentType, setPaymentType] = useState(TransactionType.PAYMENT);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
-  const canViewExpense = hasAnyPermission([
-    StorePermission.PAYMENTS_VIEW,
-    StorePermission.PAYMENTS_MANAGE,
-    StorePermission.EXPENSES_VIEW,
-    StorePermission.EXPENSES_MANAGE,
-  ]);
+  const canViewExpense = hasAnyPermission([StorePermission.PAYMENTS_VIEW, StorePermission.PAYMENTS_MANAGE, StorePermission.EXPENSES_VIEW, StorePermission.EXPENSES_MANAGE]);
   const canManageExpense = hasAnyPermission([StorePermission.PAYMENTS_MANAGE, StorePermission.EXPENSES_MANAGE]);
 
   const { data, isLoading, isError } = useGetTransactionQuery(id, { skip: !id || !ready || !canViewExpense, refetchOnMountOrArgChange: true });
@@ -132,7 +127,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {canManageExpense && isOverPayment && (
+                {/* {canManageExpense && isOverPayment && (
                   <Button
                     size="middle"
                     type="default"
@@ -144,7 +139,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
                   >
                     Issue Credit
                   </Button>
-                )}
+                )} */}
                 {canManageExpense && showWriteOff && (
                   <Button
                     type="default"
@@ -199,11 +194,11 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
 
           <div className="px-4 py-6 md:px-8">
             <div className="grid gap-4 sm:grid-cols-2">
-              <IdentityPanel label="Description" title={expense.title || expense.note || "Expense"} description={expense.note || "No additional description provided"} />
-              <IdentityPanel label="Contact" title={expense.contact?.displayName || expense.contact?.name || "Open Market"} description={expense.contact?.name || "No contact details provided"} />
+              <IdentityPanel label="Description" title={expense.title || expense.note || "Expense"} description={""} />
+              <IdentityPanel label="Contact" title={expense.contact?.displayName || expense.contact?.name || "Open Market"} description={""} />
             </div>
 
-            <Divider className="!mt-6" />
+            <Divider className="!mt-2" />
 
             <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
               <Detail className="border-b border-r border-gray-200 pb-5 pr-5 sm:border-b-0 sm:pb-0" icon={<CalendarDays size={17} />} label="Date" value={formatDate(expense.date || expense.createdAt)} />

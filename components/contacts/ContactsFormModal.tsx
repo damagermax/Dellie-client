@@ -8,7 +8,7 @@ import { useCreateContactMutation, useDisableEmployeeAccessMutation, useEnableEm
 import { Contact, ContactRole, ContactStatus, CreateContactInput, EmployeeAccessInput, EmployeeAccessResponse, UpdateContactInput } from "@/types/contact";
 import { StorePermission } from "@/types/store-access";
 import { AppModal, ModalProps } from "../ui/AppModal";
-import { DatePickerFormItem, InputFormItem, PhoneInputFormItem, TextAreaFormItem } from "../ui/AppFormItems";
+import { InputFormItem, PhoneInputFormItem, TextAreaFormItem } from "../ui/AppFormItems";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
 
 interface ContactsFormModalProps extends ModalProps {
@@ -33,6 +33,11 @@ const STORE_PERMISSION_VALUES = Object.values(StorePermission) as StorePermissio
 
 function normalizePermissions(permissions?: string[] | StorePermission[] | null): StorePermission[] {
   return (permissions || []).filter((permission): permission is StorePermission => STORE_PERMISSION_VALUES.includes(permission as StorePermission));
+}
+
+function hasEmployeeAccess(contact?: Contact | null) {
+  if (!contact) return false;
+  return Boolean(contact.employeeAccess?.status && contact.employeeAccess.status !== "disabled");
 }
 
 const contactRoleCards = [
@@ -88,12 +93,13 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
     if (contactData && isSuccess) {
       const normalizedPermissions = normalizePermissions(contactData.employeeAccess?.permissions);
       const normalizedCurrencyId = typeof contactData.currencyId === "string" ? contactData.currencyId : contactData.currencyId?.id;
+      const employeeAccessIsEnabled = hasEmployeeAccess(contactData);
 
       contactsForm.setFieldsValue({
         ...contactData,
         currencyId: normalizedCurrencyId,
         roles: (contactData.roles || []).filter((role) => Object.values(ContactRole).includes(role)),
-        enableEmployeeAccess: !!contactData.userId,
+        enableEmployeeAccess: employeeAccessIsEnabled,
         employeePermissions: normalizedPermissions.length ? normalizedPermissions : defaultEmployeePermissions,
         employeeRole: contactData.employeeAccess?.role || "staff",
       });
@@ -101,7 +107,7 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
   }, [contactData, contactsForm, defaultEmployeePermissions, isSuccess]);
 
   useEffect(() => {
-    if (!selectedRoles.includes(ContactRole.EMPLOYEE)) {
+    if (selectedRoles.length > 0 && !selectedRoles.includes(ContactRole.EMPLOYEE)) {
       contactsForm.setFieldsValue({
         enableEmployeeAccess: false,
       });
@@ -137,7 +143,7 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
       }).unwrap();
     }
 
-    if (initialValues?.userId && !wantsEmployeeAccess) {
+    if (hasEmployeeAccess(contactData || initialValues) && !wantsEmployeeAccess) {
       await disableEmployeeAccess(savedContact.id).unwrap();
     }
 
@@ -172,7 +178,7 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Employee Access</p>
-                  <p className="mt-1 text-xs text-gray-500">Enable login access for this contact and choose what they can do inside the store.</p>
+                  <p className="mt-1 text-xs text-gray-500">Create a store user and choose what this person can do inside the store.</p>
                 </div>
                 <Form.Item className="!mb-0" name="enableEmployeeAccess" valuePropName="checked">
                   <Checkbox>Enable access</Checkbox>
@@ -200,17 +206,6 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
           )}
 
           <Divider className="!my-6" />
-
-          {!initialValues && (
-            <div>
-              <p className="text-sm   text-gray-700">Opening Balance</p>
-              <div className="mt-2 grid grid-cols-3 gap-x-5 rounded-md border border-solid border-gray-200 bg-gray-100 px-4 pt-4">
-                <InputFormItem label="Amount" name="balanceAmount" type="number" placeholder="Amount" />
-                <InputFormItem label="Exchange Rate" name="balanceRate" type="number" placeholder="Exchange Rate" />
-                <DatePickerFormItem label="Balance As At" name="balanceAsAt" />
-              </div>
-            </div>
-          )}
 
           <Divider className="!my-0" />
 

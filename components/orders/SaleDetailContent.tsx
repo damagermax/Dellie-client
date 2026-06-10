@@ -62,7 +62,7 @@ export default function SaleDetailContent({
   onDeleteFulfillment,
   onEditPayment,
   onDeletePayment,
-  }: SaleDetailContentProps) {
+}: SaleDetailContentProps) {
   const { data: paymentTerms } = useGetPaymentTermsQuery();
   const fulfillmentStatus = sale.receiptStatus || "pending";
   const statusTone = fulfillmentStatus === "received" ? "green" : fulfillmentStatus === "partially_received" ? "gold" : "blue";
@@ -128,11 +128,11 @@ export default function SaleDetailContent({
                 icon: <RotateCcw size={15} />,
                 label: "Refund Payment",
               },
-              {
-                key: "issue_credit",
-                icon: <RotateCcw size={15} />,
-                label: "Issue Credit",
-              },
+              // {
+              //   key: "issue_credit",
+              //   icon: <RotateCcw size={15} />,
+              //   label: "Issue Credit",
+              // },
               {
                 key: "write_off",
                 icon: <Receipt size={15} />,
@@ -175,10 +175,10 @@ export default function SaleDetailContent({
       onRefund();
       return;
     }
-    if (key === "issue_credit") {
-      onIssueCredit();
-      return;
-    }
+    // if (key === "issue_credit") {
+    //   onIssueCredit();
+    //   return;
+    // }
     if (key === "write_off") {
       onWriteOff();
       return;
