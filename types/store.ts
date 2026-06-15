@@ -1,3 +1,5 @@
+import { PosSettings, StoreEnabledModules } from "./store-settings";
+
 export interface StoreOwner {
   id: string;
   name: string;
@@ -25,8 +27,13 @@ export interface StoreMetrics {
 export interface Store {
   id: string;
   name: string;
+  currencyId?: string;
   storeLink?: string;
   category?: string;
+  instagramUsername?: string;
+  tiktokUsername?: string;
+  facebookPage?: string;
+  whatsappNumber?: string;
   isActive: boolean;
 
   slug: string;
@@ -42,9 +49,11 @@ export interface Store {
   status: "active" | "inactive" | "suspended" | "banned";
   domains: string[];
   settings: {
-    currency: string;
-    timezone: string;
-    language: string;
+    currency?: string;
+    timezone?: string;
+    language?: string;
+    enabledModules?: StoreEnabledModules;
+    pos?: PosSettings;
   };
 }
 
@@ -58,7 +67,7 @@ export interface StoreActivity {
     name: string;
     email: string;
   };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface StoreStats {

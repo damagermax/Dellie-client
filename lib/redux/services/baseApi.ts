@@ -1,5 +1,4 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "../store";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4200";
 
@@ -10,6 +9,7 @@ export const TAG_TYPES = {
   TAGS: "Tags",
   STORE: "Store",
   STORES: "Stores",
+  STORE_SETTINGS: "StoreSettings",
   DISCOUNT: "Discount",
   DISCOUNTS: "Discounts",
   ORDER: "Order",
@@ -48,9 +48,7 @@ export const TAG_TYPES = {
 export const baseApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
-    prepareHeaders: (headers, { getState }) => {
-      // Add  auth headers here
-      //const token = (getState() as RootState).auth.accessToken || localStorage.getItem("accessToken");
+    prepareHeaders: (headers) => {
       const token = localStorage.getItem("accessToken");
 
       if (token) {

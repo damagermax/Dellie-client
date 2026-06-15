@@ -1,46 +1,42 @@
 "use client";
 
 import AppTable from "@/components/ui/AppTable";
-import { EditOutlined } from "@ant-design/icons";
 import PreviewImage from "../ui/PreviewImage";
 import useToggle from "@/hooks/UseToggle";
 import { VariantDetailModal } from "./VariantDetailModal";
 import { useState } from "react";
+import { ProductPriceTier, getNormalPrice } from "@/lib/products/pricing";
 
-// Component for rendering the quantity cell with hover state
-const QuantityCell = ({ inventoryLevel }: { inventoryLevel: any }) => {
-  return (
-    <div className="w-fit h-full group">
-      <div className="w-full p-2 h-full !text-xs cursor-pointer hover:bg-gray-50">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="font-medium">{inventoryLevel?.available} available</span>
-            <span className=" text-gray-500">
-              {inventoryLevel?.committed} committed • {inventoryLevel?.onHand} on hand
-            </span>
-          </div>
-          <EditOutlined className="opacity-0 pl-8 group-hover:opacity-70 text-gray-400 transition-opacity" />
-        </div>
-      </div>
-    </div>
-  );
+type VariantInventoryLevel = {
+  available?: number;
 };
 
-export function ProductVariantsTable({ variants }: { variants: any }) {
+export type ProductVariantRow = {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  productId?: string;
+  priceTiers?: ProductPriceTier[];
+  inventory?: {
+    inventoryLevels?: VariantInventoryLevel[];
+  };
+};
+
+export function ProductVariantsTable({ variants }: { variants: ProductVariantRow[] }) {
   const [openVariantModal, toggleVariantModal] = useToggle();
-  const [selectedVariant, setSelectedVariant] = useState();
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariantRow>();
 
   // safely get inventory levels from the first variant
-  const inventoryLevels: any[] = variants?.[0]?.inventory?.inventoryLevels ?? [];
+  const inventoryLevels = variants?.[0]?.inventory?.inventoryLevels ?? [];
 
-  const handleVariantItemClick = (variant: any) => {
+  const handleVariantItemClick = (variant: ProductVariantRow) => {
     setSelectedVariant(variant);
     toggleVariantModal();
   };
 
-  function getTotalAvailableStock(inventory: any) {
+  function getTotalAvailableStock(inventory?: ProductVariantRow["inventory"]) {
     const levels = inventory?.inventoryLevels || [];
-    return levels.reduce((sum: any, lvl: any) => sum + (lvl.available || 0), 0);
+    return levels.reduce((sum, lvl) => sum + (lvl.available || 0), 0);
   }
   const tableColumns = [
     {
@@ -48,7 +44,7 @@ export function ProductVariantsTable({ variants }: { variants: any }) {
       className: "!pl-8",
       dataIndex: "id",
       key: "id",
-      render: (_: any, variant: any) => (
+      render: (_: unknown, variant: ProductVariantRow) => (
         <div className="flex items-center space-x-4">
           <div className=" ">
             <PreviewImage height={50} width={50} src={variant.imageUrl ? variant.imageUrl : "/images/dellie-logo.png"} />
@@ -63,19 +59,20 @@ export function ProductVariantsTable({ variants }: { variants: any }) {
     },
     {
       title: "Selling Price",
-      dataIndex: "sellingPrice",
-      key: "sellingPrice",
-      align: "center",
+      dataIndex: "priceTiers",
+      key: "priceTiers",
+      align: "center" as const,
       width: `${inventoryLevels.length == 1 ? 20 : 8}%`,
+      render: (_: unknown, variant: ProductVariantRow) => `GHS ${getNormalPrice(variant).toFixed(2)}`,
     },
 
     {
       title: "Stocks",
       dataIndex: "inventory",
       key: "inventory",
-      align: "center",
+      align: "center" as const,
       width: `${inventoryLevels.length == 1 ? 20 : 8}%`,
-      render: (inventory: any) => getTotalAvailableStock(inventory),
+      render: (inventory: ProductVariantRow["inventory"]) => getTotalAvailableStock(inventory),
     },
 
     // {
@@ -103,7 +100,7 @@ export function ProductVariantsTable({ variants }: { variants: any }) {
       title: "",
       dataIndex: "",
       key: "",
-      align: "center",
+      align: "center" as const,
       width: `${inventoryLevels.length == 1 ? 10 : 6}%`,
     },
   ];

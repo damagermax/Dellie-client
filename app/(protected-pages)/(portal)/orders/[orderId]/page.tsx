@@ -7,6 +7,7 @@ import SaleDetailContent from "@/components/orders/SaleDetailContent";
 import SaleFormModal from "@/components/orders/SaleFormModal";
 import SaleSummary from "@/components/orders/SaleSummary";
 import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/SaleShareDocumentModal";
+import SaleReturnOperationModal from "@/components/orders/SaleReturnOperationModal";
 import SaleStockOperationModal from "@/components/orders/SaleStockOperationModal";
 import TransactionItemEditModal from "@/components/transactions/TransactionItemEditModal";
 import { saleApiError, saleDocumentNumber, visibleSaleDeleteRestrictions } from "@/components/orders/saleUtils";
@@ -14,10 +15,21 @@ import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import useToggle from "@/hooks/UseToggle";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useConvertSaleQuoteMutation, useDeleteSaleFulfillmentMutation, useDeleteSaleMutation, useDeleteTransactionActionMutation, useGetSaleQuery, useReopenSaleMutation, useUpdateSaleFulfillmentMutation } from "@/lib/redux/services";
+import {
+  useCloseSaleMutation,
+  useConvertSaleQuoteMutation,
+  useDeleteSaleFulfillmentMutation,
+  useDeleteSaleMutation,
+  useDeleteSaleReturnMutation,
+  useDeleteTransactionActionMutation,
+  useGetSaleQuery,
+  useReopenSaleMutation,
+  useUpdateSaleFulfillmentMutation,
+  useUpdateSaleReturnMutation,
+} from "@/lib/redux/services";
 import { TransactionType } from "@/types/transaction";
 import { Payment } from "@/types/transaction";
-import { PurchaseStockEvent } from "@/types/purchase";
+import { PurchaseReturnEvent, PurchaseStockEvent } from "@/types/purchase";
 import { StorePermission } from "@/types/store-access";
 import { useState } from "react";
 
@@ -27,20 +39,24 @@ export default function SaleDetailPage() {
   const [editOpen, toggleEdit] = useToggle();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [fulfillOpen, toggleFulfill] = useToggle();
+  const [returnOpen, toggleReturn] = useToggle();
   const [shareDocumentType, setShareDocumentType] = useState<SaleDocumentType>();
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [paymentType, setPaymentType] = useState(TransactionType.PAYMENT);
   const [selectedPayment, setSelectedPayment] = useState<Payment>();
-  const [editingItem, setEditingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | null>(null);
-  const [deletingItem, setDeletingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | { kind: "return"; item: PurchaseReturnEvent } | null>(null);
+  const [deletingItem, setDeletingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | { kind: "return"; item: PurchaseReturnEvent } | null>(null);
   const canViewSale = hasAnyPermission([StorePermission.SALES_VIEW, StorePermission.SALES_MANAGE]);
   const canManageSale = hasPermission(StorePermission.SALES_MANAGE);
   const { data: sale, isLoading, isError, refetch } = useGetSaleQuery(orderId, { skip: !orderId || !ready || !canViewSale, refetchOnMountOrArgChange: true });
   const [cancelSale, { isLoading: isCancelling }] = useDeleteSaleMutation();
   const [reopenSale, { isLoading: isReopening }] = useReopenSaleMutation();
+  const [closeSale] = useCloseSaleMutation();
   const [convertSaleQuote, { isLoading: isConverting }] = useConvertSaleQuoteMutation();
   const [updateSaleFulfillment, { isLoading: isUpdatingFulfillment }] = useUpdateSaleFulfillmentMutation();
+  const [updateSaleReturn, { isLoading: isUpdatingReturn }] = useUpdateSaleReturnMutation();
   const [deleteSaleFulfillment, { isLoading: isDeletingFulfillment }] = useDeleteSaleFulfillmentMutation();
+  const [deleteSaleReturn, { isLoading: isDeletingReturn }] = useDeleteSaleReturnMutation();
   const [deletePaymentAction] = useDeleteTransactionActionMutation();
 
   const openPaymentModal = (type: TransactionType) => {
@@ -117,6 +133,19 @@ export default function SaleDetailPage() {
     }
   };
 
+  const runClose = async () => {
+    if (!sale) return;
+
+    try {
+      await closeSale(sale.id).unwrap();
+      message.success("Sale closed.");
+      refetch();
+    } catch (error) {
+      message.error(saleApiError(error, "Sale could not be closed."));
+      throw error;
+    }
+  };
+
   const runConvert = async () => {
     if (!sale || isConverting) return;
 
@@ -138,6 +167,15 @@ export default function SaleDetailPage() {
   const isQuote = sale.status === "draft" && !isCancelled;
   const canEdit = !sale.locked && sale.receiptStatus !== "received" && !isCancelled;
   const canFulfill = !sale.locked && !isCancelled && !isQuote && sale.lineItems.some((line) => Number(line.quantity) > Number(line.fulfilledQuantity || 0));
+  const canReturn = !sale.locked && !isCancelled && !isQuote && sale.lineItems.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
+  const isFullyFulfilled =
+    !sale.locked &&
+    !isCancelled &&
+    !isQuote &&
+    sale.lineItems.length > 0 &&
+    sale.lineItems.every((line) => Number(line.fulfilledQuantity || 0) >= Number(line.quantity || 0));
+  const netPaid = Number(sale.amount || 0) - Number(sale.balance || 0);
+  const canRefundPayment = netPaid > 0 && Number(sale.balance || 0) <= 0;
   const editingItemName = editingItem ? (typeof editingItem.item.productId === "string" ? "Selected item" : editingItem.item.productId.name || "Selected item") : "";
   const deletingItemName = deletingItem ? (typeof deletingItem.item.productId === "string" ? "Selected item" : deletingItem.item.productId.name || "Selected item") : "";
   const deletingItemType = deletingItem ? getProductType(deletingItem.item) : undefined;
@@ -148,7 +186,11 @@ export default function SaleDetailPage() {
     if (!sale || !editingItem) return;
 
     try {
-      await updateSaleFulfillment({ id: sale.id, fulfillmentId: editingItem.item.id, ...values }).unwrap();
+      if (editingItem.kind === "fulfillment") {
+        await updateSaleFulfillment({ id: sale.id, fulfillmentId: editingItem.item.id, ...values }).unwrap();
+      } else {
+        await updateSaleReturn({ id: sale.id, returnId: editingItem.item.id, ...values }).unwrap();
+      }
       message.success("Item updated.");
       closeItemEditor();
       refetch();
@@ -162,15 +204,26 @@ export default function SaleDetailPage() {
     setDeletingItem({ kind: "fulfillment", item });
   };
 
-  function getProductType(item: PurchaseStockEvent) {
-    return typeof item.productId === "string" ? item.productType : item.productId.type || item.productType;
+  const confirmDeleteReturn = (item: PurchaseReturnEvent) => {
+    setDeletingItem({ kind: "return", item });
+  };
+
+  function getProductType(item: PurchaseStockEvent | PurchaseReturnEvent) {
+    if (!sale) return undefined;
+    const lineItem = sale.lineItems.find((line) => line.id === item.lineItemId);
+    if (!lineItem) return undefined;
+    return typeof lineItem.productId === "string" ? lineItem.productType : lineItem.productId.type || lineItem.productType;
   }
 
   const runDeleteItem = async () => {
     if (!sale || !deletingItem) return;
 
     try {
-      await deleteSaleFulfillment({ id: sale.id, fulfillmentId: deletingItem.item.id }).unwrap();
+      if (deletingItem.kind === "fulfillment") {
+        await deleteSaleFulfillment({ id: sale.id, fulfillmentId: deletingItem.item.id }).unwrap();
+      } else {
+        await deleteSaleReturn({ id: sale.id, returnId: deletingItem.item.id }).unwrap();
+      }
       message.success("Item deleted.");
       closeDeleteDialog();
       refetch();
@@ -189,6 +242,9 @@ export default function SaleDetailPage() {
           canManage={canManageSale}
           canEdit={canEdit}
           canFulfill={canFulfill}
+          canReturn={canReturn}
+          canRefundPayment={canRefundPayment}
+          isFullyFulfilled={isFullyFulfilled}
           isQuote={isQuote}
           isCancelling={isCancelling}
           isConverting={isConverting}
@@ -196,8 +252,10 @@ export default function SaleDetailPage() {
           onEdit={toggleEdit}
           onDelete={confirmCancel}
           onReopen={runReopen}
+          onClose={runClose}
           onConvert={runConvert}
           onFulfill={toggleFulfill}
+          onReturn={toggleReturn}
           onRecordPayment={() => openPaymentModal(TransactionType.PAYMENT)}
           onRefund={() => openPaymentModal(TransactionType.REFUND)}
           onIssueCredit={() => openPaymentModal(TransactionType.ISSUE_CREDIT)}
@@ -205,6 +263,8 @@ export default function SaleDetailPage() {
           onShare={setShareDocumentType}
           onEditFulfillment={(event) => setEditingItem({ kind: "fulfillment", item: event })}
           onDeleteFulfillment={confirmDeleteItem}
+          onEditReturn={(event) => setEditingItem({ kind: "return", item: event })}
+          onDeleteReturn={confirmDeleteReturn}
           onEditPayment={openEditPaymentModal}
           onDeletePayment={deletePayment}
         />
@@ -213,6 +273,7 @@ export default function SaleDetailPage() {
 
       {editOpen && <SaleFormModal open={editOpen} toggle={toggleEdit} sale={sale} onSaved={refetch} />}
       {fulfillOpen && <SaleStockOperationModal open={fulfillOpen} toggle={toggleFulfill} sale={sale} onSaved={refetch} />}
+      {returnOpen && canReturn && <SaleReturnOperationModal open={returnOpen} toggle={toggleReturn} sale={sale} onSaved={refetch} />}
       {shareDocumentType && (
         <SaleShareDocumentModal open={Boolean(shareDocumentType)} toggle={() => setShareDocumentType(undefined)} sale={sale} type={shareDocumentType} />
       )}
@@ -229,13 +290,13 @@ export default function SaleDetailPage() {
         <TransactionItemEditModal
           open={Boolean(editingItem)}
           toggle={closeItemEditor}
-          title="Edit Fulfillment"
+          title={editingItem.kind === "fulfillment" ? "Edit Fulfillment" : "Edit Return"}
           description={editingItemName}
           quantityLabel={`Current quantity: ${Number(editingItem.item.quantity || 0).toLocaleString()}`}
           quantity={Number(editingItem.item.quantity || 0)}
-          dateLabel="Fulfilled at"
-          initialDate={editingItem.item.fulfilledAt}
-          loading={isUpdatingFulfillment || isDeletingFulfillment}
+          dateLabel={editingItem.kind === "fulfillment" ? "Fulfilled at" : "Returned at"}
+          initialDate={editingItem.kind === "fulfillment" ? editingItem.item.fulfilledAt : editingItem.item.returnedAt}
+          loading={isUpdatingFulfillment || isUpdatingReturn || isDeletingFulfillment || isDeletingReturn}
           onSubmit={saveItem}
         />
       )}
@@ -251,17 +312,19 @@ export default function SaleDetailPage() {
         </div>
       </Modal>
       {deletingItem && (
-        <Modal open onCancel={closeDeleteDialog} footer={null} title="Delete this fulfillment?">
+        <Modal open onCancel={closeDeleteDialog} footer={null} title={deletingItem.kind === "fulfillment" ? "Delete this fulfillment?" : "Delete this return?"}>
           <div className="px-5 py-4">
             <p className="text-sm text-gray-600">
-              {deletingItemAffectsStock
+              {deletingItem.kind === "return"
+                ? "This will remove the return record and put the related quantity back into the fulfilled state. Inventory quantities will be updated accordingly. This action cannot be undone."
+                : deletingItemAffectsStock
                 ? "This will reverse the stock changes made by this fulfillment. Inventory quantities will be updated accordingly. This action cannot be undone."
                 : "This will remove the fulfillment record. No inventory will be affected. This action cannot be undone."}
             </p>
             <p className="mt-2 text-xs text-gray-500">{deletingItemName}</p>
             <div className="mt-5 flex items-center justify-end gap-3">
               <Button onClick={closeDeleteDialog}>Cancel</Button>
-              <Button danger type="primary" loading={isDeletingFulfillment} onClick={runDeleteItem}>
+              <Button danger type="primary" loading={isDeletingFulfillment || isDeletingReturn} onClick={runDeleteItem}>
                 Delete
               </Button>
             </div>

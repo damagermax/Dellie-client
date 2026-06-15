@@ -11,7 +11,7 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
   const isCancelled = Boolean(sale.isDeleted);
   const isQuote = sale.status === "draft" && !isCancelled;
   const currency = sale.currencyId?.code || "";
-  const paid = Math.max(Number(sale.amount) - Number(sale.balance), 0);
+  const paid = Number(sale.amount) - Number(sale.balance);
   const discountedSubtotal = Math.max(Number(sale.subTotal) - Number(sale.discountAmount || 0), 0);
   const taxSummary = Object.entries(
     (sale.taxes || []).reduce<Record<string, number>>((summary, tax) => {
@@ -42,20 +42,26 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
             </Tag>
           </div>
         </div>
-        <Summary label="Items Total" value={`${currency} ${Number(sale.subTotal).toFixed(2)}`} />
-        <Summary label="Discount" value={`- ${currency} ${Number(sale.discountAmount || 0).toFixed(2)}`} />
-        <Summary label="Subtotal" value={`${currency} ${discountedSubtotal.toFixed(2)}`} />
+        <Summary label="Items Total" value={money(currency, Number(sale.subTotal))} />
+        <Summary label="Discount" value={`- ${money(currency, Number(sale.discountAmount || 0))}`} />
+        <Summary label="Subtotal" value={money(currency, discountedSubtotal)} />
         {taxSummary.length
-          ? taxSummary.map((tax) => <Summary key={tax.name} label={tax.name} value={`${currency} ${tax.amount.toFixed(2)}`} />)
-          : Number(sale.taxAmount || 0) > 0 && <Summary label="Taxes" value={`${currency} ${Number(sale.taxAmount).toFixed(2)}`} />}
+          ? taxSummary.map((tax) => <Summary key={tax.name} label={tax.name} value={money(currency, tax.amount)} />)
+          : Number(sale.taxAmount || 0) > 0 && <Summary label="Taxes" value={money(currency, Number(sale.taxAmount))} />}
         <Divider className="my-3" />
-        <Summary label="Total" value={`${currency} ${Number(sale.amount).toFixed(2)}`} strong />
+        <Summary label="Total" value={money(currency, Number(sale.amount))} strong />
         <Divider className="my-3" />
-        <Summary label="Paid" value={`${currency} ${paid.toFixed(2)}`} />
-        <Summary label="Balance" value={`${currency} ${Number(sale.balance).toFixed(2)}`} strong />
+        <Summary label="Paid" value={money(currency, paid)} />
+        <Summary label="Balance" value={money(currency, Number(sale.balance))} strong />
       </div>
     </aside>
   );
+}
+
+function money(currency: string, value: number | undefined) {
+  const amount = Number(value || 0);
+  const prefix = amount < 0 ? "-" : "";
+  return `${prefix}${currency} ${Math.abs(amount).toFixed(2)}`;
 }
 
 function Summary({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {

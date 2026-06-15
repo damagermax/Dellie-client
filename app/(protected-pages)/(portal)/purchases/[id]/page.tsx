@@ -5,6 +5,7 @@ import { Button, Modal, message } from "antd";
 import PurchaseOrderDetailContent from "@/components/purchase-orders/PurchaseOrderDetailContent";
 import PurchaseOrderFormModal from "@/components/purchase-orders/PurchaseOrderFormModal";
 import PurchaseOrderLandedCostModal from "@/components/purchase-orders/PurchaseOrderLandedCostModal";
+import PurchaseReturnOperationModal from "@/components/purchase-orders/PurchaseReturnOperationModal";
 import PurchaseOrderStockOperationModal from "@/components/purchase-orders/PurchaseOrderStockOperationModal";
 import TransactionItemEditModal from "@/components/transactions/TransactionItemEditModal";
 import PurchaseOrderSummary from "@/components/purchase-orders/PurchaseOrderSummary";
@@ -14,10 +15,21 @@ import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import useToggle from "@/hooks/UseToggle";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useDeletePurchaseFulfillmentMutation, useDeletePurchaseLandedCostMutation, useDeletePurchaseMutation, useDeleteTransactionActionMutation, useGetPurchaseQuery, useReopenPurchaseMutation, useUpdatePurchaseFulfillmentMutation } from "@/lib/redux/services";
+import {
+  useClosePurchaseMutation,
+  useDeletePurchaseFulfillmentMutation,
+  useDeletePurchaseLandedCostMutation,
+  useDeletePurchaseMutation,
+  useDeletePurchaseReturnMutation,
+  useDeleteTransactionActionMutation,
+  useGetPurchaseQuery,
+  useReopenPurchaseMutation,
+  useUpdatePurchaseFulfillmentMutation,
+  useUpdatePurchaseReturnMutation,
+} from "@/lib/redux/services";
 import { TransactionType } from "@/types/transaction";
 import { Payment } from "@/types/transaction";
-import { PurchaseLandedCost, PurchaseStockEvent } from "@/types/purchase";
+import { PurchaseLandedCost, PurchaseReturnEvent, PurchaseStockEvent } from "@/types/purchase";
 import { StorePermission } from "@/types/store-access";
 import { useState } from "react";
 
@@ -27,20 +39,24 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
   const [editOpen, toggleEdit] = useToggle();
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [fulfillOpen, toggleFulfill] = useToggle();
+  const [returnOpen, toggleReturn] = useToggle();
   const [landedCostOpen, toggleLandedCost] = useToggle();
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [paymentType, setPaymentType] = useState(TransactionType.PAYMENT);
   const [selectedPayment, setSelectedPayment] = useState<Payment>();
   const [selectedLandedCost, setSelectedLandedCost] = useState<PurchaseLandedCost>();
-  const [editingItem, setEditingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | null>(null);
-  const [deletingItem, setDeletingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | { kind: "return"; item: PurchaseReturnEvent } | null>(null);
+  const [deletingItem, setDeletingItem] = useState<{ kind: "fulfillment"; item: PurchaseStockEvent } | { kind: "return"; item: PurchaseReturnEvent } | null>(null);
   const canViewPurchase = hasAnyPermission([StorePermission.PURCHASES_VIEW, StorePermission.PURCHASES_MANAGE]);
   const canManagePurchase = hasPermission(StorePermission.PURCHASES_MANAGE);
   const { data: purchase, isLoading, isError, refetch } = useGetPurchaseQuery(id, { skip: !id || !ready || !canViewPurchase, refetchOnMountOrArgChange: true });
   const [cancelPurchase, { isLoading: isCancelling }] = useDeletePurchaseMutation();
   const [reopenPurchase, { isLoading: isReopening }] = useReopenPurchaseMutation();
+  const [closePurchase] = useClosePurchaseMutation();
   const [updatePurchaseFulfillment, { isLoading: isUpdatingFulfillment }] = useUpdatePurchaseFulfillmentMutation();
+  const [updatePurchaseReturn, { isLoading: isUpdatingReturn }] = useUpdatePurchaseReturnMutation();
   const [deletePurchaseFulfillment, { isLoading: isDeletingFulfillment }] = useDeletePurchaseFulfillmentMutation();
+  const [deletePurchaseReturn, { isLoading: isDeletingReturn }] = useDeletePurchaseReturnMutation();
   const [deletePurchaseLandedCost] = useDeletePurchaseLandedCostMutation();
   const [deletePaymentAction] = useDeleteTransactionActionMutation();
 
@@ -146,6 +162,19 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const runClose = async () => {
+    if (!purchase) return;
+
+    try {
+      await closePurchase(purchase.id).unwrap();
+      message.success("Purchase closed.");
+      refetch();
+    } catch (error) {
+      message.error(purchaseApiError(error, "Purchase could not be closed."));
+      throw error;
+    }
+  };
+
   if (!ready || isLoading) return <AppViewLoader loading />;
   if (!canViewPurchase) return <AccessDeniedView title="Purchases" description="You do not have permission to view this purchase." />;
   if (isError || !purchase) return <p className="px-8 py-10 text-sm text-red-600">This purchase could not be loaded.</p>;
@@ -157,6 +186,10 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     return productType !== "BUNDLE";
   });
   const canReceive = !purchase.locked && !isCancelled && fulfillableLines.some((line) => Number(line.quantity) > Number(line.fulfilledQuantity || 0));
+  const canReturn = !purchase.locked && !isCancelled && fulfillableLines.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
+  const isFullyReceived = !purchase.locked && !isCancelled && fulfillableLines.length > 0 && fulfillableLines.every((line) => Number(line.fulfilledQuantity || 0) >= Number(line.quantity || 0));
+  const netPaid = Number(purchase.amount || 0) - Number(purchase.balance || 0);
+  const canRefundPayment = netPaid > 0 && Number(purchase.balance || 0) <= 0;
   const currency = purchase.currencyId?.code || "";
   const editingItemName = editingItem ? (typeof editingItem.item.productId === "string" ? "Selected item" : editingItem.item.productId.name || "Selected item") : "";
   const deletingItemName = deletingItem ? (typeof deletingItem.item.productId === "string" ? "Selected item" : deletingItem.item.productId.name || "Selected item") : "";
@@ -168,7 +201,11 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     if (!purchase || !editingItem) return;
 
     try {
-      await updatePurchaseFulfillment({ id: purchase.id, fulfillmentId: editingItem.item.id, ...values }).unwrap();
+      if (editingItem.kind === "fulfillment") {
+        await updatePurchaseFulfillment({ id: purchase.id, fulfillmentId: editingItem.item.id, ...values }).unwrap();
+      } else {
+        await updatePurchaseReturn({ id: purchase.id, returnId: editingItem.item.id, ...values }).unwrap();
+      }
       message.success("Item updated.");
       closeItemEditor();
       refetch();
@@ -182,7 +219,11 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     setDeletingItem({ kind: "fulfillment", item });
   };
 
-  function getProductType(currentPurchase: typeof purchase, item: PurchaseStockEvent) {
+  const confirmDeleteReturn = (item: PurchaseReturnEvent) => {
+    setDeletingItem({ kind: "return", item });
+  };
+
+  function getProductType(currentPurchase: typeof purchase, item: PurchaseStockEvent | PurchaseReturnEvent) {
     if (!currentPurchase) return undefined;
     const lineItem = currentPurchase.lineItems.find((line) => line.id === item.lineItemId);
     if (!lineItem) return undefined;
@@ -193,7 +234,11 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
     if (!purchase || !deletingItem) return;
 
     try {
-      await deletePurchaseFulfillment({ id: purchase.id, fulfillmentId: deletingItem.item.id }).unwrap();
+      if (deletingItem.kind === "fulfillment") {
+        await deletePurchaseFulfillment({ id: purchase.id, fulfillmentId: deletingItem.item.id }).unwrap();
+      } else {
+        await deletePurchaseReturn({ id: purchase.id, returnId: deletingItem.item.id }).unwrap();
+      }
       message.success("Item deleted.");
       closeDeleteDialog();
       refetch();
@@ -212,12 +257,17 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
           canManage={canManagePurchase}
           canEdit={canEdit}
           canReceive={canReceive}
+          canReturn={canReturn}
+          canRefundPayment={canRefundPayment}
+          isFullyReceived={isFullyReceived}
           isCancelling={isCancelling}
           isCancelled={isCancelled}
           onEdit={toggleEdit}
           onDelete={confirmCancel}
           onReopen={runReopen}
+          onClose={runClose}
           onReceive={toggleFulfill}
+          onReturn={toggleReturn}
           onAddLandedCost={openAddLandedCostModal}
           onRecordPayment={() => openPaymentModal(TransactionType.PAYMENT)}
           onRefund={() => openPaymentModal(TransactionType.REFUND)}
@@ -229,25 +279,28 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
           onDeleteLandedCost={deleteLandedCost}
           onEditFulfillment={(event) => setEditingItem({ kind: "fulfillment", item: event })}
           onDeleteFulfillment={confirmDeleteItem}
+          onEditReturn={(event) => setEditingItem({ kind: "return", item: event })}
+          onDeleteReturn={confirmDeleteReturn}
         />
         <PurchaseOrderSummary purchase={purchase} canReceive={canReceive} onReceive={toggleFulfill} onAddLandedCost={openAddLandedCostModal} onRecordPayment={() => openPaymentModal(TransactionType.PAYMENT)} />
       </div>
 
       {editOpen && <PurchaseOrderFormModal open={editOpen} toggle={toggleEdit} purchase={purchase} onSaved={refetch} />}
       {fulfillOpen && <PurchaseOrderStockOperationModal open={fulfillOpen} toggle={toggleFulfill} purchase={purchase} onSaved={refetch} />}
+      {returnOpen && canReturn && <PurchaseReturnOperationModal open={returnOpen} toggle={toggleReturn} purchase={purchase} onSaved={refetch} />}
       {landedCostOpen && <PurchaseOrderLandedCostModal open={landedCostOpen} toggle={closeLandedCostModal} purchase={purchase} onSaved={refetch} initialValues={selectedLandedCost} />}
       {paymentOpen && <PaymentFormModal type={paymentType} open={paymentOpen} toggle={closePaymentModal} linkTransaction={{ id: purchase.id, rate: purchase.rate || 1, currencyId: purchase.currencyId?.id || "" }} initialValues={selectedPayment} />}
       {editingItem && (
         <TransactionItemEditModal
           open={Boolean(editingItem)}
           toggle={closeItemEditor}
-          title="Edit Fulfillment"
+          title={editingItem.kind === "fulfillment" ? "Edit Fulfillment" : "Edit Return"}
           description={editingItemName}
           quantityLabel={`Current quantity: ${Number(editingItem.item.quantity || 0).toLocaleString()}`}
           quantity={Number(editingItem.item.quantity || 0)}
-          dateLabel="Received at"
-          initialDate={editingItem.item.fulfilledAt}
-          loading={isUpdatingFulfillment || isDeletingFulfillment}
+          dateLabel={editingItem.kind === "fulfillment" ? "Received at" : "Returned at"}
+          initialDate={editingItem.kind === "fulfillment" ? editingItem.item.fulfilledAt : editingItem.item.returnedAt}
+          loading={isUpdatingFulfillment || isUpdatingReturn || isDeletingFulfillment || isDeletingReturn}
           onSubmit={saveItem}
         />
       )}
@@ -263,17 +316,19 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </Modal>
       {deletingItem && (
-        <Modal open onCancel={closeDeleteDialog} footer={null} title="Delete this fulfillment?">
+        <Modal open onCancel={closeDeleteDialog} footer={null} title={deletingItem.kind === "fulfillment" ? "Delete this fulfillment?" : "Delete this return?"}>
           <div className="px-5 py-4">
             <p className="text-sm text-gray-600">
-              {deletingItemAffectsStock
-                ? "This will reverse the stock changes made by this fulfillment. Inventory quantities will be updated accordingly. This action cannot be undone."
-                : "This will remove the fulfillment record. No inventory will be affected. This action cannot be undone."}
+              {deletingItem.kind === "return"
+                ? "This will remove the return record and put the related quantity back into the received state. Inventory quantities will be updated accordingly. This action cannot be undone."
+                : deletingItemAffectsStock
+                  ? "This will reverse the stock changes made by this fulfillment. Inventory quantities will be updated accordingly. This action cannot be undone."
+                  : "This will remove the fulfillment record. No inventory will be affected. This action cannot be undone."}
             </p>
             <p className="mt-2 text-xs text-gray-500">{deletingItemName}</p>
             <div className="mt-5 flex items-center justify-end gap-3">
               <Button onClick={closeDeleteDialog}>Cancel</Button>
-              <Button danger type="primary" loading={isDeletingFulfillment} onClick={runDeleteItem}>
+              <Button danger type="primary" loading={isDeletingFulfillment || isDeletingReturn} onClick={runDeleteItem}>
                 Delete
               </Button>
             </div>

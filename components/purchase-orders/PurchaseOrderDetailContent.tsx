@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Divider, Dropdown, MenuProps, Tag } from "antd";
-import { CalendarDays, Clock3, Copy, CreditCard, Link as LinkIcon, MoreHorizontal, PackageCheck, Pencil, Receipt, RotateCcw, Trash2, Truck, WalletCards } from "lucide-react";
+import { CalendarDays, Clock3, Copy, CreditCard, Link as LinkIcon, Lock, MoreHorizontal, PackageCheck, Pencil, Receipt, RotateCcw, Trash2, Truck, Undo2, Unlock, WalletCards } from "lucide-react";
 import { GoBack } from "@/components/ui/GoBack";
 import { formatDate } from "@/lib/dateUtils";
 import { useGetPaymentTermsQuery } from "@/lib/redux/services";
@@ -9,8 +9,7 @@ import { getPaymentTermLabel } from "@/lib/payment-terms";
 import { Purchase } from "@/types/index";
 import PurchaseOrderDetailTables from "./PurchaseOrderDetailTables";
 import { Payment } from "@/types/transaction";
-import { PurchaseLandedCost } from "@/types/purchase";
-import { PurchaseStockEvent } from "@/types/purchase";
+import { PurchaseLandedCost, PurchaseReturnEvent, PurchaseStockEvent } from "@/types/purchase";
 
 interface PurchaseOrderDetailContentProps {
   purchase: Purchase;
@@ -18,12 +17,17 @@ interface PurchaseOrderDetailContentProps {
   canManage?: boolean;
   canEdit: boolean;
   canReceive: boolean;
+  canReturn: boolean;
+  canRefundPayment: boolean;
+  isFullyReceived: boolean;
   isCancelling: boolean;
   isCancelled: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onReopen: () => void;
+  onClose: () => void;
   onReceive: () => void;
+  onReturn: () => void;
   onAddLandedCost: () => void;
   onRecordPayment: () => void;
   onRefund: () => void;
@@ -31,6 +35,8 @@ interface PurchaseOrderDetailContentProps {
   onWriteOff: () => void;
   onEditFulfillment: (event: PurchaseStockEvent) => void;
   onDeleteFulfillment: (event: PurchaseStockEvent) => void;
+  onEditReturn: (event: PurchaseReturnEvent) => void;
+  onDeleteReturn: (event: PurchaseReturnEvent) => void;
   onEditPayment: (payment: Payment) => void;
   onDeletePayment: (payment: Payment) => void;
   onEditLandedCost: (landedCost: PurchaseLandedCost) => void;
@@ -43,72 +49,91 @@ export default function PurchaseOrderDetailContent({
   canManage = false,
   canEdit,
   canReceive,
+  canReturn,
+  canRefundPayment,
+  isFullyReceived,
   isCancelling,
   isCancelled,
   onEdit,
   onDelete,
   onReopen,
+  onClose,
   onReceive,
+  onReturn,
   onAddLandedCost,
   onRecordPayment,
   onRefund,
-  onIssueCredit,
   onWriteOff,
   onEditFulfillment,
   onDeleteFulfillment,
+  onEditReturn,
+  onDeleteReturn,
   onEditPayment,
   onDeletePayment,
   onEditLandedCost,
   onDeleteLandedCost,
 }: PurchaseOrderDetailContentProps) {
   const { data: paymentTerms } = useGetPaymentTermsQuery();
-  const moreItems: MenuProps["items"] = canManage
-    ? [
-        {
-          key: "edit",
-          disabled: !canEdit,
-          icon: <Pencil size={15} />,
-          label: "Edit Purchase",
-          onClick: onEdit,
-        },
-        {
-          key: "landed_cost",
-          disabled: Boolean(purchase.locked),
-          icon: <Truck size={15} />,
-          label: "Add Landed Cost",
-          onClick: onAddLandedCost,
-        },
-        {
-          type: "divider",
-        },
-        {
-          key: "refund",
-          icon: <RotateCcw size={15} />,
-          label: "Refund Payment",
-        },
-        // {
-        //   key: "issue_credit",
-        //   icon: <RotateCcw size={15} />,
-        //   label: "Issue Credit",
-        // },
-        {
-          key: "write_off",
-          icon: <Receipt size={15} />,
-          label: "Write Off Balance",
-        },
-        {
-          type: "divider",
-        },
-        {
-          key: "delete",
-          icon: <Trash2 size={15} />,
-          danger: true,
-          disabled: isCancelling,
-          label: "Cancel Purchase",
-          onClick: onDelete,
-        },
-      ]
-    : [];
+  const isClosed = Boolean(purchase.locked && !isCancelled);
+  const moreItems: MenuProps["items"] =
+    canManage && !isClosed
+      ? [
+          {
+            key: "edit",
+            disabled: !canEdit,
+            icon: <Pencil size={15} />,
+            label: "Edit Purchase",
+            onClick: onEdit,
+          },
+          {
+            key: "landed_cost",
+            disabled: Boolean(purchase.locked),
+            icon: <Truck size={15} />,
+            label: "Add Landed Cost",
+            onClick: onAddLandedCost,
+          },
+          {
+            key: "return",
+            icon: <Undo2 size={15} />,
+            label: "Return Items",
+            onClick: onReturn,
+          },
+          {
+            type: "divider" as const,
+          },
+          {
+            key: "refund",
+            icon: <RotateCcw size={15} />,
+            label: "Refund Payment",
+          },
+          // {
+          //   key: "issue_credit",
+          //   icon: <RotateCcw size={15} />,
+          //   label: "Issue Credit",
+          // },
+          {
+            key: "write_off",
+            icon: <Receipt size={15} />,
+            label: "Write Off Balance",
+          },
+          {
+            key: "close",
+            icon: <Lock size={15} />,
+            label: "Close Purchase",
+          },
+          {
+            type: "divider" as const,
+          },
+          {
+            key: "delete",
+            icon: <Trash2 size={15} />,
+            danger: true,
+            disabled: isCancelling,
+            label: "Cancel Purchase",
+            onClick: onDelete,
+          },
+        ]
+      : [];
 
   const handleMoreClick: MenuProps["onClick"] = ({ key }) => {
     if (key === "refund") {
@@ -121,6 +146,10 @@ export default function PurchaseOrderDetailContent({
     // }
     if (key === "write_off") {
       onWriteOff();
+      return;
+    }
+    if (key === "close") {
+      onClose();
       return;
     }
     if (key === "delete") {
@@ -186,13 +215,36 @@ export default function PurchaseOrderDetailContent({
               <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" onClick={onReopen}>
                 Reopen Purchase
               </Button>
+            ) : isClosed ? (
+              <>
+                {canManage && (
+                  <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<Unlock size={15} />} onClick={onReopen}>
+                    Reopen Purchase
+                  </Button>
+                )}
+                <Dropdown menu={{ items: readOnlyItems, onClick: handleReadOnlyClick }} placement="bottomRight">
+                  <Button type="text" className="!bg-gray-200/80 " icon={<MoreHorizontal size={15} />} />
+                </Dropdown>
+              </>
             ) : canManage ? (
               <>
-                <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<PackageCheck size={15} />} disabled={!canReceive} onClick={onReceive}>
-                  Fulfill
-                </Button>
-                <Button type="primary" className="!shadow-none  !bg-[#f7c855] !text-black !font-semibold" icon={<CreditCard size={15} />} disabled={Boolean(purchase.locked)} onClick={onRecordPayment}>
-                  Record Payment
+                {canReceive || !isFullyReceived ? (
+                  <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<PackageCheck size={15} />} disabled={!canReceive} onClick={onReceive}>
+                    Fulfill
+                  </Button>
+                ) : (
+                  <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<Undo2 size={15} />} disabled={!canReturn} onClick={onReturn}>
+                    Return
+                  </Button>
+                )}
+                <Button
+                  type="primary"
+                  className="!shadow-none  !bg-[#f7c855] !text-black !font-semibold"
+                  icon={canRefundPayment ? <RotateCcw size={15} /> : <CreditCard size={15} />}
+                  disabled={Boolean(purchase.locked)}
+                  onClick={canRefundPayment ? onRefund : onRecordPayment}
+                >
+                  {canRefundPayment ? "Refund Payment" : "Record Payment"}
                 </Button>
                 <Dropdown menu={{ items: [...readOnlyItems, { type: "divider" }, ...(moreItems || [])], onClick: (info) => (info.key === "copy_number" || info.key === "copy_link" ? handleReadOnlyClick(info) : handleMoreClick(info)) }} placement="bottomRight">
                   <Button type="text" className="!bg-gray-200/80 " icon={<MoreHorizontal size={15} />} />
@@ -210,6 +262,7 @@ export default function PurchaseOrderDetailContent({
       <div className="pt-7">
         <div className=" px-4 md:px-8">
           {isCancelled && <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">This purchase has been cancelled and is currently view-only. Reopen it to make changes.</div>}
+          {isClosed && <div className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">This purchase is closed and read-only. Reopen it to make changes.</div>}
           <div className="grid gap-4 sm:grid-cols-2">
             <IdentityPanel label="Supplier" title={supplierName} description={supplierMeta} />
             <IdentityPanel label="Destination" title={locationName} description={locationMeta} />
@@ -237,8 +290,11 @@ export default function PurchaseOrderDetailContent({
           currency={currency}
           canManage={canManage}
           isCancelled={isCancelled}
+          isReadOnly={isClosed}
           onEditFulfillment={onEditFulfillment}
           onDeleteFulfillment={onDeleteFulfillment}
+          onEditReturn={onEditReturn}
+          onDeleteReturn={onDeleteReturn}
           onEditPayment={onEditPayment}
           onDeletePayment={onDeletePayment}
           onEditLandedCost={onEditLandedCost}

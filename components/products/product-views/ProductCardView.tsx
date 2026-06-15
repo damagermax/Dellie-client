@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { Edit2 } from "lucide-react";
 import PreviewImage from "@/components/ui/PreviewImage";
+import { ProductPriceTier, getNormalPrice } from "@/lib/products/pricing";
 
 type ProductViewItem = {
   id?: string;
@@ -13,7 +14,9 @@ type ProductViewItem = {
   imageUrl?: string;
   listed?: string;
   price?: string;
-  sellingPrice?: number;
+  priceTiers?: ProductPriceTier[];
+  normalPrice?: number;
+  formattedNormalPrice?: string;
   stock?: number;
   availableStock?: number;
 };
@@ -28,9 +31,7 @@ export default function ProductCardView({ products }: ProductCardViewProps) {
       {products.map((product) => {
         const productId = product.id || product.key;
         const stock = Number(product.availableStock ?? product.stock ?? 0);
-        const price =
-          product.price ||
-          `GHS ${Number(product.sellingPrice || 0).toFixed(2)}`;
+        const price = product.price || product.formattedNormalPrice || `GHS ${getNormalPrice(product).toFixed(2)}`;
 
         return (
           <div

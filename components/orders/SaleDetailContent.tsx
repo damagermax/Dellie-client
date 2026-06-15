@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Divider, Dropdown, MenuProps, Tag } from "antd";
-import { CalendarDays, Clock3, CreditCard, FileText, MoreHorizontal, PackageCheck, Pencil, Receipt, ReceiptText, RotateCcw, Trash2, Truck, WalletCards } from "lucide-react";
+import { CalendarDays, Clock3, CreditCard, FileText, Lock, MoreHorizontal, PackageCheck, Pencil, Receipt, ReceiptText, RotateCcw, Trash2, Truck, Undo2, Unlock, WalletCards } from "lucide-react";
 import { GoBack } from "@/components/ui/GoBack";
 import { formatDate } from "@/lib/dateUtils";
 import { useGetPaymentTermsQuery } from "@/lib/redux/services";
@@ -10,6 +10,7 @@ import { Sale } from "@/types/index";
 import SaleDetailTables from "./SaleDetailTables";
 import { SaleDocumentType } from "./SaleShareDocumentModal";
 import { Payment } from "@/types/transaction";
+import { PurchaseReturnEvent, PurchaseStockEvent } from "@/types/purchase";
 import { saleDocumentNumber } from "./saleUtils";
 
 interface SaleDetailContentProps {
@@ -18,6 +19,9 @@ interface SaleDetailContentProps {
   canManage?: boolean;
   canEdit: boolean;
   canFulfill: boolean;
+  canReturn: boolean;
+  canRefundPayment: boolean;
+  isFullyFulfilled: boolean;
   isQuote: boolean;
   isCancelling: boolean;
   isConverting: boolean;
@@ -25,15 +29,19 @@ interface SaleDetailContentProps {
   onEdit: () => void;
   onDelete: () => void;
   onReopen: () => void;
+  onClose: () => void;
   onConvert: () => void;
   onFulfill: () => void;
+  onReturn: () => void;
   onRecordPayment: () => void;
   onRefund: () => void;
   onIssueCredit: () => void;
   onWriteOff: () => void;
   onShare: (type: SaleDocumentType) => void;
-  onEditFulfillment: (event: unknown) => void;
-  onDeleteFulfillment: (event: unknown) => void;
+  onEditFulfillment: (event: PurchaseStockEvent) => void;
+  onDeleteFulfillment: (event: PurchaseStockEvent) => void;
+  onEditReturn: (event: PurchaseReturnEvent) => void;
+  onDeleteReturn: (event: PurchaseReturnEvent) => void;
   onEditPayment: (payment: Payment) => void;
   onDeletePayment: (payment: Payment) => void;
 }
@@ -44,6 +52,9 @@ export default function SaleDetailContent({
   canManage = false,
   canEdit,
   canFulfill,
+  canReturn,
+  canRefundPayment,
+  isFullyFulfilled,
   isQuote,
   isCancelling,
   isConverting,
@@ -51,15 +62,18 @@ export default function SaleDetailContent({
   onEdit,
   onDelete,
   onReopen,
+  onClose,
   onConvert,
   onFulfill,
+  onReturn,
   onRecordPayment,
   onRefund,
-  onIssueCredit,
   onWriteOff,
   onShare,
   onEditFulfillment,
   onDeleteFulfillment,
+  onEditReturn,
+  onDeleteReturn,
   onEditPayment,
   onDeletePayment,
 }: SaleDetailContentProps) {
@@ -72,7 +86,24 @@ export default function SaleDetailContent({
   const locationName = sale.locationId?.name || "Location not set";
   const locationMeta = sale.locationId?.address || "No address provided";
 
-  const moreItems: MenuProps["items"] = isQuote
+  const isClosed = Boolean(sale.locked && !isCancelled);
+  const readOnlyItems: MenuProps["items"] = [
+    {
+      key: "invoice",
+      icon: <FileText size={15} />,
+      label: "Share Invoice",
+      onClick: () => onShare("invoice"),
+    },
+    {
+      key: "receipt",
+      icon: <ReceiptText size={15} />,
+      label: "Share Receipt",
+      onClick: () => onShare("receipt"),
+    },
+  ];
+  const moreItems: MenuProps["items"] = isClosed
+    ? readOnlyItems
+    : isQuote
     ? [
         ...(canManage
           ? [
@@ -85,22 +116,11 @@ export default function SaleDetailContent({
               },
             ]
           : []),
-        {
-          key: "invoice",
-          icon: <FileText size={15} />,
-          label: "Share Invoice",
-          onClick: () => onShare("invoice"),
-        },
-        {
-          key: "receipt",
-          icon: <ReceiptText size={15} />,
-          label: "Share Receipt",
-          onClick: () => onShare("receipt"),
-        },
+        ...readOnlyItems,
         ...(canManage
           ? [
               {
-                type: "divider",
+                type: "divider" as const,
               },
               {
                 key: "delete",
@@ -128,6 +148,11 @@ export default function SaleDetailContent({
                 icon: <RotateCcw size={15} />,
                 label: "Refund Payment",
               },
+              {
+                key: "return",
+                icon: <Undo2 size={15} />,
+                label: "Return Items",
+              },
               // {
               //   key: "issue_credit",
               //   icon: <RotateCcw size={15} />,
@@ -138,24 +163,18 @@ export default function SaleDetailContent({
                 icon: <Receipt size={15} />,
                 label: "Write Off Balance",
               },
+              {
+                key: "close",
+                icon: <Lock size={15} />,
+                label: "Close Sale",
+              },
             ]
           : []),
-        {
-          key: "invoice",
-          icon: <FileText size={15} />,
-          label: "Share Invoice",
-          onClick: () => onShare("invoice"),
-        },
-        {
-          key: "receipt",
-          icon: <ReceiptText size={15} />,
-          label: "Share Receipt",
-          onClick: () => onShare("receipt"),
-        },
+        ...readOnlyItems,
         ...(canManage
           ? [
               {
-                type: "divider",
+                type: "divider" as const,
               },
               {
                 key: "delete",
@@ -170,9 +189,17 @@ export default function SaleDetailContent({
       ];
 
   const handleMoreClick: MenuProps["onClick"] = ({ key }) => {
-    if (isQuote) return;
+    if (key === "invoice" || key === "receipt") {
+      onShare(key);
+      return;
+    }
+    if (isClosed || isQuote) return;
     if (key === "refund") {
       onRefund();
+      return;
+    }
+    if (key === "return") {
+      onReturn();
       return;
     }
     // if (key === "issue_credit") {
@@ -181,6 +208,10 @@ export default function SaleDetailContent({
     // }
     if (key === "write_off") {
       onWriteOff();
+      return;
+    }
+    if (key === "close") {
+      onClose();
       return;
     }
     if (key === "delete") {
@@ -226,6 +257,17 @@ export default function SaleDetailContent({
               <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" onClick={onReopen}>
                 Reopen Sale
               </Button>
+            ) : isClosed ? (
+              <>
+                {canManage && (
+                  <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<Unlock size={15} />} onClick={onReopen}>
+                    Reopen Sale
+                  </Button>
+                )}
+                <Dropdown menu={{ items: moreItems, onClick: handleMoreClick }} placement="bottomRight">
+                  <Button type="text" className="!bg-gray-200/80" icon={<MoreHorizontal size={15} />} />
+                </Dropdown>
+              </>
             ) : isQuote ? (
               <>
                 {canManage && (
@@ -241,11 +283,17 @@ export default function SaleDetailContent({
               <>
                 {canManage && (
                   <>
-                    <Button type="primary" className="!border-2 !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<PackageCheck size={15} />} disabled={!canFulfill} onClick={onFulfill}>
-                      Fulfill
-                    </Button>
-                    <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<CreditCard size={15} />} disabled={Boolean(sale.locked)} onClick={onRecordPayment}>
-                      Record Payment
+                    {canFulfill || !isFullyFulfilled ? (
+                      <Button type="primary" className="!border-2 !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<PackageCheck size={15} />} disabled={!canFulfill} onClick={onFulfill}>
+                        Fulfill
+                      </Button>
+                    ) : (
+                      <Button type="primary" className="!border-2 !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<Undo2 size={15} />} disabled={!canReturn} onClick={onReturn}>
+                        Return
+                      </Button>
+                    )}
+                    <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={canRefundPayment ? <RotateCcw size={15} /> : <CreditCard size={15} />} disabled={Boolean(sale.locked)} onClick={canRefundPayment ? onRefund : onRecordPayment}>
+                      {canRefundPayment ? "Refund Payment" : "Record Payment"}
                     </Button>
                   </>
                 )}
@@ -261,6 +309,7 @@ export default function SaleDetailContent({
       <div className="pt-7">
         <div className="px-4 md:px-8">
           {isCancelled && <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">This sale has been cancelled and is currently view-only. Reopen it to make changes.</div>}
+          {isClosed && <div className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">This sale is closed and read-only. Reopen it to make changes.</div>}
           <div className="grid gap-4 sm:grid-cols-2">
             <IdentityPanel label="Customer" title={customerName} description={customerMeta} />
             <IdentityPanel label="Location" title={locationName} description={locationMeta} />
@@ -281,7 +330,19 @@ export default function SaleDetailContent({
             <p className="text-sm leading-6 text-gray-700">{sale.note}</p>
           </div>
         )}
-        <SaleDetailTables sale={sale} currency={currency} canManage={canManage} isCancelled={isCancelled} onEditFulfillment={onEditFulfillment} onDeleteFulfillment={onDeleteFulfillment} onEditPayment={onEditPayment} onDeletePayment={onDeletePayment} />
+        <SaleDetailTables
+          sale={sale}
+          currency={currency}
+          canManage={canManage}
+          isCancelled={isCancelled}
+          isReadOnly={isClosed}
+          onEditFulfillment={onEditFulfillment}
+          onDeleteFulfillment={onDeleteFulfillment}
+          onEditReturn={onEditReturn}
+          onDeleteReturn={onDeleteReturn}
+          onEditPayment={onEditPayment}
+          onDeletePayment={onDeletePayment}
+        />
       </div>
     </section>
   );

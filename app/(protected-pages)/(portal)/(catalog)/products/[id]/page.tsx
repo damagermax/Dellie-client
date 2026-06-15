@@ -16,7 +16,8 @@ import { AdjustBatchInput, Location, RestockProductInput, TransferBatchInput } f
 import { Button, DatePicker, Empty, Form, Input, InputNumber, Segmented, Select, Skeleton, Tabs, Tag, message } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { ArrowRightLeft, Check, ChevronDown, Pencil, SlidersHorizontal, X } from "lucide-react";
+import { ArrowRightLeft, Pencil, SlidersHorizontal } from "lucide-react";
+import { NORMAL_PRICE_TIER_NAME, ProductPriceTier, TRADE_PRICE_TIER_NAME, defaultPriceTiers, getNormalPrice } from "@/lib/products/pricing";
 import React, { useEffect, useMemo, useState } from "react";
 import { FaBox, FaLayerGroup } from "react-icons/fa";
 import { GrHistory } from "react-icons/gr";
@@ -36,8 +37,13 @@ type InventorySummary = {
 
 type InventoryLocation = {
   id?: string;
+  locationId?: string;
   locationName?: string;
+  onHand?: number;
   available?: number;
+  unavailable?: number;
+  reserved?: number;
+  incoming?: number;
   committed?: number;
 };
 
@@ -76,7 +82,7 @@ type ProductDetail = Record<string, unknown> & {
   categoryName?: string;
   description?: string;
   weight?: number;
-  sellingPrice?: number;
+  priceTiers?: ProductPriceTier[];
   costPrice?: number;
   wholesalePrice?: number;
   availableStock?: number;
@@ -105,7 +111,7 @@ type ProductDetail = Record<string, unknown> & {
           name?: string;
           sku?: string;
           media?: { url?: string }[];
-          sellingPrice?: number;
+          priceTiers?: ProductPriceTier[];
         }
       | string;
     quantity?: number;
@@ -127,52 +133,6 @@ type DetailTab = {
   children: React.ReactNode;
 };
 
-const MOCK_PRODUCT_OVERVIEW = {
-  totalQuantity: 36,
-  unit: "ea",
-  activeMetric: "on hand",
-  locations: [
-    {
-      id: "eastern-warehouse",
-      name: "Eastern Warehouse",
-      onHand: 25,
-      available: 19,
-      reserved: 6,
-      incoming: 0,
-    },
-    {
-      id: "western-warehouse",
-      name: "Western Warehouse",
-      onHand: 11,
-      available: 11,
-      reserved: 0,
-      incoming: 5,
-    },
-  ],
-  baseCost: "GHS 30.00",
-  inventoryValue: "GHS 1,080.00",
-  priceTiers: [
-    {
-      name: "Normal Selling Price",
-      description: "Default customer-facing price",
-      price: "GHS 120.00",
-      moq: "1 ea",
-      discount: "0%",
-      margin: "75%",
-      accent: "#176ebe",
-    },
-    {
-      name: "Wholesale",
-      description: "Bulk trade price",
-      price: "GHS 85.00",
-      moq: "12 ea",
-      discount: "29%",
-      margin: "65%",
-      accent: "#2d837d",
-    },
-  ],
-};
-
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const { ready, hasAnyPermission, hasPermission } = usePermissions();
@@ -189,7 +149,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const product = rawProduct as ProductDetail | undefined;
   const imageUrl = product?.media?.[0]?.url || product?.imageUrl;
 
-  const tabs = useMemo(() => buildTabs(product, { canManageInventory, onBatchChanged: refetch }), [canManageInventory, product, refetch]);
+  const tabs = useMemo(() => buildTabs(product, { canManageInventory, canManageProduct, onBatchChanged: refetch, onEditProduct: toggleEdit }), [canManageInventory, canManageProduct, product, refetch, toggleEdit]);
   const currentTab = tabs.find((tab) => tab.key === activeSection) || tabs[0];
 
   useEffect(() => {
@@ -488,14 +448,14 @@ function RestockProductModal({ open, toggle, product, onSaved }: { open: boolean
   );
 }
 
-function buildTabs(product: ProductDetail | undefined, options: { canManageInventory: boolean; onBatchChanged: () => void }): DetailTab[] {
+function buildTabs(product: ProductDetail | undefined, options: { canManageInventory: boolean; canManageProduct: boolean; onBatchChanged: () => void; onEditProduct: () => void }): DetailTab[] {
   if (!product) return [];
 
   const tabs: DetailTab[] = [
     {
       key: "overview",
       label: <TabLabel icon={<FaBox />} text="Overview" />,
-      children: <Overview />,
+      children: <Overview product={product} canManageProduct={options.canManageProduct} onEditProduct={options.onEditProduct} />,
     },
   ];
 
@@ -540,22 +500,36 @@ function buildTabs(product: ProductDetail | undefined, options: { canManageInven
   return tabs;
 }
 
-function Overview() {
-  const [locationSearch, setLocationSearch] = useState("");
-  const filteredLocations = MOCK_PRODUCT_OVERVIEW.locations.filter((location) => location.name.toLowerCase().includes(locationSearch.trim().toLowerCase()));
-  const maxQuantity = Math.max(...MOCK_PRODUCT_OVERVIEW.locations.map((location) => location.onHand), 1);
+function Overview({ product, canManageProduct, onEditProduct }: { product: ProductDetail; canManageProduct: boolean; onEditProduct: () => void }) {
+  const locations = product.type === "STOCK" ? product.inventory?.locations || [] : [];
+  const totalOnHand = locations.reduce((total, location) => total + numberValue(location.onHand), 0);
+  const totalReserved = locations.reduce((total, location) => total + numberValue(location.reserved), 0);
+  const totalIncoming = locations.reduce((total, location) => total + numberValue(location.incoming), 0);
+  const maxQuantity = Math.max(...locations.map((location) => numberValue(location.onHand) + numberValue(location.incoming)), 1);
 
   return (
     <div className="space-y-3  px-4 pt-4 md:px-0 md:pt-0">
       <div className="grid rounded-lg overflow-clip xl:grid-cols-2">
-        <InventoryOverviewCard locations={filteredLocations} maxQuantity={maxQuantity} search={locationSearch} onSearchChange={setLocationSearch} />
-        <PricingCostOverviewCard />
+        <InventoryOverviewCard locations={locations} maxQuantity={maxQuantity} totalOnHand={totalOnHand} totalReserved={totalReserved} totalIncoming={totalIncoming} />
+        <PricingCostOverviewCard product={product} canManageProduct={canManageProduct} onEditProduct={onEditProduct} />
       </div>
     </div>
   );
 }
 
-function InventoryOverviewCard({ locations, maxQuantity }: { locations: typeof MOCK_PRODUCT_OVERVIEW.locations; maxQuantity: number; search: string; onSearchChange: (value: string) => void }) {
+function InventoryOverviewCard({
+  locations,
+  maxQuantity,
+  totalOnHand,
+  totalReserved,
+  totalIncoming,
+}: {
+  locations: InventoryLocation[];
+  maxQuantity: number;
+  totalOnHand: number;
+  totalReserved: number;
+  totalIncoming: number;
+}) {
   return (
     <section className=" bg-[#f3f3f3] border-r border-gray-200 px-4 py-5 md:px-5 md:py-5">
       <div className="flex items-start justify-between gap-3">
@@ -563,14 +537,16 @@ function InventoryOverviewCard({ locations, maxQuantity }: { locations: typeof M
           <p className="flex flex-wrap items-center gap-2 text-base text-gray-600">
             <span>Quantity</span>
             <span className="inline-flex items-center gap-1 rounded-md bg-[#b7c3dc] px-2.5 py-0.5 text-sm font-medium text-[#1f365f]">
-              {MOCK_PRODUCT_OVERVIEW.activeMetric}
+              on hand
               <span className="text-base leading-none">↵</span>
             </span>
             <span>for all locations</span>
           </p>
-          <div className="mt-3 flex items-end gap-2">
-            <span className="text-2xl font-semibold leading-none tracking-normal text-gray-800">{MOCK_PRODUCT_OVERVIEW.totalQuantity}</span>
-            <span className="pb-1 text-lg text-gray-600">{MOCK_PRODUCT_OVERVIEW.unit}</span>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <span className="text-2xl font-semibold leading-none tracking-normal text-gray-800">{formatQuantity(totalOnHand)}</span>
+            <span className="pb-1 text-lg text-gray-600">ea</span>
+            {totalReserved > 0 && <span className="mb-0.5 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{formatQuantity(totalReserved)} reserved</span>}
+            {totalIncoming > 0 && <span className="mb-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">{formatQuantity(totalIncoming)} incoming</span>}
           </div>
         </div>
       </div>
@@ -579,49 +555,49 @@ function InventoryOverviewCard({ locations, maxQuantity }: { locations: typeof M
 
       <div className="mt-5 space-y-2.5">
         {locations.length ? (
-          locations.map((location) => <InventoryLocationRow key={location.id} location={location} maxQuantity={maxQuantity} />)
+          locations.map((location) => <InventoryLocationRow key={location.id || location.locationId || location.locationName} location={location} maxQuantity={maxQuantity} />)
         ) : (
-          <div className="rounded-md border border-dashed border-gray-300 bg-white/70 px-4 py-6 text-center text-sm text-gray-500">No matching locations.</div>
+          <div className="rounded-md border border-dashed border-gray-300 bg-white/70 px-4 py-6 text-center text-sm text-gray-500">No inventory has been recorded for this stock product yet.</div>
         )}
-      </div>
-
-      <div className="mt-5 border-t border-gray-200 pt-4 text-center">
-        <button type="button" className="inline-flex items-center gap-2 text-sm font-medium text-[#53658a]">
-          Show more locations
-          <ChevronDown size={15} />
-        </button>
       </div>
     </section>
   );
 }
 
-function InventoryLocationRow({ location, maxQuantity }: { location: (typeof MOCK_PRODUCT_OVERVIEW.locations)[number]; maxQuantity: number; highlighted?: boolean }) {
-  const onHandWidth = Math.max((location.onHand / maxQuantity) * 100, 4);
-  const reservedWidth = location.onHand > 0 ? Math.min((location.reserved / location.onHand) * 100, 100) : 0;
-  const incomingWidth = Math.max((location.incoming / maxQuantity) * 100, 0);
+function InventoryLocationRow({ location, maxQuantity }: { location: InventoryLocation; maxQuantity: number }) {
+  const onHand = numberValue(location.onHand);
+  const available = numberValue(location.available);
+  const reserved = numberValue(location.reserved);
+  const incoming = numberValue(location.incoming);
+  const onHandWidth = Math.max((onHand / maxQuantity) * 100, onHand > 0 ? 4 : 0);
+  const reservedWidth = onHand > 0 ? Math.min((reserved / onHand) * 100, 100) : 0;
+  const incomingWidth = Math.max((incoming / maxQuantity) * 100, incoming > 0 ? 4 : 0);
 
   return (
     <div className={`rounded-md  py-3`}>
       <div className="flex flex-wrap items-center gap-2.5 text-base">
-        <span className="font-medium text-gray-900">{location.onHand}</span>
-        <span className="font-semibold text-gray-700">{location.name}</span>
+        <span className="font-medium text-gray-900">{formatQuantity(onHand)}</span>
+        <span className="font-semibold text-gray-700">{location.locationName || "-"}</span>
         <span className="text-gray-500">→</span>
+        <span className="text-sm text-gray-500">{formatQuantity(available)} available</span>
+        {reserved > 0 && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{formatQuantity(reserved)} reserved</span>}
+        {incoming > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">{formatQuantity(incoming)} incoming</span>}
       </div>
       <div className="mt-3 flex h-7 items-center gap-2">
         <div className="relative h-full rounded-md bg-[#176ebe]" style={{ width: `${onHandWidth}%` }}>
-          {location.reserved > 0 && (
+          {reserved > 0 && (
             <div className="group absolute inset-y-1 right-1 rounded-md border-2 border-[#176ebe] bg-[#d8edff]" style={{ width: `${reservedWidth}%` }}>
               <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-3 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-700 px-2.5 py-1.5 text-xs font-medium text-white group-hover:block">
-                {location.reserved} reserved
+                {formatQuantity(reserved)} reserved
                 <span className="absolute bottom-full left-1/2 h-3 w-3 -translate-x-1/2 translate-y-1/2 rotate-45 bg-gray-700" />
               </div>
             </div>
           )}
         </div>
-        {location.incoming > 0 && (
+        {incoming > 0 && (
           <div className="group relative h-full rounded-md border border-[#a76a35] bg-[repeating-linear-gradient(135deg,#fff7ed_0,#fff7ed_3px,#b47a42_3px,#b47a42_4px)]" style={{ width: `${incomingWidth}%` }}>
             <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-3 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-700 px-2.5 py-1.5 text-xs font-medium text-white group-hover:block">
-              {location.incoming} incoming
+              {formatQuantity(incoming)} incoming
               <span className="absolute bottom-full left-1/2 h-3 w-3 -translate-x-1/2 translate-y-1/2 rotate-45 bg-gray-700" />
             </div>
           </div>
@@ -631,41 +607,9 @@ function InventoryLocationRow({ location, maxQuantity }: { location: (typeof MOC
   );
 }
 
-function PricingCostOverviewCard() {
-  const [priceTiers, setPriceTiers] = useState(MOCK_PRODUCT_OVERVIEW.priceTiers);
-  const [editingTierName, setEditingTierName] = useState<string | null>(null);
-  const [tierDraft, setTierDraft] = useState({ price: "", moq: "", discount: "" });
-
-  const startEditTier = (tier: (typeof MOCK_PRODUCT_OVERVIEW.priceTiers)[number]) => {
-    setEditingTierName(tier.name);
-    setTierDraft({
-      price: tier.price,
-      moq: tier.moq,
-      discount: tier.discount,
-    });
-  };
-
-  const cancelEditTier = () => {
-    setEditingTierName(null);
-    setTierDraft({ price: "", moq: "", discount: "" });
-  };
-
-  const saveTier = () => {
-    if (!editingTierName) return;
-    setPriceTiers((current) =>
-      current.map((tier) =>
-        tier.name === editingTierName
-          ? {
-              ...tier,
-              price: tierDraft.price.trim() || tier.price,
-              moq: tierDraft.moq.trim() || tier.moq,
-              discount: tierDraft.discount.trim() || tier.discount,
-            }
-          : tier,
-      ),
-    );
-    cancelEditTier();
-  };
+function PricingCostOverviewCard({ product, canManageProduct, onEditProduct }: { product: ProductDetail; canManageProduct: boolean; onEditProduct: () => void }) {
+  const summary = product.inventory?.summary || {};
+  const tiers = getRequiredPriceTiers(product.priceTiers);
 
   return (
     <section className="overflow-hidden  bg-[#f3f3f3]">
@@ -673,39 +617,20 @@ function PricingCostOverviewCard() {
         <h2 className="text-lg font-medium tracking-normal text-gray-900">Pricing &amp; Cost</h2>
       </div>
       <div className=" border-t mx-4 border-gray-300 " />
-      <div className="">
-        <div className="grid  px-2 gap-3">
-          {priceTiers.map((tier) => (
-            <PriceTierCard key={tier.name} tier={tier} editing={editingTierName === tier.name} draft={tierDraft} onDraftChange={setTierDraft} onEdit={() => startEditTier(tier)} onCancel={cancelEditTier} onSave={saveTier} />
-          ))}
-        </div>
-
-        <div className="mt-4 mx-4  py-3 grid gap-2.5 border-t border-gray-300  sm:grid-cols-2">
-          <CostMetric label="Cost" value={MOCK_PRODUCT_OVERVIEW.baseCost} />
-          <CostMetric label="Inventory Value" value={MOCK_PRODUCT_OVERVIEW.inventoryValue} />
-        </div>
+      <div className="grid px-2 py-4 gap-3">
+        {tiers.map((tier, index) => (
+          <PriceTierCard key={tier.name} tier={tier} costPrice={product.costPrice} isNormal={index === 0} canEdit={canManageProduct} onEdit={onEditProduct} />
+        ))}
+      </div>
+      <div className="mx-4 py-4 grid gap-2.5 sm:grid-cols-2">
+        <CostMetric label="Cost" value={formatMoney(product.costPrice)} />
+        <CostMetric label="Inventory Value" value={formatMoney(summary.inventoryValue)} />
       </div>
     </section>
   );
 }
 
-function PriceTierCard({
-  tier,
-  editing,
-  draft,
-  onDraftChange,
-  onEdit,
-  onCancel,
-  onSave,
-}: {
-  tier: (typeof MOCK_PRODUCT_OVERVIEW.priceTiers)[number];
-  editing: boolean;
-  draft: { price: string; moq: string; discount: string };
-  onDraftChange: (draft: { price: string; moq: string; discount: string }) => void;
-  onEdit: () => void;
-  onCancel: () => void;
-  onSave: () => void;
-}) {
+function PriceTierCard({ tier, costPrice, isNormal, canEdit, onEdit }: { tier: ProductPriceTier; costPrice?: number; isNormal: boolean; canEdit: boolean; onEdit: () => void }) {
   return (
     <article className="overflow-hidden">
       <div className="flex gap-3 p-3">
@@ -713,11 +638,11 @@ function PriceTierCard({
           <div className="flex flex-wrap items-start justify-between gap-2.5">
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-gray-900">{tier.name}</h3>
-              <p className="mt-0.5 text-xs text-gray-500">{tier.description}</p>
+              <p className="mt-0.5 text-xs text-gray-500">{priceTierDescription(tier.name, isNormal)}</p>
             </div>
             <div className="flex items-start gap-2">
-              <p className="text-right text-lg  font-medium tracking-normal text-gray-950">{tier.price}</p>
-              {!editing && (
+              <p className="text-right text-lg font-medium tracking-normal text-gray-950">{formatMoney(tier.price)}</p>
+              {canEdit && (
                 <button type="button" aria-label={`Edit ${tier.name}`} onClick={onEdit} className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200 hover:text-gray-900">
                   <Pencil size={13} />
                 </button>
@@ -725,47 +650,14 @@ function PriceTierCard({
             </div>
           </div>
 
-          {editing ? (
-            <div className="mt-3 rounded-md border border-gray-200  p-2.5">
-              <div className="grid gap-2.5 sm:grid-cols-3">
-                <TierEditField label="Price" value={draft.price} onChange={(price) => onDraftChange({ ...draft, price })} />
-                <TierEditField label="MOQ" value={draft.moq} onChange={(moq) => onDraftChange({ ...draft, moq })} />
-                <TierEditField label="Discount" value={draft.discount} onChange={(discount) => onDraftChange({ ...draft, discount })} />
-              </div>
-              <div className="mt-2.5 flex justify-end gap-2">
-                <button type="button" onClick={onCancel} className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100">
-                  <X size={13} />
-                  Cancel
-                </button>
-                <button type="button" onClick={onSave} className="inline-flex items-center gap-1 rounded-full bg-[#2d837d] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#256f69]">
-                  <Check size={13} />
-                  Save
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-md border border-gray-100 bg-white/60">
-              <TierStat label="MOQ" value={tier.moq} />
-              <TierStat label="Discount" value={tier.discount} />
-              <TierStat label="Margin" value={tier.margin} />
-            </div>
-          )}
+          <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-md border border-gray-100 bg-white/60">
+            <TierStat label="MOQ" value={formatQuantity(tier.moq)} />
+            <TierStat label="Discount" value={`${formatQuantity(tier.discountPercent)}%`} />
+            <TierStat label="Margin" value={formatMargin(tier.price, costPrice)} />
+          </div>
         </div>
       </div>
     </article>
-  );
-}
-
-function TierEditField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <label className="block">
-      <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-gray-400">{label}</span>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-1 h-9 w-full rounded-md border border-gray-200 bg-white px-2.5 text-sm font-medium text-gray-900 outline-none transition focus:border-[#2d837d] focus:ring-2 focus:ring-[#2d837d]/15"
-      />
-    </label>
   );
 }
 
@@ -818,7 +710,7 @@ function Bundle({ product }: { product: ProductDetail }) {
       <div className="grid gap-4 sm:grid-cols-3">
         <SummaryCard label="Available Bundles" value={formatQuantity(product.bundleAvailability)} />
         <SummaryCard label="Components" value={formatQuantity(components.length)} />
-        <SummaryCard label="Bundle Price" value={formatMoney(product.sellingPrice)} />
+        <SummaryCard label="Bundle Price" value={formatMoney(getNormalPrice(product))} />
       </div>
       <Panel>
         <h2 className="sectionTitle">Component Breakdown</h2>
@@ -1282,6 +1174,34 @@ function formatMoney(value: unknown) {
     currency: "GHS",
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+function getRequiredPriceTiers(tiers?: ProductPriceTier[]) {
+  const fallback = defaultPriceTiers(0);
+  const normal = tiers?.[0] || fallback[0];
+  const trade = tiers?.find((tier) => tier.name === TRADE_PRICE_TIER_NAME) || fallback[1];
+  return [
+    { ...normal, name: NORMAL_PRICE_TIER_NAME },
+    { ...trade, name: TRADE_PRICE_TIER_NAME },
+  ];
+}
+
+function priceTierDescription(name: string, isNormal: boolean) {
+  if (isNormal) return "Default customer-facing price";
+  if (name === TRADE_PRICE_TIER_NAME) return "Trade and bulk customer price";
+  return "Custom product price";
+}
+
+function formatMargin(priceValue: unknown, costValue: unknown) {
+  const price = numberValue(priceValue);
+  if (price <= 0) return "0%";
+  const margin = ((price - numberValue(costValue)) / price) * 100;
+  return `${Math.round(margin)}%`;
+}
+
+function numberValue(value: unknown) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) ? amount : 0;
 }
 
 function formatQuantity(value: unknown) {

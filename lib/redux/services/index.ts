@@ -18,3 +18,4 @@ export * from "./pricingGroupsApi";
 export * from "./taxesApi";
 export * from "./purchasesApi";
 export * from "./salesApi";
+export * from "./storeSettingsApi";

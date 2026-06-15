@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { AppModal, ModalProps } from "../ui/AppModal";
 import { Form, Input, InputNumber, Select, MenuProps, Dropdown, message } from "antd";
+import type { TableProps } from "antd/es/table";
 import { DatePickerFormItem } from "../ui/AppFormItems";
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
 import { useCreatePurchaseMutation, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdatePurchaseMutation } from "@/lib/redux/services";
@@ -30,6 +31,7 @@ interface ProductLineItem {
   productName: string;
   quantity: number;
   unitPrice: number;
+  weight?: number;
   tax?: Tax;
 }
 
@@ -87,6 +89,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
           productImageUrl: item.productUrl || (typeof item.productId === "string" ? undefined : item.productId.media?.[0]?.url),
           quantity: item.quantity,
           unitPrice: item.unitPrice,
+          weight: item.weight,
         })),
       );
       return;
@@ -185,6 +188,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
           productImageUrl: product.imageUrl,
           quantity: 1,
           unitPrice: Number(product.costPrice || 0),
+          weight: 0,
         },
       ];
     });
@@ -228,6 +232,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
         productId: item.id,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        weight: Number(item.weight || 0),
         taxId: isDeferentProductTax ? item.tax?.id : undefined,
       })),
     };
@@ -247,7 +252,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
     }
   };
 
-  const productColumns = useMemo(
+  const productColumns = useMemo<TableProps<ProductLineItem>["columns"]>(
     () => [
       {
         title: "Product",
@@ -312,6 +317,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
         dataIndex: "__total",
         key: "__total",
         align: "end",
+        width: "15%",
         render: (_: any, record: ProductLineItem) => (
           <div>
             <p>

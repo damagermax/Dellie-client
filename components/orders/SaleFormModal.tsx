@@ -16,6 +16,7 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import useToggle from "@/hooks/UseToggle";
 import { useCreateSaleMutation, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdateSaleMutation } from "@/lib/redux/services";
 import { buildPaymentTermOptions, getLegacyPaymentTermDays } from "@/lib/payment-terms";
+import { getNormalPrice } from "@/lib/products/pricing";
 import { ProductListItem, PurchaseDiscountType, Sale, Tax } from "@/types/index";
 import { saleApiError } from "./saleUtils";
 
@@ -154,7 +155,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
     setLineItems((current) => {
       const existing = current.find((item) => item.id === product.id);
       if (existing) return current.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
-      return [...current, { id: product.id, productName: product.name, productSku: product.sku, productImageUrl: product.imageUrl, quantity: 1, unitPrice: Number(product.sellingPrice || 0) }];
+      return [...current, { id: product.id, productName: product.name, productSku: product.sku, productImageUrl: product.imageUrl, quantity: 1, unitPrice: getNormalPrice(product) }];
     });
     setSearchValue("");
   };

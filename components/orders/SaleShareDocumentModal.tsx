@@ -12,16 +12,20 @@ import { PaymentTerm } from "@/types/payment-term";
 import { saleDocumentNumber } from "./saleUtils";
 
 export type SaleDocumentType = "invoice" | "receipt";
+export type SaleDocumentPaperSize = "compact" | "full_page";
 
 interface SaleShareDocumentModalProps {
   open: boolean;
   toggle: () => void;
   sale: Sale;
   type: SaleDocumentType;
+  paperSize?: SaleDocumentPaperSize;
 }
 
 function amount(currency: string, value: number | undefined) {
-  return `${currency} ${Number(value || 0).toFixed(2)}`;
+  const amount = Number(value || 0);
+  const prefix = amount < 0 ? "-" : "";
+  return `${prefix}${currency} ${Math.abs(amount).toFixed(2)}`;
 }
 
 function documentLabel(type: SaleDocumentType) {
@@ -65,10 +69,11 @@ function saleDocumentText(sale: Sale, store: Store | null, type: SaleDocumentTyp
     .join("\n");
 }
 
-function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentType, paymentTerms: PaymentTerm[] = []) {
+function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentType, paperSize: SaleDocumentPaperSize, paymentTerms: PaymentTerm[] = []) {
   const label = documentLabel(type);
   const currency = sale.currencyId?.code || "";
   const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
+  const compactReceipt = type === "receipt" && paperSize === "compact";
   const taxRows = (sale.taxes || [])
     .map((tax) => `<tr><td>${escapeHtml(tax.name)}</td><td class="right">${escapeHtml(amount(currency, tax.amount))}</td></tr>`)
     .join("");
@@ -90,60 +95,66 @@ function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentTy
     <title>${label} ${escapeHtml(saleDocumentNumber(sale))}</title>
     <style>
       * { box-sizing: border-box; }
-      body { color: #111827; font: 14px Arial, sans-serif; margin: 0; padding: 42px; }
-      h1 { font-size: 25px; font-weight: 600; margin: 0 0 5px; }
-      h2 { font-size: 21px; margin: 0; text-transform: uppercase; }
-      .top { align-items: start; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; padding-bottom: 24px; }
-      .muted { color: #6b7280; font-size: 12px; margin-top: 4px; }
-      .meta { display: flex; justify-content: space-between; margin: 28px 0; }
+      body { color: #111827; font: ${compactReceipt ? "12px" : "14px"} Arial, sans-serif; margin: 0; padding: ${compactReceipt ? "16px" : "42px"}; }
+      h1 { font-size: ${compactReceipt ? "18px" : "25px"}; font-weight: 600; margin: 0 0 5px; }
+      h2 { font-size: ${compactReceipt ? "16px" : "21px"}; margin: 0; text-transform: uppercase; }
+      .sheet { margin: 0 auto; max-width: ${compactReceipt ? "300px" : "100%"}; }
+      .top { align-items: start; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; gap: 16px; padding-bottom: ${compactReceipt ? "16px" : "24px"}; }
+      .muted { color: #6b7280; font-size: ${compactReceipt ? "11px" : "12px"}; margin-top: 4px; }
+      .meta { display: flex; flex-direction: ${compactReceipt ? "column" : "row"}; gap: ${compactReceipt ? "12px" : "0"}; justify-content: space-between; margin: ${compactReceipt ? "18px 0" : "28px 0"}; }
       .meta p { margin: 5px 0; }
       table { border-collapse: collapse; width: 100%; }
       th { background: #f3f4f6; color: #4b5563; font-size: 12px; text-align: left; text-transform: uppercase; }
-      th, td { border-bottom: 1px solid #e5e7eb; padding: 12px 10px; }
+      th, td { border-bottom: 1px solid #e5e7eb; padding: ${compactReceipt ? "8px 6px" : "12px 10px"}; }
       .right { text-align: right; }
-      .summary { margin: 24px 0 0 auto; width: 290px; }
+      .summary { margin: 24px 0 0 auto; width: ${compactReceipt ? "100%" : "290px"}; }
       .summary td { border: 0; padding: 5px 0; }
       .total td { border-top: 1px solid #d1d5db; font-size: 16px; font-weight: 600; padding-top: 12px; }
-      .footer { border-top: 1px solid #e5e7eb; color: #6b7280; margin-top: 55px; padding-top: 18px; text-align: center; }
-      @media print { body { padding: 0; } @page { margin: 18mm; } }
+      .footer { border-top: 1px solid #e5e7eb; color: #6b7280; margin-top: ${compactReceipt ? "24px" : "55px"}; padding-top: 18px; text-align: center; }
+      @media print {
+        body { padding: 0; }
+        @page { margin: ${compactReceipt ? "8mm" : "18mm"}; size: ${compactReceipt ? "80mm auto" : "auto"}; }
+      }
     </style>
   </head>
   <body>
-    <div class="top">
-      <div><h1>${escapeHtml(store?.name || "Dellie")}</h1><div class="muted">Sales document</div></div>
-      <div class="right"><h2>${label}</h2><p>${escapeHtml(saleDocumentNumber(sale))}</p></div>
-    </div>
-      <div class="meta">
-        <div><div class="muted">${type === "invoice" ? "BILL TO" : "CUSTOMER"}</div><p><strong>${escapeHtml(customer)}</strong></p><p>${escapeHtml(sale.contactId?.email)}</p><p>${escapeHtml(sale.contactId?.phone)}</p></div>
-      <div class="right"><p><span class="muted">Date:</span> ${escapeHtml(formatDate(sale.date))}</p><p><span class="muted">Due:</span> ${escapeHtml(formatDate(sale.dueDate))}</p><p><span class="muted">Location:</span> ${escapeHtml(sale.locationId?.name || "-")}</p><p><span class="muted">Source:</span> ${escapeHtml(sale.source || "Manual Sale")}</p></div>
+    <div class="sheet">
+      <div class="top">
+        <div><h1>${escapeHtml(store?.name || "Dellie")}</h1><div class="muted">Sales document</div></div>
+        <div class="right"><h2>${label}</h2><p>${escapeHtml(saleDocumentNumber(sale))}</p></div>
       </div>
-    <table>
-      <thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Unit Price</th><th class="right">Amount</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <table class="summary">
-      <tr><td>Subtotal</td><td class="right">${escapeHtml(amount(currency, sale.subTotal))}</td></tr>
-      ${Number(sale.discountAmount || 0) > 0 ? `<tr><td>Discount</td><td class="right">- ${escapeHtml(amount(currency, sale.discountAmount))}</td></tr>` : ""}
-      ${taxRows}
-      <tr class="total"><td>Total</td><td class="right">${escapeHtml(amount(currency, sale.amount))}</td></tr>
-      ${type === "receipt" ? `<tr><td>Paid</td><td class="right">${escapeHtml(amount(currency, Number(sale.amount) - Number(sale.balance)))}</td></tr>` : ""}
-      <tr><td>Balance</td><td class="right">${escapeHtml(amount(currency, sale.balance))}</td></tr>
-    </table>
-    <div class="footer">${type === "receipt" ? "Thank you for your business." : `Payment terms: ${escapeHtml(getPaymentTermLabel(sale.paymentTerms, paymentTerms))}`}</div>
+        <div class="meta">
+          <div><div class="muted">${type === "invoice" ? "BILL TO" : "CUSTOMER"}</div><p><strong>${escapeHtml(customer)}</strong></p><p>${escapeHtml(sale.contactId?.email)}</p><p>${escapeHtml(sale.contactId?.phone)}</p></div>
+        <div class="right"><p><span class="muted">Date:</span> ${escapeHtml(formatDate(sale.date))}</p><p><span class="muted">Due:</span> ${escapeHtml(formatDate(sale.dueDate))}</p><p><span class="muted">Location:</span> ${escapeHtml(sale.locationId?.name || "-")}</p><p><span class="muted">Source:</span> ${escapeHtml(sale.source || "Manual Sale")}</p></div>
+        </div>
+      <table>
+        <thead><tr><th>Item</th><th class="right">Qty</th><th class="right">Unit Price</th><th class="right">Amount</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <table class="summary">
+        <tr><td>Subtotal</td><td class="right">${escapeHtml(amount(currency, sale.subTotal))}</td></tr>
+        ${Number(sale.discountAmount || 0) > 0 ? `<tr><td>Discount</td><td class="right">- ${escapeHtml(amount(currency, sale.discountAmount))}</td></tr>` : ""}
+        ${taxRows}
+        <tr class="total"><td>Total</td><td class="right">${escapeHtml(amount(currency, sale.amount))}</td></tr>
+        ${type === "receipt" ? `<tr><td>Paid</td><td class="right">${escapeHtml(amount(currency, Number(sale.amount) - Number(sale.balance)))}</td></tr>` : ""}
+        <tr><td>Balance</td><td class="right">${escapeHtml(amount(currency, sale.balance))}</td></tr>
+      </table>
+      <div class="footer">${type === "receipt" ? "Thank you for your business." : `Payment terms: ${escapeHtml(getPaymentTermLabel(sale.paymentTerms, paymentTerms))}`}</div>
+    </div>
   </body>
 </html>`;
 }
 
-export default function SaleShareDocumentModal({ open, toggle, sale, type }: SaleShareDocumentModalProps) {
+export default function SaleShareDocumentModal({ open, toggle, sale, type, paperSize = "full_page" }: SaleShareDocumentModalProps) {
   const store = useSelector((state: RootState) => state.currentUser.store);
   const { data: paymentTerms } = useGetPaymentTermsQuery();
   const label = documentLabel(type);
   const currency = sale.currencyId?.code || "";
-  const paid = Math.max(Number(sale.amount) - Number(sale.balance), 0);
+  const paid = Number(sale.amount) - Number(sale.balance);
 
   const handleShare = async () => {
     const text = saleDocumentText(sale, store, type);
-    const html = printableDocument(sale, store, type, paymentTerms || []);
+    const html = printableDocument(sale, store, type, paperSize, paymentTerms || []);
     const file = new File([html], `${label.toLowerCase()}-${saleDocumentNumber(sale)}.html`, { type: "text/html" });
 
     try {
@@ -170,7 +181,7 @@ export default function SaleShareDocumentModal({ open, toggle, sale, type }: Sal
       message.error("Allow pop-ups to print this document.");
       return;
     }
-    printWindow.document.write(printableDocument(sale, store, type, paymentTerms || []));
+    printWindow.document.write(printableDocument(sale, store, type, paperSize, paymentTerms || []));
     printWindow.document.close();
     printWindow.focus();
     printWindow.addEventListener("load", () => printWindow.print());
@@ -181,7 +192,7 @@ export default function SaleShareDocumentModal({ open, toggle, sale, type }: Sal
       open={open}
       onCancel={toggle}
       title={`Share ${label}`}
-      width={760}
+      width={paperSize === "compact" && type === "receipt" ? 420 : 760}
       footer={[
         <Button key="print" icon={<Printer size={15} />} onClick={handlePrint}>
           Print / Save PDF
@@ -191,7 +202,7 @@ export default function SaleShareDocumentModal({ open, toggle, sale, type }: Sal
         </Button>,
       ]}
     >
-      <div className="mt-5 rounded border border-gray-200 bg-white p-7">
+      <div className={`mt-5 rounded border border-gray-200 bg-white ${paperSize === "compact" && type === "receipt" ? "mx-auto max-w-[320px] p-4" : "p-7"}`}>
         <div className="mb-7 flex items-start justify-between border-b border-gray-200 pb-5">
           <div>
             <p className="text-xl font-semibold text-gray-900">{store?.name || "Dellie"}</p>

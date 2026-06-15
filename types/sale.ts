@@ -22,13 +22,14 @@ export interface CreateSaleInput {
   dueDate?: string;
   note?: string;
   source?: string;
+  posFulfillmentMode?: "fulfill_now" | "pending";
   discountValue?: number;
   discountType?: PurchaseDiscountType;
   taxId?: string;
   lineItems: SaleLineItemInput[];
 }
 
-export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" | "currencyId" | "lineItems"> {
+export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" | "currencyId" | "lineItems" | "status"> {
   id: string;
   saleNumber?: string;
   quoteNumber?: string;
@@ -89,9 +90,25 @@ export interface FulfillSaleInput {
   items: SaleOperationItemInput[];
 }
 
+export interface ReturnSaleLineItemInput extends SaleOperationItemInput {
+  reason?: string;
+}
+
+export interface ReturnSaleInput {
+  id: string;
+  items: ReturnSaleLineItemInput[];
+}
+
 export interface UpdateSaleFulfillmentInput {
   id: string;
   fulfillmentId: string;
+  quantity: number;
+  date: string;
+}
+
+export interface UpdateSaleReturnInput {
+  id: string;
+  returnId: string;
   quantity: number;
   date: string;
 }

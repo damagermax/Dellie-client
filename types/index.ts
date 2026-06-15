@@ -20,3 +20,4 @@ export * from "./pricing-group";
 export * from "./purchase";
 export * from "./sale";
 export * from "./store-access";
+export * from "./store-settings";

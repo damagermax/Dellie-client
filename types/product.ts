@@ -1,4 +1,5 @@
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
+import { ProductPriceTier } from "@/lib/products/pricing";
 
 export interface QuantityData {
   onHand: number;
@@ -72,7 +73,9 @@ export interface ProductListItem {
   category?: string;
   categoryId?: string;
   categoryName?: string;
-  sellingPrice: number;
+  priceTiers?: ProductPriceTier[];
+  normalPrice?: number;
+  formattedNormalPrice?: string;
   costPrice?: number;
   sku: string;
   type?: ITEM_TYPE;

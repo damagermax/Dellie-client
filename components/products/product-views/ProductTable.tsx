@@ -8,6 +8,7 @@ import Link from "next/link";
 import { CiLink } from "react-icons/ci";
 import { RiMoreLine } from "react-icons/ri";
 import { ITEM_TYPE } from "../ProductFormModal";
+import { getNormalPrice } from "@/lib/products/pricing";
 
 interface ProductTableProps {
   products: ProductListItem[];
@@ -66,9 +67,9 @@ export default function ProductsTable({
 
     {
       title: "Price",
-      dataIndex: "sellingPrice",
-      key: "sellingPrice",
-      render: (price: number) => `GHS ${price.toFixed(2)}`,
+      dataIndex: "priceTiers",
+      key: "priceTiers",
+      render: (_: ProductListItem["priceTiers"], product: ProductListItem) => product.formattedNormalPrice || `GHS ${getNormalPrice(product).toFixed(2)}`,
     },
     {
       title: "Status",

@@ -5,8 +5,10 @@ import {
   Purchase,
   PurchaseQueryParams,
   PurchasesResponse,
+  ReturnPurchaseInput,
   UpdatePurchaseLandedCostInput,
   UpdatePurchaseFulfillmentInput,
+  UpdatePurchaseReturnInput,
   UpdatePurchaseInput,
 } from "@/types/index";
 import { baseApi, TAG_TYPES } from "./baseApi";
@@ -37,16 +39,32 @@ export const purchasesApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `purchases/${id}/reopen`, method: "POST" }),
       invalidatesTags: (result, error, id) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
     }),
+    closePurchase: builder.mutation<Purchase, string>({
+      query: (id) => ({ url: `purchases/${id}/close`, method: "POST" }),
+      invalidatesTags: (result, error, id) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+    }),
     fulfillPurchase: builder.mutation<Purchase, FulfillPurchaseInput>({
       query: ({ id, ...body }) => ({ url: `purchases/${id}/fulfillments`, method: "POST", body }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
+    }),
+    returnPurchase: builder.mutation<Purchase, ReturnPurchaseInput>({
+      query: ({ id, ...body }) => ({ url: `purchases/${id}/returns`, method: "POST", body }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
     }),
     updatePurchaseFulfillment: builder.mutation<Purchase, UpdatePurchaseFulfillmentInput>({
       query: ({ id, fulfillmentId, ...body }) => ({ url: `purchases/${id}/fulfillments/${fulfillmentId}`, method: "PATCH", body }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
     }),
+    updatePurchaseReturn: builder.mutation<Purchase, UpdatePurchaseReturnInput>({
+      query: ({ id, returnId, ...body }) => ({ url: `purchases/${id}/returns/${returnId}`, method: "PATCH", body }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
+    }),
     deletePurchaseFulfillment: builder.mutation<Purchase, { id: string; fulfillmentId: string }>({
       query: ({ id, fulfillmentId }) => ({ url: `purchases/${id}/fulfillments/${fulfillmentId}`, method: "DELETE" }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
+    }),
+    deletePurchaseReturn: builder.mutation<Purchase, { id: string; returnId: string }>({
+      query: ({ id, returnId }) => ({ url: `purchases/${id}/returns/${returnId}`, method: "DELETE" }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
     }),
     addPurchaseLandedCost: builder.mutation<Purchase, AddPurchaseLandedCostInput>({
@@ -71,9 +89,13 @@ export const {
   useUpdatePurchaseMutation,
   useDeletePurchaseMutation,
   useReopenPurchaseMutation,
+  useClosePurchaseMutation,
   useFulfillPurchaseMutation,
+  useReturnPurchaseMutation,
   useUpdatePurchaseFulfillmentMutation,
+  useUpdatePurchaseReturnMutation,
   useDeletePurchaseFulfillmentMutation,
+  useDeletePurchaseReturnMutation,
   useAddPurchaseLandedCostMutation,
   useUpdatePurchaseLandedCostMutation,
   useDeletePurchaseLandedCostMutation,

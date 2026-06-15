@@ -10,37 +10,29 @@ type QuantityControlProps = {
   increaseDisabled?: boolean;
 };
 
-export default function QuantityControl({
-  value,
-  onDecrease,
-  onIncrease,
-  decreaseDisabled = false,
-  increaseDisabled = false,
-}: QuantityControlProps) {
+export default function QuantityControl({ value, onDecrease, onIncrease, decreaseDisabled = false, increaseDisabled = false }: QuantityControlProps) {
   return (
-    <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2">
+    <div className="inline-flex items-center justify-between gap-1 w-full rounded-xl border border-stone-200/70 bg-gradient-to-b from-stone-50/80 to-white p-1 shadow-sm shadow-stone-200/30">
       <button
         type="button"
         onClick={onDecrease}
         disabled={decreaseDisabled}
-        className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-gray-200 bg-[#f3f4f6] text-[#7b4bc7] transition hover:border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-b from-stone-400 to-stone-500 text-white shadow-sm shadow-stone-300/30 ring-1 ring-stone-500/20 transition-all duration-200 hover:from-stone-500 hover:to-stone-600 hover:shadow-md hover:shadow-stone-400/30 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 disabled:from-stone-200 disabled:to-stone-200 disabled:shadow-none disabled:ring-0 disabled:hover:from-stone-200 disabled:hover:to-stone-200"
         aria-label="Decrease quantity"
       >
-        <Minus size={18} strokeWidth={2.5} />
+        <Minus size={15} strokeWidth={2.5} />
       </button>
 
-      <div className="flex h-11 items-center justify-center rounded-[12px] border border-gray-200 bg-white text-[15px] font-medium text-gray-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-        {value}
-      </div>
+      <div className="flex min-w-[3rem] items-center justify-center px-3 text-[17px] font-bold tracking-tight text-stone-700">{value}</div>
 
       <button
         type="button"
         onClick={onIncrease}
         disabled={increaseDisabled}
-        className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-transparent bg-[#6f38c5] text-white shadow-[0_8px_20px_rgba(111,56,197,0.28)] transition hover:bg-[#5f2fb0] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:shadow-none"
+        className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-b from-stone-400 to-stone-500 text-white shadow-sm shadow-stone-300/30 ring-1 ring-stone-500/20 transition-all duration-200 hover:from-stone-500 hover:to-stone-600 hover:shadow-md hover:shadow-stone-400/30 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 disabled:from-stone-200 disabled:to-stone-200 disabled:shadow-none disabled:ring-0 disabled:hover:from-stone-200 disabled:hover:to-stone-200"
         aria-label="Increase quantity"
       >
-        <Plus size={18} strokeWidth={2.5} />
+        <Plus size={15} strokeWidth={2.5} />
       </button>
     </div>
   );

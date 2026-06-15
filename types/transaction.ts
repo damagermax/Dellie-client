@@ -1,4 +1,6 @@
 export enum TransactionType {
+  SALE = "sale",
+  PURCHASE = "purchase",
   SUPPLIER_PAYMENT = "supplier_payment",
   SUPPLIER_ADVANCE = "supplier_advance",
   SUPPLIER_CREDIT = "supplier_credit",
@@ -89,10 +91,16 @@ export interface Transaction {
   title?: string;
   type?: TransactionType;
   typeLabel?: string;
+  documentNumber?: string;
+  detailPath?: string;
   note?: string;
   date?: Date;
   status: string;
   statusLabel?: string;
+  fulfillmentStatus?: string;
+  fulfillmentStatusLabel?: string;
+  paymentStatus?: string;
+  paymentStatusLabel?: string;
   amount?: number;
   baseAmount?: number;
   rate?: number;

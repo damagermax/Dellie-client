@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { memo, useCallback, useState } from "react";
 import { GoChevronLeft, GoChevronRight, GoCreditCard, GoTag } from "react-icons/go";
-import { RiGroupLine, RiShoppingBag2Line } from "react-icons/ri";
+import { RiGroupLine, RiSettings2Line, RiShoppingBag2Line } from "react-icons/ri";
 import { TbLayoutGridAdd } from "react-icons/tb";
 import { LuPackage2 } from "react-icons/lu";
 import { IoWalletOutline } from "react-icons/io5";
@@ -14,20 +14,29 @@ import SidebarAccountDropdown from "./SidebarAccountDropdown";
 import { StoreSelector } from "./dashboard/StoreSelector";
 import { RootState } from "@/lib/store";
 import { StorePermission } from "@/types/store-access";
+import { StoreModuleKey } from "@/types/store-settings";
+
+type SidebarMenuItem = {
+  title: string;
+  link: string;
+  icon: React.ReactNode;
+  permission?: StorePermission;
+  moduleKey?: StoreModuleKey;
+};
 
 // Memoize the menu items to prevent unnecessary re-renders
-const MENU_ITEMS = [
+const MENU_ITEMS: SidebarMenuItem[] = [
   { title: "Dashboard", link: "/dashboard", icon: <TbLayoutGridAdd /> },
-  { title: "Catalog", link: "/products", icon: <LuPackage2 />, permission: StorePermission.PRODUCTS_VIEW },
-  { title: "Purchases", link: "/purchases", icon: <RiShoppingBag2Line />, permission: StorePermission.PURCHASES_VIEW },
-  { title: "Sales", link: "/orders", icon: <GoTag />, permission: StorePermission.SALES_VIEW },
-  { title: "Expenses", link: "/expenses", icon: <GoCreditCard />, permission: StorePermission.EXPENSES_VIEW },
-  { title: "Contacts", link: "/contacts", icon: <RiGroupLine />, permission: StorePermission.CONTACTS_VIEW },
-  { title: "Cash Book", link: "/wallet", icon: <IoWalletOutline />, permission: StorePermission.PAYMENTS_VIEW },
-  { title: "POS", link: "/pos", icon: <IoWalletOutline />, permission: StorePermission.SALES_VIEW },
-  // { title: "Transactions", link: "/transactions", icon: <GoCreditCard /> },
-  // { title: "Settings", link: "/settings/my-store", icon: <RiSettings2Line /> },
-] as const;
+  { title: "Catalog", link: "/products", icon: <LuPackage2 />, permission: StorePermission.PRODUCTS_VIEW, moduleKey: "catalog" },
+  { title: "Purchases", link: "/purchases", icon: <RiShoppingBag2Line />, permission: StorePermission.PURCHASES_VIEW, moduleKey: "purchases" },
+  { title: "Inventory", link: "/transactions", icon: <GoCreditCard /> },
+  { title: "Sales", link: "/orders", icon: <GoTag />, permission: StorePermission.SALES_VIEW, moduleKey: "sales" },
+  { title: "Expenses", link: "/expenses", icon: <GoCreditCard />, permission: StorePermission.EXPENSES_VIEW, moduleKey: "expenses" },
+  { title: "Contacts", link: "/contacts", icon: <RiGroupLine />, permission: StorePermission.CONTACTS_VIEW, moduleKey: "contacts" },
+  // { title: "Cash Book", link: "/wallet", icon: <IoWalletOutline />, permission: StorePermission.PAYMENTS_VIEW, moduleKey: "cashBook" },
+  { title: "POS", link: "/pos", icon: <IoWalletOutline />, permission: StorePermission.SALES_VIEW, moduleKey: "pos" },
+  { title: "Settings", link: "/settings", icon: <RiSettings2Line /> },
+];
 
 // Memoized component to prevent unnecessary re-renders
 const MenuItem = memo(({ title, link, icon, isActive, isCollapsed = true }: { title: string; link: string; icon: React.ReactNode; isActive: boolean; isCollapsed: boolean }) => (
@@ -89,13 +98,16 @@ interface PageLinksProps {
 const PageLinks = ({ isCollapsed }: PageLinksProps) => {
   const pathname = usePathname();
   const permissions = useSelector((state: RootState) => state.currentUser.permissions);
+  const enabledModules = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules);
 
   return (
     <nav>
       <ul className="grid ">
-        {MENU_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission)).map(({ title, link, icon }, index) => (
-          <MenuItem key={link + title + index} title={title} link={link} icon={icon} isActive={pathname === link} isCollapsed={isCollapsed} />
-        ))}
+        {MENU_ITEMS.filter((item) => !item.permission || permissions.includes(item.permission))
+          .filter((item) => !item.moduleKey || enabledModules[item.moduleKey])
+          .map(({ title, link, icon }, index) => (
+            <MenuItem key={link + title + index} title={title} link={link} icon={icon} isActive={pathname === link} isCollapsed={isCollapsed} />
+          ))}
       </ul>
     </nav>
   );

@@ -7,6 +7,7 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import ResponsiveActionMenu from "@/components/ui/ResponsiveActionMenu";
 import { ProductListItem } from "@/types/product";
 import { ITEM_TYPE } from "../ProductFormModal";
+import { getNormalPrice } from "@/lib/products/pricing";
 
 interface ProductsMobileListProps {
   products: ProductListItem[];
@@ -89,7 +90,7 @@ export default function ProductsMobileList({
                     </p>
                   </div>
                   <p className="shrink-0 text-sm font-semibold text-gray-900">
-                    GHS {Number(product.sellingPrice || 0).toFixed(2)}
+                    {product.formattedNormalPrice || `GHS ${getNormalPrice(product).toFixed(2)}`}
                   </p>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">

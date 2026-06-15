@@ -3,22 +3,25 @@
 import React from "react";
 import { Empty, Segmented } from "antd";
 import type { TableProps } from "antd/es/table";
-import { CreditCard, FileText, PackageCheck } from "lucide-react";
+import { CreditCard, FileText, PackageCheck, Undo2 } from "lucide-react";
 import AppTable from "@/components/ui/AppTable";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
 import PreviewImage from "@/components/ui/PreviewImage";
 import { formatDate } from "@/lib/dateUtils";
-import { Payment, PurchaseLineItem, PurchaseStockEvent, Sale } from "@/types/index";
+import { Payment, PurchaseLineItem, PurchaseReturnEvent, PurchaseStockEvent, Sale } from "@/types/index";
 
-type SaleTableView = "items" | "fulfillments" | "payments";
+type SaleTableView = "items" | "fulfillments" | "returns" | "payments";
 
 interface SaleDetailTablesProps {
   sale: Sale;
   currency: string;
   canManage?: boolean;
   isCancelled: boolean;
+  isReadOnly?: boolean;
   onEditFulfillment: (event: PurchaseStockEvent) => void;
   onDeleteFulfillment: (event: PurchaseStockEvent) => void;
+  onEditReturn: (event: PurchaseReturnEvent) => void;
+  onDeleteReturn: (event: PurchaseReturnEvent) => void;
   onEditPayment: (payment: Payment) => void;
   onDeletePayment: (payment: Payment) => void;
 }
@@ -59,17 +62,31 @@ function SegmentLabel({ icon, text }: { icon: React.ReactNode; text: string }) {
 const tableOptions = [
   { label: <SegmentLabel icon={<FileText size={15} />} text="Items" />, value: "items" },
   { label: <SegmentLabel icon={<PackageCheck size={15} />} text="Fulfillment" />, value: "fulfillments" },
+  { label: <SegmentLabel icon={<Undo2 size={15} />} text="Returns" />, value: "returns" },
   { label: <SegmentLabel icon={<CreditCard size={15} />} text="Payments" />, value: "payments" },
 ];
 
-export default function SaleDetailTables({ sale, currency, canManage = false, isCancelled, onEditFulfillment, onDeleteFulfillment, onEditPayment, onDeletePayment }: SaleDetailTablesProps) {
+export default function SaleDetailTables({
+  sale,
+  currency,
+  canManage = false,
+  isCancelled,
+  isReadOnly = false,
+  onEditFulfillment,
+  onDeleteFulfillment,
+  onEditReturn,
+  onDeleteReturn,
+  onEditPayment,
+  onDeletePayment,
+}: SaleDetailTablesProps) {
   const [view, setView] = React.useState<SaleTableView>("items");
+  const canMutate = canManage && !isCancelled && !isReadOnly;
   const itemColumns: TableProps<PurchaseLineItem>["columns"] = [
     { title: "Product", key: "productName", className: "!pl-8", width: "45%", render: (_, line) => <ProductCell name={line.productName} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} /> },
     { title: "Ordered", dataIndex: "quantity", key: "quantity" },
     { title: "Fulfilled", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
-    { title: "Returned", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
-    { title: "Remaining", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
+    { title: "Returned", key: "returned", render: (_, line) => Number(line.returnedQuantity || 0).toLocaleString() },
+    { title: "Remaining", key: "remaining", render: (_, line) => Math.max(Number(line.quantity || 0) - Number(line.fulfilledQuantity || 0), 0).toLocaleString() },
     { title: "Unit Price", key: "unitPrice", render: (_, line) => Number(line.unitPrice).toFixed(2) },
     { title: "Total", key: "total", className: "!pr-8", render: (_, line) => Number(line.total).toFixed(2) },
   ];
@@ -84,7 +101,22 @@ export default function SaleDetailTables({ sale, currency, canManage = false, is
       align: "right",
       className: "!pr-8",
       width: 80,
-      render: (_, event) => (isCancelled || !canManage ? null : <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />),
+      render: (_, event) => (canMutate ? <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} /> : null),
+    },
+  ];
+  const returnColumns: TableProps<PurchaseReturnEvent>["columns"] = [
+    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
+    { title: "Returned Qty", dataIndex: "quantity", key: "quantity" },
+    { title: "Reason", key: "reason", render: (_, event) => event.reason || "-" },
+    { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.returnedAt) },
+    {
+      title: "",
+      key: "actions",
+      dataIndex: "id",
+      align: "right",
+      className: "!pr-8",
+      width: 80,
+      render: (_, event) => (canMutate ? <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} /> : null),
     },
   ];
   const paymentColumns: TableProps<Payment>["columns"] = [
@@ -99,12 +131,13 @@ export default function SaleDetailTables({ sale, currency, canManage = false, is
       align: "right",
       className: "!pr-8",
       width: 80,
-      render: (_, payment) => (isCancelled || !canManage ? null : <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} />),
+      render: (_, payment) => (canMutate ? <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} /> : null),
     },
   ];
   const tables = {
     items: { title: "Line Items", columns: itemColumns, data: sale.lineItems },
     fulfillments: { title: "Fulfillment History", columns: fulfillmentColumns, data: sale.fulfilledItems || [] },
+    returns: { title: "Return History", columns: returnColumns, data: sale.returnedItems || [] },
     payments: { title: "Payments", columns: paymentColumns, data: (sale.payments || []) as Payment[] },
   };
   const current = tables[view];
@@ -125,7 +158,7 @@ export default function SaleDetailTables({ sale, currency, canManage = false, is
       </div>
       <div>
         {current.data.length ? (
-          <AppTable columns={current.columns || []} dataSource={current.data} rowKey="id" pagination={false} scrollX={860} />
+          <AppTable columns={(current.columns || []) as TableProps<PurchaseLineItem | PurchaseStockEvent | PurchaseReturnEvent | Payment>["columns"]} dataSource={current.data as Array<PurchaseLineItem | PurchaseStockEvent | PurchaseReturnEvent | Payment>} rowKey="id" pagination={false} scrollX={860} />
         ) : (
           <div className="border-t border-gray-200 py-12">
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`No ${current.title.toLowerCase()} recorded`} />

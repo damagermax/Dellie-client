@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import ContactDetailContent from "@/components/contacts/ContactDetailContent";
 import ContactsFormModal from "@/components/contacts/ContactsFormModal";
 import ContactSummary from "@/components/contacts/ContactSummary";
-import AppPaginationFooter from "@/components/ui/AppPaginationFooter";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
 import useToggle from "@/hooks/UseToggle";
@@ -66,17 +65,10 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           transactions={contactTransactions?.data || []}
           transactionsLoading={isTransactionsLoading}
           transactionsError={isTransactionsError}
+          transactionsMeta={contactTransactions?.meta}
+          onTransactionPageChange={(page, limit) => setTransactionQuery((current) => ({ ...current, page, limit }))}
         />
         <ContactSummary contact={contact} />
-      </div>
-      <div className="bg-white">
-        <AppPaginationFooter
-          entity="transactions"
-          sticky={false}
-          dataLength={contactTransactions?.data?.length || 0}
-          meta={contactTransactions?.meta}
-          onChange={(page, limit) => setTransactionQuery((current) => ({ ...current, page, limit }))}
-        />
       </div>
 
       {editOpen && <ContactsFormModal open={editOpen} toggle={toggleEdit} initialValues={contact} onSaved={refetch} />}

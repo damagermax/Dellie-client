@@ -6,26 +6,35 @@ import { InputFormItem } from "../ui/AppFormItems";
 import PreviewImage from "../ui/PreviewImage";
 import ImageUpload from "../ui/ImageUploader";
 import { useUpdateProductVariantMutation } from "@/lib/redux/services";
-import { ProductPerformance } from "./ProductPerformance";
+import { ProductPriceTier, getNormalPrice, normalPriceTier } from "@/lib/products/pricing";
 
 interface VariantDetailModalProps extends ModalProps {
-  selectedVariant: any;
+  selectedVariant: {
+    id: string;
+    productId?: string;
+    name?: string;
+    imageUrl?: string;
+    costPrice?: number;
+    priceTiers?: ProductPriceTier[];
+    inventory?: Record<string, unknown>;
+  };
 }
 
 export function VariantDetailModal({ open, toggle, selectedVariant }: VariantDetailModalProps) {
   const [variantForm] = Form.useForm();
-  const [updatedVariant, setUpdatedVariant] = useState<Record<string, any>>({});
+  const [updatedVariant, setUpdatedVariant] = useState<Record<string, string | number | File>>({});
 
   const [updateProductVariant, { isLoading: isUpdating, isSuccess: updateSuccess, reset: resetVariantUpdate }] = useUpdateProductVariantMutation();
 
   useEffect(() => {
     if (selectedVariant) {
-      const profit = selectedVariant?.sellingPrice - selectedVariant?.costPrice || 0;
-      const profitMargin = `${((profit / selectedVariant.sellingPrice) * 100).toFixed() || 0}%`;
+      const normalPrice = getNormalPrice(selectedVariant);
+      const profit = normalPrice - selectedVariant?.costPrice || 0;
+      const profitMargin = normalPrice ? `${((profit / normalPrice) * 100).toFixed() || 0}%` : "0%";
 
-      variantForm.setFieldsValue({ ...selectedVariant, ...selectedVariant?.inventory, profit, profitMargin });
+      variantForm.setFieldsValue({ ...selectedVariant, ...selectedVariant?.inventory, normalPrice, profit, profitMargin });
     }
-  }, [selectedVariant]);
+  }, [selectedVariant, variantForm]);
 
   const handleFormValueChange = (changedValues: Record<string, unknown>) => {
     const key = Object.keys(changedValues)[0];
@@ -37,7 +46,7 @@ export function VariantDetailModal({ open, toggle, selectedVariant }: VariantDet
       setUpdatedVariant((values) => ({ ...values, ...changedValues }));
     } else {
       setUpdatedVariant((values) => {
-        const updated: any = { ...values };
+        const updated = { ...values };
         delete updated[key];
 
         return updated;
@@ -45,17 +54,17 @@ export function VariantDetailModal({ open, toggle, selectedVariant }: VariantDet
     }
 
     // Recalculate profit and profit margin if relevant fields changed
-    if (key === "costPrice" || key === "sellingPrice") {
+    if (key === "costPrice" || key === "normalPrice") {
       recalculateProfit();
     }
   };
 
   const recalculateProfit = () => {
     const costPrice = variantForm.getFieldValue("costPrice") ?? 0;
-    const sellingPrice = variantForm.getFieldValue("sellingPrice") ?? 0;
+    const normalPrice = variantForm.getFieldValue("normalPrice") ?? 0;
 
-    const profit = sellingPrice - costPrice;
-    const profitMargin = sellingPrice ? `${((profit / sellingPrice) * 100).toFixed()}%` : "0%";
+    const profit = normalPrice - costPrice;
+    const profitMargin = normalPrice ? `${((profit / normalPrice) * 100).toFixed()}%` : "0%";
 
     variantForm.setFieldsValue({ profit, profitMargin });
   };
@@ -72,6 +81,10 @@ export function VariantDetailModal({ open, toggle, selectedVariant }: VariantDet
 
     for (const key in updatedVariant) {
       const value = updatedVariant[key];
+      if (key === "normalPrice") {
+        formData.append("priceTiers", JSON.stringify([normalPriceTier(Number(value || 0))]));
+        continue;
+      }
       formData.append(key, value as string | Blob);
     }
 
@@ -90,7 +103,7 @@ export function VariantDetailModal({ open, toggle, selectedVariant }: VariantDet
           <Form form={variantForm} layout="vertical" className="  " onValuesChange={handleFormValueChange}>
             <div className="grid  p-5  grid-cols-4   gap-x-5">
               <InputFormItem type="number" label="Cost Price" name="costPrice" placeholder="Enter product cost price" />
-              <InputFormItem type="number" label="Selling Price" name="sellingPrice" placeholder="Enter product selling price" />
+              <InputFormItem type="number" label="Normal Selling Price" name="normalPrice" placeholder="Enter normal selling price" />
               <InputFormItem label="Profit" name="profit" disable />
               <InputFormItem label="Profit Margin" name="profitMargin" disable />
             </div>

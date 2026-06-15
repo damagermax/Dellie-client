@@ -7,9 +7,25 @@ export interface PurchaseLineItemInput {
   productId: string;
   quantity: number;
   unitPrice: number;
+  weight?: number;
   discountValue?: number;
   discountType?: PurchaseDiscountType;
   taxId?: string;
+}
+
+export interface PurchaseLineLandedCostBreakdown {
+  landedCostId?: string;
+  name?: string;
+  allocationMethod?: PurchaseLandedCostAllocation;
+  currencyId: string | { id: string; code: string; name?: string };
+  currencyCode: string;
+  exchangeRate: number;
+  amount: number;
+  baseAmount: number;
+  allocatedAmount: number;
+  baseAllocatedAmount: number;
+  allocatedPerUnit: number;
+  baseAllocatedPerUnit: number;
 }
 
 export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId"> {
@@ -26,10 +42,17 @@ export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId
   taxDescription?: string;
   taxRate?: number;
   taxAmount: number;
+  baseUnitPrice?: number;
+  baseTaxAmount?: number;
+  baseTotal?: number;
   total: number;
   fulfilledQuantity?: number;
   returnedQuantity?: number;
   landedCost?: number;
+  allocatedLandedCost?: number;
+  finalUnitCost?: number;
+  finalLineCost?: number;
+  landedCostBreakdown?: PurchaseLineLandedCostBreakdown[];
 }
 
 export interface CreatePurchaseInput {
@@ -108,9 +131,25 @@ export interface FulfillPurchaseInput {
   items: PurchaseOperationItemInput[];
 }
 
+export interface ReturnPurchaseLineItemInput extends PurchaseOperationItemInput {
+  reason?: string;
+}
+
+export interface ReturnPurchaseInput {
+  id: string;
+  items: ReturnPurchaseLineItemInput[];
+}
+
 export interface UpdatePurchaseFulfillmentInput {
   id: string;
   fulfillmentId: string;
+  quantity: number;
+  date: string;
+}
+
+export interface UpdatePurchaseReturnInput {
+  id: string;
+  returnId: string;
   quantity: number;
   date: string;
 }
@@ -167,4 +206,20 @@ export interface PurchaseLandedCost {
   contactName?: string;
   currencyCode?: string;
   lineItemIds: string[];
+  allocations?: {
+    lineItemId: string;
+    productId?: string;
+    productName?: string;
+    quantity: number;
+    basis: number;
+    currencyId: string | { id: string; code: string; name?: string };
+    currencyCode: string;
+    exchangeRate: number;
+    amount: number;
+    baseAmount: number;
+    allocatedAmount: number;
+    baseAllocatedAmount: number;
+    allocatedPerUnit: number;
+    baseAllocatedPerUnit: number;
+  }[];
 }

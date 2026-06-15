@@ -19,6 +19,9 @@ import { RiSearchLine } from "react-icons/ri";
 import PreviewImage from "../ui/PreviewImage";
 import { Trash2 } from "lucide-react";
 import { CategoryType } from "@/types/category";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
+import { getNormalPrice } from "@/lib/products/pricing";
 
 interface BundleItemInput {
   productId: string;
@@ -105,6 +108,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
 
   const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([]);
   const [locationQuantities, setLocationQuantities] = useState<any[]>([]);
+  const enabledModules = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules);
 
   const { data: defaultLocation, isLoading: defaultLocationsLoading } = useGetDefaultLocationQuery();
   const debouncedProductSearch = useDebouncedValue(productSearch);
@@ -149,8 +153,12 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     formData.append("description", values.description || "");
     formData.append("costPrice", String(values.costPrice || 0));
     formData.append("sellingPrice", String(values.sellingPrice || 0));
-    formData.append("showInStorefront", String(values.showInStorefront));
-    formData.append("showInPOS", String(values.showInPOS));
+    if (enabledModules.storefront && typeof values.showInStorefront !== "undefined") {
+      formData.append("showInStorefront", String(Boolean(values.showInStorefront)));
+    }
+    if (enabledModules.pos && typeof values.showInPOS !== "undefined") {
+      formData.append("showInPOS", String(Boolean(values.showInPOS)));
+    }
     formData.append("type", String(itemType));
 
     if (values.categoryId) formData.append("categoryId", String(values.categoryId));
@@ -219,7 +227,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
           name: product.name,
           sku: product.sku,
           imageUrl: product.imageUrl,
-          sellingPrice: product.sellingPrice || 0,
+          sellingPrice: getNormalPrice(product),
           quantity: 1,
         },
       ];
@@ -779,18 +787,22 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
               </>
             )}
 
-            {itemType != ITEM_TYPE.SERVICE && (
+            {itemType != ITEM_TYPE.SERVICE && (enabledModules.storefront || enabledModules.pos) && (
               <>
                 <Divider className="" />
 
                 <div className=" grid px-5  my-5 gap-y-2 items-center  ">
-                  <Form.Item name="showInStorefront" className="!mb-0" valuePropName="checked">
-                    <Checkbox>Show in Storefront</Checkbox>
-                  </Form.Item>
+                  {enabledModules.storefront && (
+                    <Form.Item name="showInStorefront" className="!mb-0" valuePropName="checked">
+                      <Checkbox>Show in Storefront</Checkbox>
+                    </Form.Item>
+                  )}
 
-                  <Form.Item name="showInPOS" className="!mb-0" valuePropName="checked">
-                    <Checkbox>Show in POS</Checkbox>
-                  </Form.Item>
+                  {enabledModules.pos && (
+                    <Form.Item name="showInPOS" className="!mb-0" valuePropName="checked">
+                      <Checkbox>Show in POS</Checkbox>
+                    </Form.Item>
+                  )}
                 </div>
               </>
             )}
