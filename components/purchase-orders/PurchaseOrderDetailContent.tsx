@@ -187,16 +187,21 @@ export default function PurchaseOrderDetailContent({
   return (
     <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
       <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-4 md:px-8 pb-7 pt-5">
-        <div className="flex flex-wrap justify-center items-start md:justify-between gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="flex w-full md:w-fit items-start gap-x-4">
             <GoBack />
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{purchase.purchaseNumber}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-normal text-gray-950 md:text-2xl">{purchase.purchaseNumber}</h1>
 
                 {!isCancelled && (
                   <Tag className="!m-0 !rounded-full !px-2 capitalize" color={receiptTone}>
                     {purchase.receiptStatus.replaceAll("_", " ")}
+                  </Tag>
+                )}
+                {!isCancelled && (
+                  <Tag className="!m-0 !rounded-full !px-2 capitalize" color={purchase.paymentStatus === "paid" ? "green" : purchase.paymentStatus === "partial" ? "orange" : "blue"}>
+                    {purchase.paymentStatus}
                   </Tag>
                 )}
                 {isCancelled && (
@@ -258,8 +263,7 @@ export default function PurchaseOrderDetailContent({
           </div>
         </div>
       </div>
-
-      <div className="pt-7">
+      <div id="purchase-overview" className="scroll-mt-14 pt-5 md:pt-7">
         <div className=" px-4 md:px-8">
           {isCancelled && <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">This purchase has been cancelled and is currently view-only. Reopen it to make changes.</div>}
           {isClosed && <div className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">This purchase is closed and read-only. Reopen it to make changes.</div>}
@@ -285,7 +289,7 @@ export default function PurchaseOrderDetailContent({
           </div>
         )}
 
-        <PurchaseOrderDetailTables
+        <div id="purchase-records" className="scroll-mt-14"><PurchaseOrderDetailTables
           purchase={purchase}
           currency={currency}
           canManage={canManage}
@@ -299,7 +303,7 @@ export default function PurchaseOrderDetailContent({
           onDeletePayment={onDeletePayment}
           onEditLandedCost={onEditLandedCost}
           onDeleteLandedCost={onDeleteLandedCost}
-        />
+        /></div>
       </div>
     </section>
   );

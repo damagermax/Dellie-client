@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 
 import { setStoreSettings } from "@/lib/redux/features/userSlice";
 import { useGetStoreSettingsQuery, useUpdateStoreSettingsMutation } from "@/lib/redux/services/storeSettingsApi";
-import { DEFAULT_ENABLED_MODULES, StoreEnabledModules, StoreModuleKey } from "@/types/store-settings";
+import { DEFAULT_ENABLED_MODULES, DEFAULT_PRICING_SETTINGS, StoreEnabledModules, StoreModuleKey, StorePricingSettings } from "@/types/store-settings";
 
 type ModuleToggle = {
   key: StoreModuleKey;
@@ -37,10 +37,6 @@ const MODULE_GROUPS: ModuleGroup[] = [
       { key: "contacts", label: "Contacts", description: "Customers, suppliers, and team contact records." },
     ],
   },
-  {
-    title: "Finance",
-    items: [{ key: "cashBook", label: "Cash Book", description: "Wallets, payments, and cash movement views." }],
-  },
 ];
 
 const normalizeEnabledModules = (enabledModules?: Partial<StoreEnabledModules>): StoreEnabledModules => ({
@@ -48,16 +44,25 @@ const normalizeEnabledModules = (enabledModules?: Partial<StoreEnabledModules>):
   ...(enabledModules || {}),
 });
 
+const normalizePricingSettings = (pricing?: Partial<StorePricingSettings>): StorePricingSettings => ({
+  ...DEFAULT_PRICING_SETTINGS,
+  ...(pricing || {}),
+});
+
 export default function GeneralSettings() {
   const dispatch = useDispatch();
   const { data, isLoading } = useGetStoreSettingsQuery();
   const [updateStoreSettings] = useUpdateStoreSettingsMutation();
   const [enabledModules, setEnabledModules] = useState<StoreEnabledModules>(DEFAULT_ENABLED_MODULES);
-  const [savingKey, setSavingKey] = useState<StoreModuleKey | null>(null);
+  const [pricing, setPricing] = useState<StorePricingSettings>(DEFAULT_PRICING_SETTINGS);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (data?.enabledModules) {
       setEnabledModules(normalizeEnabledModules(data.enabledModules));
+    }
+    if (data?.pricing) {
+      setPricing(normalizePricingSettings(data.pricing));
     }
   }, [data]);
 
@@ -78,6 +83,31 @@ export default function GeneralSettings() {
       dispatch(setStoreSettings(normalizedSettings));
     } catch {
       setEnabledModules(previousModules);
+      message.error("Setting could not be saved. Please try again.");
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handlePricingToggle = async (checked: boolean) => {
+    const previousPricing = pricing;
+    const nextPricing = { ...pricing, enableTradePrice: checked };
+
+    setPricing(nextPricing);
+    setSavingKey("enableTradePrice");
+
+    try {
+      const updatedSettings = await updateStoreSettings({ pricing: nextPricing }).unwrap();
+      const normalizedSettings = {
+        ...updatedSettings,
+        enabledModules: normalizeEnabledModules(updatedSettings.enabledModules),
+        pricing: normalizePricingSettings(updatedSettings.pricing),
+      };
+      setEnabledModules(normalizedSettings.enabledModules);
+      setPricing(normalizedSettings.pricing);
+      dispatch(setStoreSettings(normalizedSettings));
+    } catch {
+      setPricing(previousPricing);
       message.error("Setting could not be saved. Please try again.");
     } finally {
       setSavingKey(null);
@@ -113,6 +143,22 @@ export default function GeneralSettings() {
           </div>
         </section>
       ))}
+
+      <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <div className="border-b border-gray-100 px-4 py-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Pricing</h2>
+        </div>
+
+        <div className="divide-y divide-gray-100">
+          <div className="flex items-center justify-between gap-4 px-4 py-4">
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900">Enable Trade Price</p>
+              <p className="mt-1 text-sm leading-5 text-gray-500">Show a second pricing tier for products. Turning this off hides Trade Price from product screens but keeps any saved values.</p>
+            </div>
+            <Switch checked={pricing.enableTradePrice} disabled={Boolean(savingKey)} loading={savingKey === "enableTradePrice"} onChange={handlePricingToggle} />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { Form } from "antd";
-import { InputFormItem, DatePickerFormItem, SelectFormItem } from "../ui/AppFormItems";
+import { InputFormItem, DatePickerFormItem } from "../ui/AppFormItems";
 import { AppModal, ModalProps } from "../ui/AppModal";
 import { Expense, CreateExpenseInput, UpdateExpenseInput, TransactionType } from "../../types/transaction";
 import { useEffect, useState } from "react";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
+import { ExchangeRateFormItem } from "../system/ExchangeRateFormItem";
 import dayjs from "dayjs";
 
 import { useCreateExpenseMutation, useUpdateExpenseMutation, useGetTransactionQuery } from "@/lib/redux/services";
@@ -17,7 +18,6 @@ import CategoriesFormModal from "../categories/CategoriesFormModal";
 
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
 import ContactsFormModal from "../contacts/ContactsFormModal";
-import { SearchablePaymentAccountSelect } from "../paymentAccounts/SearchabalePaymentAccountSelect";
 
 interface ExpenseFormModalProps extends ModalProps {
   initialValues?: Expense;
@@ -92,18 +92,16 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
   }, [selectedImage]);
 
   const handleSubmit = async (values: ExpenseFormValues) => {
-    console.log("Form Values:", values);
-
     const formData = new FormData();
     formData.append("type", TransactionType.EXPENSE);
 
     Object.entries(values).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        formData.append(key, value as any);
+        formData.append(key, String(value));
       }
     });
 
-    selectedImage && formData.append("receipt", selectedImage);
+    if (selectedImage) formData.append("receipt", selectedImage);
 
     if (initialValues?.id) {
       await updateExpense({ id: initialValues?.id, ...values, type: TransactionType.EXPENSE } as UpdateExpenseInput);
@@ -173,16 +171,13 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
               <SearchableCurrenciesSelect disabled={canChangeCurrency} />
             </Form.Item>
 
-            <InputFormItem label="Exchange Rate" name="rate" />
+            <ExchangeRateFormItem name="rate" />
 
             <InputFormItem addonBefore="GHS" type="number" label="Total Amount (without discount)" name="totalAmount" rules={[{ required: true, message: "Enter amount" }]} />
 
             {!initialValues && (
               <>
                 <InputFormItem addonBefore="GHS" type="number" label="Paid Amount" name="paidAmount" />
-                <Form.Item label="Paid Through" name="accountId" rules={[{ required: paidAmount, message: "Select payment account" }]}>
-                  <SearchablePaymentAccountSelect />
-                </Form.Item>{" "}
                 <div className="  hidden col-span-2 p-3 bg-gray-50 rounded-lg flex   flex-col border-gray-200 border border-solid">
                   {preview && (
                     <div className=" flex gap-x-5 items-center">

@@ -5,8 +5,8 @@ import { Select, Spin } from "antd";
 import { useState } from "react";
 
 interface SearchableCategorySelectProps {
-  value?: string[];
-  onChange?: (value: string[]) => void;
+  value?: string;
+  onChange?: (value: string) => void;
   type?: CategoryType;
 }
 
@@ -23,7 +23,7 @@ export function SearchableCategorySelect({ value, onChange, type = CategoryType.
       showSearch
       labelInValue={false}
       value={value} // controlled value
-      onChange={(newValues) => {
+      onChange={(newValues: string) => {
         onChange?.(newValues); // tell AntD Form about change
       }}
       className="w-full"

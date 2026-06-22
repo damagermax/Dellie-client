@@ -1,6 +1,6 @@
 "use client";
 import { AppModal, ModalProps } from "@/components/ui/AppModal";
-import { Checkbox, Divider, Form, FormInstance, Input, InputNumber, Radio } from "antd";
+import { Checkbox, Divider, Form, FormInstance, Input, InputNumber, Switch, message } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { InputFormItem, TextAreaFormItem } from "../ui/AppFormItems";
 import { SearchableCategorySelect } from "../categories/SearchableCategorySelect";
@@ -12,7 +12,7 @@ import AppTable from "../ui/AppTable";
 import { LocationSelector } from "../location/LocationSelector";
 import useToggle from "@/hooks/UseToggle";
 import { Location } from "@/types/location";
-import { VariantAttribute, VariantFormModal } from "./VariantFormModal";
+import { VariantFormModal } from "./VariantFormModal";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { ProductListItem } from "@/types/index";
 import { RiSearchLine } from "react-icons/ri";
@@ -22,6 +22,8 @@ import { CategoryType } from "@/types/category";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
 import { getNormalPrice } from "@/lib/products/pricing";
+import type { TableProps } from "antd";
+import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 
 interface BundleItemInput {
   productId: string;
@@ -32,15 +34,36 @@ interface BundleItemInput {
   quantity: number;
 }
 
+interface LocationQuantityInput {
+  locationId: string;
+  name: string;
+  quantity: number;
+}
+
+interface ProductFormValues {
+  name: string;
+  description?: string;
+  costPrice?: number;
+  sellingPrice?: number;
+  showInStorefront?: boolean;
+  showInPOS?: boolean;
+  categoryId?: string;
+  sku?: string;
+  barcode?: string;
+  weight?: number;
+  containsOtherProducts?: boolean;
+}
+
 export interface VariantCombination {
   key: string;
   name: string;
   image?: File | null;
   costPrice: number;
   sellingPrice: number;
+  weight: number;
 
   stock: { locationId: string; quantity: number }[] | null;
-  optionValues: any;
+  optionValues: { option: string; value: string }[];
 }
 
 interface ProductFormModalProps extends ModalProps {
@@ -58,36 +81,34 @@ export enum ITEM_TYPE {
 const ItemType = [
   {
     title: "Stock Product",
-    description: "Physical item kept in stock with quantity tracking for sales and usage.",
+    description: "Physical item kept in stock with quantity tracking for sales and usage (e.g. Bottle of Water, Bag of Rice)",
     key: ITEM_TYPE.STOCK,
   },
   {
-    title: "Non-Stock Product",
-    description: "Physical item sold without inventory tracking.",
+    title: "Non-Stock Product ",
+    description: "Products or services without inventory tracking(e.g. Prepared Food,  Haircut, Consultation)",
+    examples: "",
+
     key: ITEM_TYPE.NON_STOCK,
   },
-  {
-    title: "Service",
-    description: "Non-physical offering like work or time-based service.",
-    key: ITEM_TYPE.SERVICE,
-  },
+
   // {
   //   title: "Bundle",
-  //   description: "Group of items or services sold together as one package.",
+  //   description: "Group of items or services sold together as one package (e.g. Gift Basket, Phone + Charger Set)",
   //   key: ITEM_TYPE.BUNDLE,
   // },
 
-  {
-    title: "Packaging",
-    description: "Sell this product as packs, cartons, or cases using stock from a stock product.",
-    key: ITEM_TYPE.PACKAGING,
-  },
+  // {
+  //   title: "Service",
+  //   description: "Non-physical offering like work or time-based service.",
+  //   key: ITEM_TYPE.SERVICE,
+  // },
+  // {
+  //   title: "Packaging",
+  //   description: "Sell stock product in different quantities (e.g. 1 carton of 24 bottles, 1 pack of 6 cans)",
+  //   key: ITEM_TYPE.PACKAGING,
+  // },
 ];
-
-const REPACK_CONVERSION_TYPE = {
-  SOURCE_TO_REPACK: "source_to_repack",
-  REPACK_TO_SOURCE: "repack_to_source",
-} as const;
 
 export default function ProductFormModal({ open, toggle }: ProductFormModalProps) {
   const [openLocationModal, toggleLocationModal] = useToggle();
@@ -95,35 +116,25 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   const [media, setMedia] = useState<File[]>([]);
   const [itemType, setItemType] = useState<ITEM_TYPE | null>(null);
   const [productSearch, setProductSearch] = useState("");
-  const [repackSourceSearch, setRepackSourceSearch] = useState("");
-  const [selectedRepackSourceProduct, setSelectedRepackSourceProduct] = useState<ProductListItem | null>(null);
   const [bundleItems, setBundleItems] = useState<BundleItemInput[]>([]);
   const [bundleItemsError, setBundleItemsError] = useState("");
-  const [bundleSellingPriceEdited, setBundleSellingPriceEdited] = useState(false);
 
   const [productForm] = Form.useForm();
-  const repackConversionType = Form.useWatch("conversionType", productForm) || REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK;
-  const repackConversionQuantity = Number(Form.useWatch("conversionQuantity", productForm) || 0);
-  const repackProductName = Form.useWatch("name", productForm) || "repack product";
+  const containsOtherProducts = Boolean(Form.useWatch("containsOtherProducts", productForm));
 
   const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([]);
-  const [locationQuantities, setLocationQuantities] = useState<any[]>([]);
+  const [locationQuantities, setLocationQuantities] = useState<LocationQuantityInput[]>([]);
   const enabledModules = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules);
+  const currencyCode = useStoreCurrencyCode();
 
-  const { data: defaultLocation, isLoading: defaultLocationsLoading } = useGetDefaultLocationQuery();
+  const { data: defaultLocation } = useGetDefaultLocationQuery();
   const debouncedProductSearch = useDebouncedValue(productSearch);
-  const debouncedRepackSourceSearch = useDebouncedValue(repackSourceSearch);
   const { data: products } = useGetProductsQuery({
     search: debouncedProductSearch,
     limit: 20,
   });
-  const { data: sourceProducts } = useGetProductsQuery({
-    search: debouncedRepackSourceSearch,
-    type: "STOCK",
-    limit: 20,
-  });
 
-  const [createProduct, { isLoading, error, isSuccess }] = useCreateProductMutation();
+  const [createProduct, { isLoading, isSuccess }] = useCreateProductMutation();
 
   const toggleSelect = (location: Location) => {
     setLocationQuantities((prev) => {
@@ -144,7 +155,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     });
   };
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: ProductFormValues) => {
     if (isLoading) return;
 
     const formData = new FormData();
@@ -153,47 +164,36 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     formData.append("description", values.description || "");
     formData.append("costPrice", String(values.costPrice || 0));
     formData.append("sellingPrice", String(values.sellingPrice || 0));
-    if (enabledModules.storefront && typeof values.showInStorefront !== "undefined") {
-      formData.append("showInStorefront", String(Boolean(values.showInStorefront)));
-    }
-    if (enabledModules.pos && typeof values.showInPOS !== "undefined") {
-      formData.append("showInPOS", String(Boolean(values.showInPOS)));
-    }
+    formData.append("showInStorefront", String(enabledModules.storefront && Boolean(values.showInStorefront)));
+    formData.append("showInPOS", String(enabledModules.pos && Boolean(values.showInPOS)));
     formData.append("type", String(itemType));
 
     if (values.categoryId) formData.append("categoryId", String(values.categoryId));
     if (values.sku) formData.append("sku", String(values.sku));
     if (values.barcode) formData.append("barcode", String(values.barcode));
-    if (itemType === ITEM_TYPE.STOCK && values.weight) formData.append("weight", String(values.weight));
-
-    if (itemType === ITEM_TYPE.PACKAGING) {
-      formData.append("sourceProductId", String(values.sourceProductId || ""));
-      formData.append("conversionType", String(values.conversionType || REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK));
-      formData.append("conversionQuantity", String(values.conversionQuantity || 0));
-      formData.append("repackUnitName", String(values.name || ""));
-    }
+    if (itemType === ITEM_TYPE.STOCK && values.weight !== undefined) formData.append("weight", String(values.weight));
 
     for (const file of media) {
       formData.append("media", file as Blob);
     }
 
-    if (!variantCombinations?.length && locationQuantities?.length) {
+    if ((values.containsOtherProducts || !variantCombinations?.length) && locationQuantities?.length) {
       formData.append("stock", JSON.stringify(locationQuantities || []));
     }
 
-    if (variantCombinations?.length) {
+    if (!values.containsOtherProducts && variantCombinations?.length) {
       formData.append("variants", JSON.stringify(variantCombinations || []));
 
-      console.log("========combinations", variantCombinations);
-
       for (const variant of variantCombinations) {
-        variant.image && formData.append("variantImages", variant.image as Blob, variant.key);
+        if (variant.image) {
+          formData.append("variantImages", variant.image as Blob, variant.key);
+        }
       }
     }
 
-    if (itemType === ITEM_TYPE.BUNDLE) {
+    if (values.containsOtherProducts) {
       if (!bundleItems.length) {
-        setBundleItemsError("Add at least one item to this bundle");
+        setBundleItemsError("Add at least one product");
         return;
       }
 
@@ -208,7 +208,12 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       );
     }
 
-    await createProduct(formData);
+    try {
+      await createProduct(formData).unwrap();
+      message.success("Product created successfully.");
+    } catch {
+      message.error("The product could not be created. Check the form and try again.");
+    }
   };
 
   const addBundleItem = useCallback((product: ProductListItem) => {
@@ -257,9 +262,14 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   }, [bundleItems]);
 
   const updateVariantCombinations = (combinations: VariantCombination[]) => {
+    const { costPrice = 0, sellingPrice = 0, weight = 0 } = productForm.getFieldsValue(["costPrice", "sellingPrice", "weight"]);
+
     setVariantCombinations(
       combinations?.map((combination) => ({
         ...combination,
+        costPrice: Number(costPrice),
+        sellingPrice: Number(sellingPrice),
+        weight: Number(weight),
         stock: locationQuantities?.map((location) => ({
           locationId: location?.locationId,
           quantity: 0,
@@ -268,7 +278,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     );
   };
 
-  const handleCombinationChange = (key: string, field: keyof Omit<VariantCombination, "stock" | "onHand">, value: any) => {
+  const handleCombinationChange = (key: string, field: keyof Omit<VariantCombination, "stock">, value: VariantCombination[keyof Omit<VariantCombination, "stock">]) => {
     setVariantCombinations((prev: VariantCombination[]) => prev.map((item: VariantCombination) => (item.key === key ? { ...item, [field]: value } : item)));
   };
 
@@ -305,7 +315,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     try {
       const values = await productForm.validateFields();
       onFinish(values);
-    } catch (error) {}
+    } catch {}
   };
 
   useEffect(() => {
@@ -317,33 +327,26 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       setLocationQuantities([]);
       setBundleItems([]);
       setBundleItemsError("");
-      setBundleSellingPriceEdited(false);
       setProductSearch("");
-      setRepackSourceSearch("");
-      setSelectedRepackSourceProduct(null);
     }
-  }, [isSuccess]);
+  }, [isSuccess, productForm, toggle]);
 
   useEffect(() => {
-    if (itemType === ITEM_TYPE.BUNDLE && !bundleSellingPriceEdited) {
-      productForm.setFieldValue("sellingPrice", bundleItemsTotal);
+    if (containsOtherProducts && variantCombinations.length) {
+      setVariantCombinations([]);
     }
-  }, [bundleItemsTotal, bundleSellingPriceEdited, itemType, productForm]);
+  }, [containsOtherProducts, variantCombinations.length]);
 
   useEffect(() => {
-    if (itemType !== ITEM_TYPE.PACKAGING) {
-      productForm.setFieldsValue({
-        sourceProductId: undefined,
-        conversionQuantity: undefined,
-        conversionType: REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK,
-      });
-      setSelectedRepackSourceProduct(null);
-      setRepackSourceSearch("");
+    if (!containsOtherProducts) {
+      setBundleItems([]);
+      setBundleItemsError("");
+      setProductSearch("");
     }
-  }, [itemType, productForm]);
+  }, [containsOtherProducts]);
 
   // Table columns for variant combinations
-  const variantColumns = [
+  const variantColumns: TableProps<VariantCombination>["columns"] = [
     {
       title: "Variant",
       dataIndex: "name",
@@ -365,7 +368,9 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       dataIndex: "costPrice",
       key: "costPrice",
       width: 100,
-      render: (_: any, record: VariantCombination) => <InputNumber className="!w-[80px]" controls={false} prefix="$" value={record.costPrice} onChange={(e) => handleCombinationChange(record.key, "costPrice", Number(e))} size="middle" />,
+      render: (_: unknown, record: VariantCombination) => (
+        <InputNumber className="!w-[100px]" controls={false} min={0} prefix={currencyCode || undefined} value={record.costPrice} onChange={(e) => handleCombinationChange(record.key, "costPrice", Number(e))} size="middle" />
+      ),
     },
 
     {
@@ -373,19 +378,29 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       dataIndex: "sellingPrice",
       key: "sellingPrice",
       width: 100,
-      render: (_: any, record: VariantCombination) => <InputNumber className="!w-[80px] " controls={false} prefix="$" value={record.sellingPrice} onChange={(e) => handleCombinationChange(record.key, "sellingPrice", Number(e))} size="middle" />,
+      render: (_: unknown, record: VariantCombination) => (
+        <InputNumber className="!w-[100px]" controls={false} min={0} prefix={currencyCode || undefined} value={record.sellingPrice} onChange={(e) => handleCombinationChange(record.key, "sellingPrice", Number(e))} size="middle" />
+      ),
+    },
+
+    {
+      title: "Weight",
+      dataIndex: "weight",
+      key: "weight",
+      width: 100,
+      render: (_: unknown, record: VariantCombination) => <InputNumber className="!w-[90px]" controls={false} min={0} suffix="kg" value={record.weight} onChange={(value) => handleCombinationChange(record.key, "weight", Number(value))} size="middle" />,
     },
 
     ...(itemType == ITEM_TYPE.STOCK && locationQuantities?.length
       ? locationQuantities.map((location) => ({
           title: location?.name,
           width: 120,
-          render: (_: any, record: VariantCombination) => <InputNumber controls={false} min={0} onChange={(e) => handleStockChange(record.key, location?.locationId, e || 0)} size="middle" className="w-full" placeholder="0" />,
+          render: (_: unknown, record: VariantCombination) => <InputNumber controls={false} min={0} onChange={(e) => handleStockChange(record.key, location?.locationId, e || 0)} size="middle" className="w-full" placeholder="0" />,
         }))
       : []),
   ];
 
-  const bundleColumns = useMemo(
+  const bundleColumns = useMemo<TableProps<BundleItemInput>["columns"]>(
     () => [
       {
         title: "Product",
@@ -393,7 +408,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
         key: "name",
         className: "!pl-8",
         width: "70%",
-        render: (_: any, record: BundleItemInput) => (
+        render: (_: unknown, record: BundleItemInput) => (
           <div className="flex items-center gap-x-2">
             <PreviewImage width={28} height={28} src={record.imageUrl} />
             <div>
@@ -407,14 +422,14 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
         title: "Qty",
         dataIndex: "quantity",
         key: "quantity",
-        render: (_: any, record: BundleItemInput) => <InputNumber variant="underlined" controls={false} min={1} value={record.quantity} onChange={(value) => updateBundleItemQuantity(record.productId, value)} suffix="units" />,
+        render: (_: unknown, record: BundleItemInput) => <InputNumber variant="underlined" controls={false} min={1} value={record.quantity} onChange={(value) => updateBundleItemQuantity(record.productId, value)} suffix="units" />,
       },
 
       {
         title: "",
         dataIndex: "productId",
         key: "productId",
-        align: "end",
+        align: "right",
         render: (productId: string) => (
           <div className="pl-5 text-gray-500 cursor-pointer hover:text-red-400" onClick={() => removeBundleItem(productId)}>
             <Trash2 size={15} className="cursor-pointer" />
@@ -423,75 +438,6 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       },
     ],
     [removeBundleItem, updateBundleItemQuantity],
-  );
-
-  const addRepackSourceProduct = useCallback(
-    (product: ProductListItem) => {
-      setSelectedRepackSourceProduct(product);
-      setRepackSourceSearch("");
-      productForm.setFieldValue("sourceProductId", product.id);
-    },
-    [productForm],
-  );
-
-  const removeRepackSourceProduct = useCallback(() => {
-    setSelectedRepackSourceProduct(null);
-    setRepackSourceSearch("");
-    productForm.setFieldValue("sourceProductId", undefined);
-  }, [productForm]);
-
-  const repackSourceColumns = useMemo(
-    () => [
-      {
-        title: "Source Product",
-        dataIndex: "name",
-        key: "name",
-        className: "!pl-5",
-        render: (_: any, record: ProductListItem) => (
-          <div className="flex items-center gap-x-2">
-            <PreviewImage width={28} height={28} src={record.imageUrl} />
-            <div>
-              <p>{record.name}</p>
-              {record.sku && record.sku !== "undefined" && <p className="text-xs text-gray-500">{record.sku}</p>}
-            </div>
-          </div>
-        ),
-      },
-      {
-        title: "",
-        dataIndex: "id",
-        key: "id",
-        align: "end",
-        render: () => (
-          <div className="pl-5 text-gray-500 cursor-pointer hover:text-red-400" onClick={removeRepackSourceProduct}>
-            <Trash2 size={15} className="cursor-pointer" />
-          </div>
-        ),
-      },
-    ],
-    [removeRepackSourceProduct],
-  );
-
-  const searchRepackSourceProduct = (
-    <div className="px-5 bg-gray-100">
-      <div className="sticky inset-0 z-50 py-4">
-        <Input prefix={<RiSearchLine />} placeholder="Search stock product" className="rounded-full!" value={repackSourceSearch} onChange={({ target: { value } }) => setRepackSourceSearch(value)} />
-      </div>
-      <div className="shadow-xl bg-white">
-        {repackSourceSearch &&
-          sourceProducts?.data?.map((product: ProductListItem) => (
-            <div key={product.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addRepackSourceProduct(product)}>
-              <div className="flex gap-x-2 ">
-                <PreviewImage width={28} height={28} src={product.imageUrl} />
-                <div>
-                  <p className="line-clamp-1">{product.name}</p>
-                  {product.sku && product.sku !== "undefined" && <p className="text-gray-700 text-[0.7rem]">{product.sku}</p>}
-                </div>
-              </div>
-            </div>
-          ))}
-      </div>
-    </div>
   );
 
   const searchBundleProduct = (
@@ -520,7 +466,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     <AppModal
       loading={isLoading}
       footer={itemType ? undefined : null}
-      width={650}
+      width={750}
       height={"70vh"}
       title={
         itemType ? (
@@ -541,16 +487,18 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
           <h2 className="text-lg font-semibold text-gray-800">Choose Item Type</h2>
           <p className="text-sm text-gray-500 mb-5  ">Select how this item will be managed in your system.</p>
 
-          <div className=" grid grid-cols-2 gap-4 mb-8 mt-5">
+          <div className=" grid  gap-4 mb-8 mt-5">
             {ItemType?.map((type) => (
               <div
+                key={type.key}
                 className="  cursor-pointer hover:border-gray-500 border-gray-200 rounded-md border p-5 border-solid"
                 onClick={() => {
                   setVariantCombinations([]);
-                  setBundleSellingPriceEdited(false);
-                  productForm.setFieldValue("conversionType", REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK);
+                  productForm.setFieldValue("containsOtherProducts", false);
                   if ([ITEM_TYPE.NON_STOCK, ITEM_TYPE.STOCK]?.includes(type.key)) {
-                    defaultLocation && toggleSelect(defaultLocation || []);
+                    if (defaultLocation) {
+                      toggleSelect(defaultLocation);
+                    }
                   } else {
                     setLocationQuantities([]);
                   }
@@ -574,30 +522,24 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
           <Form disabled={isLoading} className=" " size="small" form={productForm} layout={"vertical"} onFinish={onFinish}>
             <div className="    gap-x-12 ">
               <div className=" px-5 ">
-                <InputFormItem label="Name" name="name" placeholder="Enter product name. Eg. Red T-Shirt" />
+                <InputFormItem label="Name" name="name" placeholder="Enter product name. Eg. Red T-Shirt" rules={[{ required: true, whitespace: true, message: "Product name is required" }]} />
               </div>
 
               <div className=" px-5">
-                {![ITEM_TYPE.BUNDLE, ITEM_TYPE.PACKAGING].includes(itemType) && (
-                  <>
-                    <div className=" grid grid-cols-2 gap-x-5">
-                      <Form.Item label="Category" name="categoryId">
-                        <SearchableCategorySelect type={CategoryType.PRODUCT} />
-                      </Form.Item>
+                <div className=" grid grid-cols-5 gap-x-5">
+                  <Form.Item label="Category" className=" col-span-2" name="categoryId">
+                    <SearchableCategorySelect type={CategoryType.PRODUCT} />
+                  </Form.Item>
 
-                      <div className=" grid grid-cols-2  gap-x-5">
-                        <InputFormItem type="number" label="Cost Price" name="costPrice" placeholder="0.0" />
-                        <InputFormItem type="number" label="Selling Price" name="sellingPrice" placeholder="0.0" />
-                      </div>
-                    </div>
-                    {itemType === ITEM_TYPE.STOCK && (
-                      <div className="grid grid-cols-2 gap-x-5">
-                        <InputFormItem type="number" label="Weight (Optional)" name="weight" placeholder="0.0" />
-                      </div>
-                    )}
-                    <TextAreaFormItem label="Description (Optional)" name="description" placeholder="Enter product description" />
-                  </>
-                )}
+                  <div className=" grid grid-cols-3 col-span-3  gap-x-3">
+                    <InputFormItem type="number" label="Weight " name="weight" placeholder="0.0" afterText="kg" />
+
+                    <InputFormItem type="number" label="Cost Price" name="costPrice" placeholder="0.0" prefix={currencyCode || undefined} />
+                    <InputFormItem type="number" label="Selling Price" name="sellingPrice" placeholder="0.0" prefix={currencyCode || undefined} />
+                  </div>
+                </div>
+
+                <TextAreaFormItem label="Description (Optional)" name="description" placeholder="Enter product description" />
 
                 <Form.Item label="Media (images and videos)">
                   <div className=" min-h-fit p-1 flex items-center  bg-gray-100  rounded-md border  border-gray-200">
@@ -605,95 +547,34 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
                   </div>
                 </Form.Item>
               </div>
-
-              {itemType === ITEM_TYPE.PACKAGING && (
-                <>
-                  <div>
-                    <Form.Item name="sourceProductId" rules={[{ required: true, message: "Select source product" }]} className="!mb-0">
-                      <Input type="hidden" />
-                    </Form.Item>
-
-                    <Form.Item label="What are you creating from the source product?" name="conversionType" initialValue={REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK} className="!px-5" rules={[{ required: true, message: "Select conversion type" }]}>
-                      <Radio.Group className="w-full">
-                        <div className="grid grid-cols-2 -rounded-md gap-3">
-                          <Radio.Button className="!h-auto !p-3 !text-left" value={REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK}>
-                            <p className="font-medium">Smaller unit from a larger product</p>
-                            <p className="text-xs text-gray-500">Example: Carton to Bottle</p>
-                          </Radio.Button>
-
-                          <Radio.Button className="!h-auto -rounded-md !p-3 !text-left" value={REPACK_CONVERSION_TYPE.REPACK_TO_SOURCE}>
-                            <p className="font-medium">Larger unit from smaller products</p>
-                            <p className="text-xs text-gray-500">Example: Bottle to Carton</p>
-                          </Radio.Button>
-                        </div>
-                      </Radio.Group>
-                    </Form.Item>
-
-                    <div className="mt-4">
-                      <div className="px-5 pb-3">
-                        <h3 className="text-sm font-medium text-gray-700">Source Product</h3>
-                      </div>
-                      {selectedRepackSourceProduct ? <AppTable columns={repackSourceColumns} dataSource={[selectedRepackSourceProduct]} rowKey={(record: ProductListItem) => record.id} pagination={false} /> : searchRepackSourceProduct}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-x-5 px-5  mt-4">
-                      <InputFormItem
-                        type="number"
-                        label={repackConversionType === REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK ? "1 source unit makes how many  units?" : "How many source units make 1 unit?"}
-                        name="conversionQuantity"
-                        placeholder="24"
-                        rules={[{ required: true, message: "Enter conversion quantity" }]}
-                      />
-
-                      <InputFormItem type="number" label="Selling Price" name="sellingPrice" placeholder="0.0" />
-                    </div>
-
-                    {selectedRepackSourceProduct && repackConversionQuantity > 0 && (
-                      <div className="mt-4 rounded-sm border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                        {repackConversionType === REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK ? (
-                          <>
-                            <p>
-                              1 {selectedRepackSourceProduct.name} = {repackConversionQuantity} {repackProductName}
-                            </p>
-                            <p className="mt-1">
-                              Selling 1 {repackProductName} deducts 1/{repackConversionQuantity} {selectedRepackSourceProduct.name}.
-                            </p>
-                          </>
-                        ) : (
-                          <>
-                            <p>
-                              {repackConversionQuantity} {selectedRepackSourceProduct.name} = 1 {repackProductName}
-                            </p>
-                            <p className="mt-1">
-                              Selling 1 {repackProductName} deducts {repackConversionQuantity} {selectedRepackSourceProduct.name}.
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
             </div>
 
-            {itemType === ITEM_TYPE.BUNDLE && (
+            {[ITEM_TYPE.NON_STOCK, ITEM_TYPE.STOCK]?.includes(itemType) && (
               <>
                 <Divider />
-                <div className="px-5 pb-3">
-                  <h3 className="text-base font-medium text-gray-700">Bundle Items</h3>
-                  {bundleItemsError && <p className="mt-2 text-xs text-red-500">{bundleItemsError}</p>}
-                </div>
-                <AppTable columns={bundleColumns} dataSource={bundleItems || []} rowKey={(record: BundleItemInput) => record.productId} pagination={false} />
-                {searchBundleProduct}
-                <div className="px-5 pt-5 pb-2 grid grid-cols-2 gap-x-5">
+
+                <div className="px-5  flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">Items Total</p>
-                    <p className="mt-1 font-medium text-gray-800">GHS {bundleItemsTotal.toFixed(2)}</p>
+                    <h3 className="text-base font-medium text-gray-700">Contains Other Products?</h3>
+                    <p className="text-xs text-gray-500">Turn on if this product is made up of other products or ingredients.</p>
                   </div>
-                  <Form.Item label="Bundle Selling Price" name="sellingPrice">
-                    <InputNumber className="!w-full" min={0} prefix="GHS" controls={false} placeholder="0.00" onChange={() => setBundleSellingPriceEdited(true)} />
+
+                  <Form.Item name="containsOtherProducts" valuePropName="checked" className="!mb-0">
+                    <Switch />
                   </Form.Item>
                 </div>
+
+                {containsOtherProducts && (
+                  <div className="">
+                    <div className="px-5 pb-3">{bundleItemsError && <p className="mt-2 text-xs text-red-500">{bundleItemsError}</p>}</div>
+                    <AppTable columns={bundleColumns} dataSource={bundleItems || []} rowKey={(record: BundleItemInput) => record.productId} pagination={false} />
+                    {searchBundleProduct}
+                    <div className="px-5 pt-5 pb-2">
+                      <p className="text-sm text-gray-500">Selected Products Total</p>
+                      <p className="mt-1 font-medium text-gray-800">GHS {bundleItemsTotal.toFixed(2)}</p>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 
@@ -749,7 +630,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
                         {(variantCombinations?.length || itemType == ITEM_TYPE.NON_STOCK) && (
                           <div className="flex flex-wrap gap-2 p-2 ">
                             {locationQuantities?.map((location) => (
-                              <p>
+                              <p key={location.locationId}>
                                 {location?.name}
                                 {locationQuantities?.length > 1 && ","}
                               </p>
@@ -758,6 +639,13 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
                         )}
                       </div>
                     </div>
+
+                    <div className=" grid grid-cols-3 col-span-3  gap-x-3">
+                      <InputFormItem type="number" label="Barcode" name="barcode" placeholder="Barcode" />
+
+                      <InputFormItem type="number" label="Stock Alert AQty" name="stockAlertQty" placeholder="0.0" />
+                      <InputFormItem type="date" label="Expiry Date" name="expiryDate" placeholder="0.0" />
+                    </div>
                   </div>
                 </div>
               </>
@@ -765,7 +653,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
 
             {/* ---------- Variants Section ---------- */}
 
-            {[ITEM_TYPE.NON_STOCK, ITEM_TYPE.STOCK]?.includes(itemType) && (
+            {[ITEM_TYPE.NON_STOCK, ITEM_TYPE.STOCK]?.includes(itemType) && !containsOtherProducts && (
               <>
                 <Divider className="" />
                 {/* Variant Toggles */}

@@ -25,13 +25,15 @@ import {
 } from "@/lib/redux/services";
 import { getNormalPrice } from "@/lib/products/pricing";
 import { RootState } from "@/lib/store";
-import { ApplyPaymentInput, CategoryStatus, CategoryType, CreateSaleInput, Location, PaymentMethod, Sale, Tax, TransactionType } from "@/types/index";
+import { ApplyPaymentInput, CategoryStatus, CategoryType, CreateSaleInput, Location, PaymentMethod, ProductListItem, Sale, Tax, TransactionType } from "@/types/index";
 import { DEFAULT_POS_SETTINGS } from "@/types/store-settings";
 import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/SaleShareDocumentModal";
 import CategoryCard from "./CategoryCard";
 import ProductCard from "./ProductCard";
 import QuantityControl from "./QuantityControl";
 import { MdOutlineHistoryToggleOff, MdOutlineShareLocation } from "react-icons/md";
+import { ProductVariantSelectorModal } from "@/components/products/ProductVariantSelectorModal";
+import { ResolvedProductName, useResolvedProductNameMap } from "@/components/products/ResolvedProductName";
 
 type PosCartItem = {
   id: string;
@@ -57,10 +59,6 @@ const DRAFT_KEY = "dellie-pos-draft";
 
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function formatPosPrice(value: number) {
-  return `Rp ${Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatMoney(currency: string, value: number) {
@@ -101,6 +99,7 @@ export default function POSPage() {
   const [searchValue, setSearchValue] = useState("");
   const [categoryId, setCategoryId] = useState<string>();
   const [cart, setCart] = useState<PosCartItem[]>([]);
+  const [variantParent, setVariantParent] = useState<ProductListItem>();
   const [payments, setPayments] = useState<PosPaymentEntry[]>([{ id: uid(), amount: 0 }]);
   const [selectedTax, setSelectedTax] = useState<Tax>();
   const [customerOpen, toggleCustomerOpen] = useToggle();
@@ -166,6 +165,18 @@ export default function POSPage() {
     if (!search) return rawVisibleProducts;
     return rawVisibleProducts.filter((product) => product.name.toLowerCase().includes(search));
   }, [rawVisibleProducts, debouncedSearch]);
+  const visibleProductNames = useResolvedProductNameMap(
+    visibleProducts.map((product) => ({
+      id: product.id,
+      name: product.name,
+    })),
+  );
+  const cartProductNames = useResolvedProductNameMap(
+    cart.map((item) => ({
+      id: item.productId,
+      name: item.name,
+    })),
+  );
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -302,6 +313,10 @@ export default function POSPage() {
 
   const addQuantity = useCallback(
     (product: (typeof visibleProducts)[number]) => {
+      if (product.hasVariants || product.variants?.length) {
+        setVariantParent(product);
+        return;
+      }
       const current = getCartItem(product.id)?.quantity || 0;
       setCartQuantity(product, current + 1);
     },
@@ -516,9 +531,9 @@ export default function POSPage() {
                 return (
                   <ProductCard
                     key={product.id}
-                    name={product.name}
+                    name={visibleProductNames[product.id] || product.name}
                     imageUrl={getProductImage(product)}
-                    price={formatPosPrice(getNormalPrice(product))}
+                    price={product.hasVariants ? "Select variant" : formatMoney(selectedCurrencyCode, getNormalPrice(product))}
                     quantity={quantity}
                     available={!unavailable}
                     onDecrease={() => subtractQuantity(product)}
@@ -576,7 +591,7 @@ export default function POSPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="truncate text-sm  font-medium text-gray-950">{item.name}</p>
+                              <ResolvedProductName name={cartProductNames[item.productId] || item.name} productId={item.productId} className="truncate text-sm  font-medium text-gray-950" />
                             </div>
                             {/* <button type="button" className="mt-0.5 rounded-full p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500" onClick={() => removeCartItem(item.id)}>
                               <X size={16} />
@@ -641,6 +656,16 @@ export default function POSPage() {
           paperSize={posSettings.receiptPaperSize}
         />
       )}
+
+      <ProductVariantSelectorModal
+        parent={variantParent}
+        onClose={() => setVariantParent(undefined)}
+        priceLabel={(price) => formatMoney(selectedCurrencyCode, price)}
+        onSelect={(variant) => {
+          setCartQuantity(variant, (getCartItem(variant.id)?.quantity || 0) + 1);
+          setVariantParent(undefined);
+        }}
+      />
 
       <Modal
         title={

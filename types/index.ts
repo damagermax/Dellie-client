@@ -12,7 +12,6 @@ export * from "./category";
 export * from "./inventory";
 export * from "./transaction";
 export * from "./system";
-export * from "./payment-account";
 export * from "./taxes";
 export * from "./payment-term";
 export * from "./payment-method";

@@ -7,9 +7,11 @@ import { CreditCard, FileText, PackageCheck, Receipt, Undo2 } from "lucide-react
 import AppTable from "@/components/ui/AppTable";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
 import PreviewImage from "@/components/ui/PreviewImage";
+import { CostBreakdownModal } from "./PurchaseOrderSummary";
 import { formatDate } from "@/lib/dateUtils";
 import { useGetCurrencyQuery, useGetStoreSettingsQuery } from "@/lib/redux/services";
 import { Payment, Purchase, PurchaseLandedCost, PurchaseLineItem, PurchaseReturnEvent, PurchaseStockEvent } from "@/types/index";
+import { ResolvedProductName } from "@/components/products/ResolvedProductName";
 
 type PurchaseTableView = "items" | "fulfillments" | "returns" | "landedCosts" | "payments";
 type PurchaseTableRow = PurchaseLineItem | PurchaseStockEvent | PurchaseReturnEvent | PurchaseLandedCost | Payment;
@@ -38,12 +40,12 @@ function productImage(product: string | { media?: { url: string }[] }) {
   return typeof product === "string" ? undefined : product.media?.[0]?.url;
 }
 
-function ProductCell({ name, sku, imageUrl }: { name: string; sku?: string; imageUrl?: string }) {
+function ProductCell({ name, sku, imageUrl, product }: { name: string; sku?: string; imageUrl?: string; product?: string | { id?: string; name?: string } }) {
   return (
     <div className="flex items-center gap-x-2">
       <PreviewImage width={28} height={28} src={imageUrl} />
       <div className="min-w-0">
-        <p className="line-clamp-1">{name}</p>
+        <ResolvedProductName name={name} product={product} className="line-clamp-1" />
         {sku && <p className="text-xs text-gray-500">SKU: {sku}</p>}
       </div>
     </div>
@@ -113,6 +115,7 @@ export default function PurchaseOrderDetailTables({
   onDeleteLandedCost,
 }: PurchaseOrderDetailTablesProps) {
   const [view, setView] = React.useState<PurchaseTableView>("items");
+  const [costOpen, setCostOpen] = React.useState(false);
   const canMutate = canManage && !isCancelled && !isReadOnly;
   const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
   const { data: storeSettings } = useGetStoreSettingsQuery();
@@ -120,7 +123,15 @@ export default function PurchaseOrderDetailTables({
   const baseCurrencyId = storeSettings?.businessProfile?.currencyId || fallbackStoreCurrencyId;
   const { data: baseCurrencyRecord } = useGetCurrencyQuery(baseCurrencyId, { skip: !baseCurrencyId });
   const baseCurrency = baseCurrencyRecord?.code || user?.store?.currency?.code || user?.store?.currencyCode || user?.store?.settings?.currency || "";
-  const availableOptions = React.useMemo(() => tableOptions.filter((option) => option.value !== "landedCosts" || Boolean(purchase.landedCosts?.length)), [purchase.landedCosts?.length]);
+  const availableOptions = React.useMemo(
+    () =>
+      tableOptions.filter(
+        (option) =>
+          (option.value !== "returns" || Boolean(purchase.returnedItems?.length)) &&
+          (option.value !== "landedCosts" || Boolean(purchase.landedCosts?.length)),
+      ),
+    [purchase.landedCosts?.length, purchase.returnedItems?.length],
+  );
   React.useEffect(() => {
     if (!availableOptions.some((option) => option.value === view)) {
       setView(availableOptions[0]?.value as PurchaseTableView);
@@ -130,18 +141,20 @@ export default function PurchaseOrderDetailTables({
     key: option.value,
     label: option.label,
   }));
+  const hasReturnedItems = purchase.lineItems.some((line) => Number(line.returnedQuantity || 0) > 0);
+  const hasTaxedItems = purchase.lineItems.some((line) => Boolean(line.taxDescription) || Number(line.taxAmount || 0) > 0);
   const itemColumns: TableProps<PurchaseLineItem>["columns"] = [
-    { title: "Product", key: "productName", className: "!pl-8", width: "45%", render: (_, line) => <ProductCell name={line.productName} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} /> },
+    { title: "Product", key: "productName", className: "!pl-8", width: "45%", render: (_, line) => <ProductCell name={line.productName} product={line.productId} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} /> },
     { title: "Ordered", dataIndex: "quantity", key: "quantity" },
     { title: "Fulfilled", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
-    { title: "Returned", key: "returned", render: (_, line) => Number(line.returnedQuantity || 0).toLocaleString() },
+    ...(hasReturnedItems ? [{ title: "Returned", key: "returned", render: (_: unknown, line: PurchaseLineItem) => Number(line.returnedQuantity || 0).toLocaleString() }] : []),
     { title: "Remaining", key: "remaining", render: (_, line) => Math.max(Number(line.quantity || 0) - Number(line.fulfilledQuantity || 0), 0).toLocaleString() },
     { title: "Unit Cost", key: "unitPrice", render: (_, line) => Number(line.unitPrice).toFixed(2) },
-    { title: "Tax", key: "tax", render: (_, line) => (line.taxDescription ? `${line.taxDescription} (${line.taxRate || 0}%)` : "No tax") },
+    ...(hasTaxedItems ? [{ title: "Tax", key: "tax", render: (_: unknown, line: PurchaseLineItem) => (line.taxDescription ? `${line.taxDescription} (${line.taxRate || 0}%)` : "-") }] : []),
     { title: "Total", key: "total", className: "!pr-8", render: (_, line) => Number(line.total).toFixed(2) },
   ];
   const fulfillmentColumns: TableProps<PurchaseStockEvent>["columns"] = [
-    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
+    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
     { title: "Received Qty", dataIndex: "quantity", key: "quantity" },
     { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.fulfilledAt) },
     {
@@ -155,7 +168,7 @@ export default function PurchaseOrderDetailTables({
     },
   ];
   const returnColumns: TableProps<PurchaseReturnEvent>["columns"] = [
-    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
+    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
     { title: "Returned Qty", dataIndex: "quantity", key: "quantity" },
     { title: "Reason", key: "reason", render: (_, event) => event.reason || "-" },
     { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.returnedAt) },
@@ -219,6 +232,15 @@ export default function PurchaseOrderDetailTables({
     payments: { title: "Payments", columns: paymentColumns, data: (purchase.payments || []) as Payment[] },
   };
   const current = tables[view];
+  const discountedSubtotal = Math.max(Number(purchase.subTotal) - Number(purchase.discountAmount || 0), 0);
+  const paidAmount = Number(purchase.amount) - Number(purchase.balance);
+  const taxSummary = Object.entries(
+    (purchase.taxes || []).reduce<Record<string, number>>((summary, tax) => {
+      const name = purchase.taxId ? `${tax.name} @${tax.value}%` : tax.name;
+      summary[name] = (summary[name] || 0) + Number(tax.amount || 0);
+      return summary;
+    }, {}),
+  ).map(([name, amount]) => ({ name, amount }));
 
   return (
     <>
@@ -255,6 +277,8 @@ export default function PurchaseOrderDetailTables({
                 purchase={purchase}
                 currency={currency}
                 baseCurrency={baseCurrency}
+                hasReturnedItems={hasReturnedItems}
+                hasTaxedItems={hasTaxedItems}
                 canMutate={canMutate}
                 onEditFulfillment={onEditFulfillment}
                 onDeleteFulfillment={onDeleteFulfillment}
@@ -277,12 +301,26 @@ export default function PurchaseOrderDetailTables({
                   view === "landedCosts"
                     ? {
                         rowExpandable: (cost) => Boolean((cost as PurchaseLandedCost).allocations?.length),
-                        expandedRowRender: (cost) => <LandedCostBreakdownTable cost={cost as PurchaseLandedCost} baseCurrency={baseCurrency} />,
+                        expandedRowRender: (cost) => <LandedCostBreakdownTable cost={cost as PurchaseLandedCost} />,
                       }
                     : undefined
                 }
               />
             </div>
+            {view === "items" ? (
+              <PurchaseItemsTotalsCard
+                currency={currency}
+                subTotal={Number(purchase.subTotal || 0)}
+                discountAmount={Number(purchase.discountAmount || 0)}
+                discountedSubtotal={discountedSubtotal}
+                total={Number(purchase.amount || 0)}
+                paid={paidAmount}
+                balance={Number(purchase.balance || 0)}
+                taxSummary={taxSummary}
+                taxAmount={Number(purchase.taxAmount || 0)}
+                onViewCostBreakdown={() => setCostOpen(true)}
+              />
+            ) : null}
           </>
         ) : (
           <div className="border-t border-gray-200 py-12">
@@ -290,7 +328,68 @@ export default function PurchaseOrderDetailTables({
           </div>
         )}
       </div>
+      <CostBreakdownModal open={costOpen} onClose={() => setCostOpen(false)} purchase={purchase} currency={baseCurrency || currency} />
     </>
+  );
+}
+
+function PurchaseItemsTotalsCard({
+  currency,
+  subTotal,
+  discountAmount,
+  discountedSubtotal,
+  total,
+  paid,
+  balance,
+  taxSummary,
+  taxAmount,
+  onViewCostBreakdown,
+}: {
+  currency: string;
+  subTotal: number;
+  discountAmount: number;
+  discountedSubtotal: number;
+  total: number;
+  paid: number;
+  balance: number;
+  taxSummary: Array<{ name: string; amount: number }>;
+  taxAmount: number;
+  onViewCostBreakdown: () => void;
+}) {
+  return (
+    <div className="px-4 pb-6 pt-5 md:px-8">
+      <div className="ml-auto w-full md:w-[40%] md:min-w-[320px]">
+        <div className="space-y-4">
+          <InlineSummaryRow label="Items Total" value={money(currency, subTotal)} />
+          <InlineSummaryRow label="Discount" value={`- ${money(currency, discountAmount)}`} />
+          <InlineSummaryRow label="Subtotal" value={money(currency, discountedSubtotal)} />
+          {taxSummary.length
+            ? taxSummary.map((tax) => <InlineSummaryRow key={tax.name} label={tax.name} value={money(currency, tax.amount)} />)
+            : taxAmount > 0
+              ? <InlineSummaryRow label="Taxes" value={money(currency, taxAmount)} />
+              : null}
+          <div className="border-t border-gray-300 pt-4">
+            <InlineSummaryRow label="Total" value={money(currency, total)} strong />
+          </div>
+          <InlineSummaryRow label="Paid" value={money(currency, paid)} />
+          <div className="border-t border-gray-300 pt-4">
+            <InlineSummaryRow label="Balance" value={money(currency, balance)} strong />
+          </div>
+          <button type="button" onClick={onViewCostBreakdown} className="pt-2 text-sm font-medium text-[#2d837d] transition hover:opacity-80">
+            View Cost Breakdown
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InlineSummaryRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between gap-4 ${strong ? "text-sm font-semibold text-gray-950 md:text-[15px]" : "text-xs text-gray-600 md:text-sm"}`}>
+      <span>{label}</span>
+      <span className="text-right">{value}</span>
+    </div>
   );
 }
 
@@ -299,6 +398,8 @@ function MobilePurchaseList({
   purchase,
   currency,
   baseCurrency,
+  hasReturnedItems,
+  hasTaxedItems,
   canMutate,
   onEditFulfillment,
   onDeleteFulfillment,
@@ -313,6 +414,8 @@ function MobilePurchaseList({
   purchase: Purchase;
   currency: string;
   baseCurrency: string;
+  hasReturnedItems: boolean;
+  hasTaxedItems: boolean;
   canMutate: boolean;
   onEditFulfillment: (event: PurchaseStockEvent) => void;
   onDeleteFulfillment: (event: PurchaseStockEvent) => void;
@@ -328,12 +431,13 @@ function MobilePurchaseList({
       <div className="grid  ">
         {purchase.lineItems.map((line) => (
           <MobileCard key={line.id}>
-            <MobileProductHeader name={line.productName} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} />
+            <MobileProductHeader name={line.productName} product={line.productId} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} />
             <div className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
               <MobileStat label="Ordered" value={Number(line.quantity).toLocaleString()} />
               <MobileStat label="Fulfilled" value={Number(line.fulfilledQuantity || 0).toLocaleString()} />
-              <MobileStat label="Returned" value={Number(line.returnedQuantity || 0).toLocaleString()} />
+              {hasReturnedItems ? <MobileStat label="Returned" value={Number(line.returnedQuantity || 0).toLocaleString()} /> : null}
               <MobileStat label="Remaining" value={Math.max(Number(line.quantity || 0) - Number(line.fulfilledQuantity || 0), 0).toLocaleString()} />
+              {hasTaxedItems ? <MobileStat label="Tax" value={line.taxDescription ? `${line.taxRate || 0}%` : "-"} /> : null}
             </div>
             <div className="mt-3 flex items-center justify-between gap-3 text-[13px]">
               <span className="text-gray-500">Unit Cost {Number(line.unitPrice).toFixed(2)}</span>
@@ -353,7 +457,7 @@ function MobilePurchaseList({
         {(purchase.returnedItems || []).map((event) => (
           <MobileCard key={event.id}>
             <div className="flex items-start justify-between gap-3">
-              <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+              <MobileProductHeader name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
               {canMutate && <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} />}
             </div>
             <div className="mt-2 flex items-center justify-between gap-3 text-[13px] text-gray-500">
@@ -373,7 +477,7 @@ function MobilePurchaseList({
         {(purchase.fulfilledItems || []).map((event) => (
           <MobileCard key={event.id}>
             <div className="flex items-start justify-between gap-3">
-              <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
+              <MobileProductHeader name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
               {canMutate && <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />}
             </div>
             <div className="mt-2 text-[13px] text-gray-500 flex items-center justify-between gap-3">
@@ -450,7 +554,7 @@ function MobilePurchaseList({
   );
 }
 
-function LandedCostBreakdownTable({ cost, baseCurrency }: { cost: PurchaseLandedCost; baseCurrency: string }) {
+function LandedCostBreakdownTable({ cost }: { cost: PurchaseLandedCost }) {
   type AllocationRow = NonNullable<PurchaseLandedCost["allocations"]>[number];
   const rows: AllocationRow[] = cost.allocations || [];
 
@@ -475,17 +579,17 @@ function LandedCostBreakdownTable({ cost, baseCurrency }: { cost: PurchaseLanded
 }
 
 function MobileCard({ children }: { children: React.ReactNode }) {
-  return <article className=" border-b border-gray-200 bg-white px-4 py-2 ">{children}</article>;
+  return <article className="border-b border-gray-200 bg-white px-4 py-4">{children}</article>;
 }
 
-function MobileProductHeader({ name, sku, imageUrl }: { name: string; sku?: string; imageUrl?: string }) {
+function MobileProductHeader({ name, sku, imageUrl, product }: { name: string; sku?: string; imageUrl?: string; product?: string | { id?: string; name?: string } }) {
   return (
     <div className="flex gap-3">
       <div className=" flex-shrink-0">
         <PreviewImage width={42} height={42} src={imageUrl} />
       </div>
       <div className="min-w-0">
-        <p className="line-clamp-2 text-sm  text-gray-900">{name}</p>
+        <ResolvedProductName name={name} product={product} className="line-clamp-2 text-sm  text-gray-900" />
         {sku && <p className="mt-1 text-xs text-gray-500">SKU: {sku}</p>}
       </div>
     </div>

@@ -6,6 +6,7 @@ import TransactionReturnModal from "@/components/transactions/TransactionReturnM
 import { useReturnPurchaseMutation } from "@/lib/redux/services";
 import { Purchase } from "@/types/index";
 import { purchaseApiError } from "./purchaseDetailUtils";
+import { getProductRefId, useResolvedProductNameMap } from "@/components/products/ResolvedProductName";
 
 interface PurchaseReturnOperationModalProps {
   open: boolean;
@@ -28,6 +29,12 @@ function productType(line: Purchase["lineItems"][number]) {
 
 export default function PurchaseReturnOperationModal({ open, toggle, purchase, onSaved }: PurchaseReturnOperationModalProps) {
   const [returnPurchase, { isLoading }] = useReturnPurchaseMutation();
+  const resolvedNames = useResolvedProductNameMap(
+    purchase.lineItems.map((line) => ({
+      id: getProductRefId(line.productId),
+      name: line.productName,
+    })),
+  );
 
   const lines = React.useMemo(
     () =>
@@ -35,13 +42,13 @@ export default function PurchaseReturnOperationModal({ open, toggle, purchase, o
         .filter((line) => productType(line) !== "BUNDLE")
         .map((line) => ({
           id: line.id,
-          name: line.productName,
+          name: resolvedNames[getProductRefId(line.productId) || line.productName] || line.productName,
           sku: productSku(line),
           imageUrl: line.productUrl || productImage(line.productId),
           maxQuantity: Math.max(Number(line.fulfilledQuantity || 0) - Number(line.returnedQuantity || 0), 0),
         }))
         .filter((line) => line.maxQuantity > 0),
-    [purchase.lineItems],
+    [purchase.lineItems, resolvedNames],
   );
 
   const submit = async (items: { lineItemId: string; quantity: number; reason?: string }[]) => {

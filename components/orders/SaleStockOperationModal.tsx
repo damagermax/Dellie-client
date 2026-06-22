@@ -7,6 +7,7 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import { useFulfillSaleMutation } from "@/lib/redux/services";
 import { Sale } from "@/types/index";
 import { saleApiError } from "./saleUtils";
+import { ResolvedProductName } from "@/components/products/ResolvedProductName";
 
 interface SaleStockOperationModalProps {
   open: boolean;
@@ -22,13 +23,20 @@ export default function SaleStockOperationModal({ open, toggle, sale, onSaved }:
     typeof product === "string" ? undefined : product.media?.[0]?.url;
   const productSku = (line: typeof sale.lineItems[number]) =>
     line.productSku || (typeof line.productId === "string" ? undefined : line.productId.sku);
-  const lines = sale.lineItems.filter((line) => Number(line.quantity) - Number(line.fulfilledQuantity || 0) > 0);
+  const lines = React.useMemo(
+    () => sale.lineItems.filter((line) => Number(line.quantity) - Number(line.fulfilledQuantity || 0) > 0),
+    [sale.lineItems],
+  );
 
   React.useEffect(() => {
     if (open) {
-      setQuantities({});
+      setQuantities(
+        Object.fromEntries(
+          lines.map((line) => [line.id, Math.max(Number(line.quantity) - Number(line.fulfilledQuantity || 0), 0)]),
+        ),
+      );
     }
-  }, [open]);
+  }, [lines, open]);
 
   const submit = async () => {
     const items = lines
@@ -65,7 +73,7 @@ export default function SaleStockOperationModal({ open, toggle, sale, onSaved }:
                 <div className="flex items-center gap-x-3">
                   <PreviewImage width={32} height={32} src={line.productUrl || productImage(line.productId)} />
                   <div>
-                    <p className="text-sm font-medium">{line.productName}</p>
+                    <ResolvedProductName name={line.productName} product={line.productId} className="text-sm font-medium" />
                     {productSku(line) && <p className="text-xs text-gray-500">SKU: {productSku(line)}</p>}
                     <p className="text-xs text-gray-500">{max.toLocaleString()} available to fulfill</p>
                   </div>

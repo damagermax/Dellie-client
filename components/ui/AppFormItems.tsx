@@ -1,4 +1,5 @@
-import { ColorPicker, DatePicker, Form, Input, Select } from "antd";
+import { ColorPicker, DatePicker, Form, Input, Select, type FormItemProps as AntFormItemProps } from "antd";
+import type { Dayjs } from "dayjs";
 import { ReactNode } from "react";
 
 import PhoneInput from "react-phone-input-2";
@@ -10,11 +11,12 @@ type FormItemProps = {
   label: string;
   name: string;
   placeholder?: string;
-  rules?: any;
+  rules?: AntFormItemProps["rules"];
   help?: string;
   className?: string;
   afterText?: string | ReactNode;
   addonBefore?: string;
+  prefix?: ReactNode;
   type?: string;
   mode?: "multiple" | "tags" | undefined;
   variant?: "outlined" | "underlined";
@@ -24,7 +26,7 @@ type FormItemProps = {
 interface DatePickerFormItemProps extends FormItemProps {
   showTime?: boolean;
   format?: string;
-  disabledDate?: (currentDate: any) => boolean;
+  disabledDate?: (currentDate: Dayjs) => boolean;
   className?: string;
   picker?: "date" | "week" | "month" | "quarter" | "year";
 }
@@ -53,13 +55,13 @@ export function ColorFormItem({ label, name, rules, className }: FormItemProps) 
   );
 }
 
-export function InputFormItem({ type, help, disable, variant = "outlined", className, label, name, placeholder, rules, addonBefore, afterText }: FormItemProps) {
+export function InputFormItem({ type, help, disable, variant = "outlined", className, label, name, placeholder, rules, addonBefore, prefix, afterText }: FormItemProps) {
   return (
     <Form.Item help={<p className=" text-[8px]!">{help}</p>} className={className} label={label} name={name} rules={rules}>
       {type === "password" ? (
         <Input.Password variant={variant} placeholder={placeholder} className=" disabled:!bg-white disabled:!text-gray-700" />
       ) : (
-        <Input type={type} variant={variant} disabled={disable} placeholder={placeholder} addonBefore={addonBefore} suffix={afterText} className=" disabled:!bg-white disabled:!text-gray-700" />
+        <Input type={type} variant={variant} disabled={disable} placeholder={placeholder} addonBefore={addonBefore} prefix={prefix} suffix={afterText} className=" disabled:!bg-white disabled:!text-gray-700" />
       )}
     </Form.Item>
   );

@@ -1,9 +1,13 @@
-export type StoreModuleKey = "catalog" | "storefront" | "sales" | "pos" | "purchases" | "expenses" | "contacts" | "cashBook";
+export type StoreModuleKey = "catalog" | "storefront" | "sales" | "pos" | "purchases" | "expenses" | "contacts";
 
 export type StoreEnabledModules = Record<StoreModuleKey, boolean>;
 export type PosCustomerMode = "walk_in_default" | "prompt_before_checkout" | "require_customer";
 export type PosFulfillmentDefault = "fulfill_now" | "pending";
 export type PosReceiptPaperSize = "compact" | "full_page";
+
+export interface StorePricingSettings {
+  enableTradePrice: boolean;
+}
 
 export interface PosSettings {
   counterName?: string;
@@ -20,6 +24,7 @@ export interface PosSettings {
 export interface StoreSettings {
   enabledModules: StoreEnabledModules;
   pos: PosSettings;
+  pricing: StorePricingSettings;
   businessProfile: StoreBusinessProfile;
   canChangeCurrency: boolean;
 }
@@ -45,7 +50,6 @@ export const DEFAULT_ENABLED_MODULES: StoreEnabledModules = {
   purchases: true,
   expenses: true,
   contacts: true,
-  cashBook: true,
 };
 
 export const DEFAULT_POS_SETTINGS: PosSettings = {
@@ -60,9 +64,14 @@ export const DEFAULT_POS_SETTINGS: PosSettings = {
   receiptPaperSize: "full_page",
 };
 
+export const DEFAULT_PRICING_SETTINGS: StorePricingSettings = {
+  enableTradePrice: false,
+};
+
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   enabledModules: DEFAULT_ENABLED_MODULES,
   pos: DEFAULT_POS_SETTINGS,
+  pricing: DEFAULT_PRICING_SETTINGS,
   businessProfile: {
     logo: "",
     name: "",
@@ -81,5 +90,6 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
 export interface UpdateStoreSettingsInput {
   enabledModules?: Partial<StoreEnabledModules>;
   pos?: Partial<PosSettings>;
+  pricing?: Partial<StorePricingSettings>;
   businessProfile?: Partial<StoreBusinessProfile>;
 }

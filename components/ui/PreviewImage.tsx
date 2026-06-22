@@ -10,12 +10,7 @@ interface PreviewImageProp {
   height?: number;
 }
 
-const PreviewImage = ({
-  src = "/images/product.png",
-  alt = "image",
-  width = 35,
-  height = 35,
-}: PreviewImageProp) => {
+const PreviewImage = ({ src = "/images/product.png", alt = "image", width = 35, height = 35 }: PreviewImageProp) => {
   const [visible, setVisible] = useState(false);
   const [failed, setFailed] = useState(false);
   const imageSrc = src || "";

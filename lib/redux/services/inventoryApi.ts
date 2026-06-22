@@ -1,6 +1,6 @@
 import { baseApi, TAG_TYPES } from "./baseApi";
 
-import { CreateLocationInput, UpdateLocationInput, LocationsQueryParams, Inventory, PaginatedResponse, AdjustBatchInput, TransferBatchInput, RestockProductInput } from "../../../types";
+import { CreateLocationInput, UpdateLocationInput, LocationsQueryParams, Inventory, PaginatedResponse, AdjustBatchInput, TransferBatchInput, RestockProductInput, DisassembleBatchInput } from "../../../types";
 
 export const inventoryApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -44,6 +44,15 @@ export const inventoryApi = baseApi.injectEndpoints({
       invalidatesTags: [TAG_TYPES.INVENTORY],
     }),
 
+    disassembleBatchByBatchId: builder.mutation<void, DisassembleBatchInput>({
+      query: ({ id, ...body }) => ({
+        url: `inventory/batches/${id}/disassemble`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: [TAG_TYPES.INVENTORY],
+    }),
+
     restockProduct: builder.mutation<void, RestockProductInput>({
       query: ({ productId, ...body }) => ({
         url: `inventory/products/${productId}/restock`,
@@ -55,4 +64,4 @@ export const inventoryApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetInventoryQuery, useAdjustBatchMutation, useTransferBatchByBatchIdMutation, useRestockProductMutation } = inventoryApi;
+export const { useGetInventoryQuery, useAdjustBatchMutation, useTransferBatchByBatchIdMutation, useDisassembleBatchByBatchIdMutation, useRestockProductMutation } = inventoryApi;

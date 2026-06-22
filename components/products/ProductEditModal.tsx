@@ -10,12 +10,14 @@ import useDebouncedValue from "@/hooks/useDebouncedValue";
 import AppTable from "@/components/ui/AppTable";
 import PreviewImage from "@/components/ui/PreviewImage";
 import { RiSearchLine } from "react-icons/ri";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { ITEM_TYPE } from "./ProductFormModal";
 import { CategoryType } from "@/types/category";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
 import { NORMAL_PRICE_TIER_NAME, ProductPriceTier, TRADE_PRICE_TIER_NAME, defaultPriceTiers, getNormalPrice, normalPriceTier } from "@/lib/products/pricing";
+import { getProductTypeLabel } from "@/lib/products/type-label";
+import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 
 type BundleItemInput = {
   productId: string;
@@ -86,9 +88,14 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
 
   const conversionType = Form.useWatch("conversionType", form) || REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK;
   const conversionQuantity = Number(Form.useWatch("conversionQuantity", form) || 0);
+  const containsOtherProducts = Boolean(Form.useWatch("containsOtherProducts", form));
   const productName = Form.useWatch("name", form) || product.name;
   const itemType = product.type;
-  const enabledModules = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules);
+  const isVariantParent = Boolean(product.hasVariants);
+  const storeSettings = useSelector((state: RootState) => state.currentUser.storeSettings);
+  const enabledModules = storeSettings.enabledModules;
+  const enableTradePrice = Boolean(storeSettings.pricing?.enableTradePrice);
+  const currencyCode = useStoreCurrencyCode();
 
   useEffect(() => {
     if (!open) return;
@@ -101,8 +108,9 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
       sku: product.sku,
       barcode: product.barcode,
       costPrice: product.costPrice,
-      priceTiers: getEditablePriceTiers(product),
+      priceTiers: getEditablePriceTiers(product, enableTradePrice),
       weight: product.weight,
+      containsOtherProducts: [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(product.type) && Boolean(product.bundleItems?.length),
       showInStorefront: product.showInStorefront ?? true,
       showInPOS: product.showInPOS ?? true,
       lowStockThreshold: product.lowStockThreshold,
@@ -144,18 +152,18 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
         : null,
     );
     setBundleItemsError("");
-    setBundleSellingPriceEdited(Boolean(product.type === ITEM_TYPE.BUNDLE && product.priceTiers?.length));
+    setBundleSellingPriceEdited(Boolean(product.priceTiers?.length));
     setProductSearch("");
     setRepackSourceSearch("");
-  }, [form, open, product]);
+  }, [enableTradePrice, form, open, product]);
 
   const bundleItemsTotal = useMemo(() => bundleItems.reduce((total, item) => total + item.normalPrice * item.quantity, 0), [bundleItems]);
 
   useEffect(() => {
-    if (itemType === ITEM_TYPE.BUNDLE && !bundleSellingPriceEdited) {
-      form.setFieldValue("priceTiers", defaultPriceTiers(bundleItemsTotal));
+    if ([ITEM_TYPE.BUNDLE, ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts && !bundleSellingPriceEdited) {
+      form.setFieldValue("priceTiers", getDefaultEditablePriceTiers(bundleItemsTotal, enableTradePrice));
     }
-  }, [bundleItemsTotal, bundleSellingPriceEdited, form, itemType]);
+  }, [bundleItemsTotal, bundleSellingPriceEdited, containsOtherProducts, enableTradePrice, form, itemType]);
 
   useEffect(() => {
     if (itemType !== ITEM_TYPE.PACKAGING) {
@@ -163,6 +171,13 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
       setRepackSourceSearch("");
     }
   }, [itemType]);
+
+  useEffect(() => {
+    if (!containsOtherProducts) {
+      setBundleItemsError("");
+      setProductSearch("");
+    }
+  }, [containsOtherProducts]);
 
   const addBundleItem = useCallback((selected: ProductListItem) => {
     setBundleItemsError("");
@@ -242,9 +257,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
         title: "Qty",
         dataIndex: "quantity",
         key: "quantity",
-        render: (_: unknown, record: BundleItemInput) => (
-          <InputNumber variant="underlined" controls={false} min={1} value={record.quantity} onChange={(value) => updateBundleItemQuantity(record.productId, value)} suffix="units" />
-        ),
+        render: (_: unknown, record: BundleItemInput) => <InputNumber variant="underlined" controls={false} min={1} value={record.quantity} onChange={(value) => updateBundleItemQuantity(record.productId, value)} suffix="units" />,
       },
       {
         title: "",
@@ -297,45 +310,53 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
     const values = await form.validateFields().catch(() => null);
     if (!values) return;
 
-    if (itemType === ITEM_TYPE.BUNDLE && !bundleItems.length) {
+    if (!isVariantParent && (itemType === ITEM_TYPE.BUNDLE || ([ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts)) && !bundleItems.length) {
       setBundleItemsError("Add at least one item to this bundle");
       return;
     }
 
-    const payload: Record<string, unknown> = {
+    const sharedPayload: Record<string, unknown> = {
       name: values.name,
       description: values.description || "",
       categoryId: values.categoryId,
-      sku: values.sku,
-      barcode: values.barcode,
-      costPrice: values.costPrice,
-      priceTiers: normalizePriceTierValues(values.priceTiers),
-      weight: values.weight,
-      lowStockThreshold: values.lowStockThreshold,
-      allowOversell: Boolean(values.allowOversell),
     };
 
     if (enabledModules.storefront && typeof values.showInStorefront !== "undefined") {
-      payload.showInStorefront = Boolean(values.showInStorefront);
+      sharedPayload.showInStorefront = Boolean(values.showInStorefront);
     }
 
     if (enabledModules.pos && typeof values.showInPOS !== "undefined") {
-      payload.showInPOS = Boolean(values.showInPOS);
+      sharedPayload.showInPOS = Boolean(values.showInPOS);
     }
 
-    if (itemType === ITEM_TYPE.BUNDLE) {
-      payload.priceTiers = normalizePriceTierValues(values.priceTiers, bundleItemsTotal);
+    const payload: Record<string, unknown> = isVariantParent
+      ? sharedPayload
+      : {
+          ...sharedPayload,
+          sku: values.sku,
+          barcode: values.barcode,
+          costPrice: values.costPrice,
+          priceTiers: normalizePriceTierValues(values.priceTiers, 0, enableTradePrice),
+          weight: values.weight,
+          lowStockThreshold: values.lowStockThreshold,
+          allowOversell: Boolean(values.allowOversell),
+        };
+
+    if (!isVariantParent && (itemType === ITEM_TYPE.BUNDLE || ([ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts))) {
+      payload.priceTiers = normalizePriceTierValues(values.priceTiers, bundleItemsTotal, enableTradePrice);
       payload.bundleItems = bundleItems.map(({ productId, quantity }) => ({ productId, quantity }));
+    } else if (!isVariantParent && [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType)) {
+      payload.bundleItems = [];
     }
 
-    if (itemType === ITEM_TYPE.PACKAGING) {
+    if (!isVariantParent && itemType === ITEM_TYPE.PACKAGING) {
       payload.sourceProductId = values.sourceProductId;
       payload.conversionType = values.conversionType || REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK;
       payload.conversionQuantity = values.conversionQuantity;
       payload.repackUnitName = values.repackUnitName || values.name;
     }
 
-    if (itemType === ITEM_TYPE.SERVICE) {
+    if (!isVariantParent && itemType === ITEM_TYPE.SERVICE) {
       delete payload.weight;
       delete payload.lowStockThreshold;
       delete payload.allowOversell;
@@ -402,17 +423,13 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
       loading={isLoading}
       width={650}
       height="70vh"
-      title={
-        <p className="capitalize">
-          Edit {itemType?.replace("_", " ")?.toLowerCase()} item
-        </p>
-      }
+      title={<p className="capitalize">{isVariantParent ? "Edit variant product" : `Edit ${getProductTypeLabel(product)} item`}</p>}
       onOk={handleSubmit}
       okText={isLoading ? "Saving.." : "Save"}
       {...modalProps}
     >
       <div>
-        <Form disabled={isLoading} className=" " size="small" form={form} layout="vertical">
+        <Form disabled={isLoading} className=" " form={form} layout="vertical">
           <div className="gap-x-12">
             <div className="px-5">
               <Form.Item label="Name" name="name" rules={[{ required: true, message: "Product name is required." }]}>
@@ -420,36 +437,72 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
               </Form.Item>
             </div>
 
-            <div className="px-5">
-              {![ITEM_TYPE.BUNDLE, ITEM_TYPE.PACKAGING].includes(itemType) && (
-                <>
-                    <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2">
-                      <Form.Item label="Category" name="categoryId">
-                        <SearchableCategorySelect type={CategoryType.PRODUCT} />
-                      </Form.Item>
-
-                    <Form.Item label="Cost Price" name="costPrice">
-                      <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} placeholder="0.0" />
-                    </Form.Item>
-                  </div>
-
-                  {itemType === ITEM_TYPE.STOCK && (
-                    <div>
-                      <Form.Item label="Weight (Optional)" name="weight">
-                        <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} placeholder="0.0" />
-                      </Form.Item>
-                    </div>
-                  )}
+            <div className="">
+              {isVariantParent && (
+                <div className="px-5">
+                  <Form.Item label="Category" name="categoryId">
+                    <SearchableCategorySelect type={CategoryType.PRODUCT} />
+                  </Form.Item>
 
                   <Form.Item label="Description (Optional)" name="description">
                     <Input.TextArea rows={4} placeholder="Enter product description" />
                   </Form.Item>
-                  <PriceTiersEditor />
+
+                  <div className="rounded-md border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    <p className="font-medium">Shared product details</p>
+                    <p className="mt-1 text-xs">Cost, selling prices, weight, and inventory are managed on each variant.</p>
+                  </div>
+                </div>
+              )}
+
+              {!isVariantParent && ![ITEM_TYPE.BUNDLE, ITEM_TYPE.PACKAGING].includes(itemType) && (
+                <>
+                  <div className="grid grid-cols-1 px-5 gap-x-5 md:grid-cols-4">
+                    <div className="col-span-2">
+                      <Form.Item label="Category" name="categoryId">
+                        <SearchableCategorySelect type={CategoryType.PRODUCT} />
+                      </Form.Item>
+                    </div>
+
+                    <Form.Item label="Cost Price" name="costPrice">
+                      <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} prefix={currencyCode || undefined} placeholder="0.0" />
+                    </Form.Item>
+
+                    <Form.Item label="Weight (Optional)" name="weight">
+                      <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} suffix="kg" placeholder="0.0" />
+                    </Form.Item>
+                  </div>
+
+                  <Form.Item label="Description (Optional)" className="px-5!" name="description">
+                    <Input.TextArea rows={4} placeholder="Enter product description" />
+                  </Form.Item>
+
+                  {[ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && (
+                    <div className=" flex items-center justify-between border-t border-gray-200  px-4 py-3">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-800">Contains Other Products?</h3>
+                        <p className="mt-1 text-xs text-gray-500">Turn this on when the product is sold as a composite of other products.</p>
+                      </div>
+                      <Form.Item name="containsOtherProducts" valuePropName="checked" className="!mb-0">
+                        <Checkbox />
+                      </Form.Item>
+                    </div>
+                  )}
+
+                  {[ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts && (
+                    <div className="mb-4">
+                      <div className="px-5">{bundleItemsError && <p className="mt-1 text-xs text-red-500">{bundleItemsError}</p>}</div>
+                      <AppTable columns={bundleColumns} dataSource={bundleItems || []} rowKey={(record: BundleItemInput) => record.productId} pagination={false} />
+                      {searchBundleProduct}
+                    </div>
+                  )}
+
+                  <PriceTiersEditor enableTradePrice={enableTradePrice} currencyCode={currencyCode} />
                 </>
               )}
             </div>
 
-            {itemType === ITEM_TYPE.PACKAGING && (
+            {/* {!isVariantParent && itemType === ITEM_TYPE.PACKAGING && (
               <div>
                 <Form.Item name="sourceProductId" rules={[{ required: true, message: "Select source product" }]} className="!mb-0">
                   <Input type="hidden" />
@@ -479,12 +532,16 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
                 </div>
 
                 <div className="grid grid-cols-1 gap-x-5 px-5 mt-4 md:grid-cols-2">
-                  <Form.Item label={conversionType === REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK ? "1 source unit makes how many units?" : "How many source units make 1 unit?"} name="conversionQuantity" rules={[{ required: true, message: "Enter conversion quantity" }]}>
+                  <Form.Item
+                    label={conversionType === REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK ? "1 source unit makes how many units?" : "How many source units make 1 unit?"}
+                    name="conversionQuantity"
+                    rules={[{ required: true, message: "Enter conversion quantity" }]}
+                  >
                     <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} placeholder="24" />
                   </Form.Item>
                 </div>
                 <div className="px-5">
-                  <PriceTiersEditor />
+                  <PriceTiersEditor enableTradePrice={enableTradePrice} currencyCode={currencyCode} />
                 </div>
 
                 {selectedRepackSourceProduct && conversionQuantity > 0 && (
@@ -511,9 +568,9 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
                   </div>
                 )}
               </div>
-            )}
+            )} */}
 
-            {itemType === ITEM_TYPE.BUNDLE && (
+            {!isVariantParent && itemType === ITEM_TYPE.BUNDLE && (
               <>
                 <Divider />
                 <div className="px-5 pb-3">
@@ -528,16 +585,16 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
                     <p className="mt-1 font-medium text-gray-800">GHS {bundleItemsTotal.toFixed(2)}</p>
                   </div>
                   <div onChange={() => setBundleSellingPriceEdited(true)}>
-                    <PriceTiersEditor />
+                    <PriceTiersEditor enableTradePrice={enableTradePrice} currencyCode={currencyCode} />
                   </div>
                 </div>
               </>
             )}
 
-            {[ITEM_TYPE.NON_STOCK, ITEM_TYPE.STOCK].includes(itemType) && (
+            {!isVariantParent && [ITEM_TYPE.STOCK].includes(itemType) && !containsOtherProducts && (
               <>
-                <Divider />
-                <div className="px-5 flex items-center justify-between">
+                {/* <Divider /> */}
+                <div className="px-5  mt-3 flex items-center justify-between">
                   <h3 className="text-base font-medium text-gray-700">Inventory Controls</h3>
                 </div>
                 <div className="px-5 mt-4 grid gap-y-3">
@@ -551,20 +608,10 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
               </>
             )}
 
-            {product.hasVariants && (
-              <>
-                <Divider />
-                <div className="px-5 text-sm text-amber-800">
-                  <p className="font-medium">Variant product</p>
-                  <p className="mt-1">Variant structure is preserved here. Use variant management for variant-specific data.</p>
-                </div>
-              </>
-            )}
-
             {itemType != ITEM_TYPE.SERVICE && (enabledModules.storefront || enabledModules.pos) && (
               <>
                 <Divider />
-                <div className="grid px-5 my-5 gap-y-2 items-center">
+                <div className="grid px-5  gap-y-2 items-center">
                   {enabledModules.storefront && (
                     <Form.Item name="showInStorefront" className="!mb-0" valuePropName="checked">
                       <Checkbox>Show in Storefront</Checkbox>
@@ -590,12 +637,17 @@ function cleanPayload(values: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined && value !== null));
 }
 
-function getEditablePriceTiers(product: { priceTiers?: ProductPriceTier[]; sellingPrice?: number }) {
-  return ensureDefaultPriceTiers(product.priceTiers?.length ? product.priceTiers : defaultPriceTiers(product.sellingPrice || 0));
+function getDefaultEditablePriceTiers(price = 0, enableTradePrice = true) {
+  return enableTradePrice ? defaultPriceTiers(price) : [normalPriceTier(price)];
 }
 
-function normalizePriceTierValues(values?: ProductPriceTier[], fallbackPrice = 0) {
-  const tiers = ensureDefaultPriceTiers(values?.length ? values : defaultPriceTiers(fallbackPrice));
+function getEditablePriceTiers(product: { priceTiers?: ProductPriceTier[]; sellingPrice?: number }, enableTradePrice: boolean) {
+  const source = product.priceTiers?.length ? product.priceTiers : getDefaultEditablePriceTiers(product.sellingPrice || 0, enableTradePrice);
+  return ensureDefaultPriceTiers(source, enableTradePrice);
+}
+
+function normalizePriceTierValues(values?: ProductPriceTier[], fallbackPrice = 0, enableTradePrice = true) {
+  const tiers = ensureDefaultPriceTiers(values?.length ? values : getDefaultEditablePriceTiers(fallbackPrice, enableTradePrice), enableTradePrice);
   return tiers.map((tier, index) => ({
     name: index === 0 ? NORMAL_PRICE_TIER_NAME : index === 1 ? TRADE_PRICE_TIER_NAME : String(tier?.name || "").trim(),
     price: Number(tier?.price || 0),
@@ -604,8 +656,11 @@ function normalizePriceTierValues(values?: ProductPriceTier[], fallbackPrice = 0
   }));
 }
 
-function ensureDefaultPriceTiers(tiers: ProductPriceTier[]) {
+function ensureDefaultPriceTiers(tiers: ProductPriceTier[], enableTradePrice = true) {
   const normal = tiers[0] || normalPriceTier(0);
+  if (!enableTradePrice) {
+    return [{ ...normal, name: NORMAL_PRICE_TIER_NAME }, ...tiers.slice(1)];
+  }
   const trade = tiers.find((tier) => tier.name === TRADE_PRICE_TIER_NAME) || {
     name: TRADE_PRICE_TIER_NAME,
     price: Number(normal.price || 0),
@@ -613,106 +668,50 @@ function ensureDefaultPriceTiers(tiers: ProductPriceTier[]) {
     discountPercent: 0,
   };
 
-  return [
-    { ...normal, name: NORMAL_PRICE_TIER_NAME },
-    { ...trade, name: TRADE_PRICE_TIER_NAME },
-    ...tiers.slice(1).filter((tier) => tier.name !== TRADE_PRICE_TIER_NAME),
-  ];
+  return [{ ...normal, name: NORMAL_PRICE_TIER_NAME }, { ...trade, name: TRADE_PRICE_TIER_NAME }, ...tiers.slice(1).filter((tier) => tier.name !== TRADE_PRICE_TIER_NAME)];
 }
 
-function PriceTiersEditor() {
-  const form = Form.useFormInstance();
-  const [editingTierIndex, setEditingTierIndex] = useState<number | null>(null);
-  const [originalTiers, setOriginalTiers] = useState<Record<number, ProductPriceTier>>({});
-
+function PriceTiersEditor({ enableTradePrice, currencyCode }: { enableTradePrice: boolean; currencyCode: string }) {
   return (
-    <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-      <div className="mb-3">
+    <div className=" -border -border-gray-200  ">
+      {/* <div className="mb-3">
         <p className="text-sm font-medium text-gray-800">Price Tiers</p>
-        <p className="text-xs text-gray-500">Normal and trade prices are required for every product.</p>
-      </div>
+        <p className="text-xs text-gray-500">{enableTradePrice ? "Normal and trade prices are required for every product." : "Normal selling price is active for this store."}</p>
+      </div> */}
       <Form.List name="priceTiers">
         {(fields) => (
           <div className="space-y-3">
-            {fields.slice(0, 2).map((field, index) => (
-              <Form.Item key={field.key} noStyle shouldUpdate>
-                {() => {
-                  const tier = form.getFieldValue(["priceTiers", field.name]) as ProductPriceTier | undefined;
-                  const editing = editingTierIndex === index;
-                  return (
-                    <article className="overflow-hidden rounded-md bg-white">
-                      <div className="flex gap-3 p-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-start justify-between gap-2.5">
-                            <div className="min-w-0">
-                              <Form.Item {...field} name={[field.name, "name"]} hidden>
-                                <Input />
-                              </Form.Item>
-                              <h3 className="text-sm font-semibold text-gray-900">{tier?.name}</h3>
-                              <p className="mt-0.5 text-xs text-gray-500">{tierDescription(tier?.name, index === 0)}</p>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <p className="text-right text-lg font-medium tracking-normal text-gray-950">{formatEditMoney(tier?.price)}</p>
-                              {!editing && (
-                                <button
-                                  type="button"
-                                  aria-label={`Edit ${tier?.name}`}
-                                  onClick={() => {
-                                    setOriginalTiers((current) => ({ ...current, [index]: tier || normalPriceTier(0) }));
-                                    setEditingTierIndex(index);
-                                  }}
-                                  className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200 hover:text-gray-900"
-                                >
-                                  <Pencil size={13} />
-                                </button>
-                              )}
-                            </div>
-                          </div>
+            {fields.slice(0, enableTradePrice ? 2 : 1).map((field, index) => (
+              <article key={field.key} className=" border border-gray-200 bg-white p-3">
+                <Form.Item {...field} name={[field.name, "name"]} hidden>
+                  <Input />
+                </Form.Item>
 
-                          {editing ? (
-                            <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-2.5">
-                              <div className="grid gap-2.5 sm:grid-cols-3">
-                                <Form.Item {...field} label="Price" name={[field.name, "price"]} className="!mb-0" rules={[{ required: true, message: "Enter price" }]}>
-                                  <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} prefix="GHS" />
-                                </Form.Item>
-                                <Form.Item {...field} label="MOQ" name={[field.name, "moq"]} className="!mb-0" rules={[{ required: true, message: "Enter MOQ" }]}>
-                                  <InputNumber className={NUMBER_INPUT_CLASS} min={1} controls={false} />
-                                </Form.Item>
-                                <Form.Item {...field} label="Discount %" name={[field.name, "discountPercent"]} className="!mb-0" rules={[{ required: true, message: "Enter discount" }]}>
-                                  <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} />
-                                </Form.Item>
-                              </div>
-                              <div className="mt-2.5 flex justify-end gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (originalTiers[index]) form.setFieldValue(["priceTiers", field.name], originalTiers[index]);
-                                    setEditingTierIndex(null);
-                                  }}
-                                  className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
-                                >
-                                  <X size={13} />
-                                  Cancel
-                                </button>
-                                <button type="button" onClick={() => setEditingTierIndex(null)} className="inline-flex items-center gap-1 rounded-full bg-[#2d837d] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#256f69]">
-                                  <Check size={13} />
-                                  Save
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-md border border-gray-100 bg-white/60">
-                              <EditTierStat label="MOQ" value={formatEditQuantity(tier?.moq)} />
-                              <EditTierStat label="Discount" value={`${formatEditQuantity(tier?.discountPercent)}%`} />
-                              <EditTierStat label="Margin" value={formatEditMargin(tier?.price, form.getFieldValue("costPrice"))} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                }}
-              </Form.Item>
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900">{index === 0 ? NORMAL_PRICE_TIER_NAME : TRADE_PRICE_TIER_NAME}</h3>
+                  <p className="mt-0.5 text-xs text-gray-500">{tierDescription(index === 0 ? NORMAL_PRICE_TIER_NAME : TRADE_PRICE_TIER_NAME, index === 0)}</p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Form.Item {...field} label="Price" name={[field.name, "price"]} className="!mb-0" rules={[{ required: true, message: "Enter price" }]}>
+                    <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} prefix={currencyCode || undefined} placeholder="0.00" />
+                  </Form.Item>
+                  <Form.Item {...field} label="MOQ" name={[field.name, "moq"]} className="!mb-0" rules={[{ required: true, message: "Enter MOQ" }]}>
+                    <InputNumber className={NUMBER_INPUT_CLASS} min={1} controls={false} placeholder="1" />
+                  </Form.Item>
+                  <Form.Item {...field} label="Discount %" name={[field.name, "discountPercent"]} className="!mb-0" rules={[{ required: true, message: "Enter discount" }]}>
+                    <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} placeholder="0" />
+                  </Form.Item>
+                </div>
+
+                {/* <Form.Item noStyle shouldUpdate>
+                  {({ getFieldValue }) => (
+                    <div className="mt-2.5 text-xs text-gray-500">
+                      Margin: <span className="font-medium text-gray-700">{formatEditMargin(getFieldValue(["priceTiers", field.name, "price"]), getFieldValue("costPrice"))}</span>
+                    </div>
+                  )}
+                </Form.Item> */}
+              </article>
             ))}
           </div>
         )}
@@ -721,33 +720,10 @@ function PriceTiersEditor() {
   );
 }
 
-function EditTierStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-r border-gray-200 px-2.5 py-1.5 last:border-r-0">
-      <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-gray-400">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold text-gray-900">{value}</p>
-    </div>
-  );
-}
-
 function tierDescription(name?: string, isNormal?: boolean) {
   if (isNormal) return "Default customer-facing price";
   if (name === TRADE_PRICE_TIER_NAME) return "Trade and bulk customer price";
   return "Custom product price";
-}
-
-function formatEditMoney(value: unknown) {
-  const amount = Number(value || 0);
-  return new Intl.NumberFormat("en-GH", {
-    style: "currency",
-    currency: "GHS",
-    maximumFractionDigits: 2,
-  }).format(Number.isFinite(amount) ? amount : 0);
-}
-
-function formatEditQuantity(value: unknown) {
-  const amount = Number(value || 0);
-  return new Intl.NumberFormat("en-GH", { maximumFractionDigits: 6 }).format(Number.isFinite(amount) ? amount : 0);
 }
 
 function formatEditMargin(priceValue: unknown, costValue: unknown) {

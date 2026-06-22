@@ -90,6 +90,20 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
   }, [contactsForm, defaultEmployeePermissions, initialValues, storeCurrencyId]);
 
   useEffect(() => {
+    if (initialValues && !contactData) {
+      const normalizedCurrencyId = typeof initialValues.currencyId === "string" ? initialValues.currencyId : initialValues.currencyId?.id;
+      contactsForm.setFieldsValue({
+        ...initialValues,
+        currencyId: normalizedCurrencyId,
+        roles: (initialValues.roles || []).filter((role) => Object.values(ContactRole).includes(role)),
+        enableEmployeeAccess: hasEmployeeAccess(initialValues),
+        employeePermissions: normalizePermissions(initialValues.employeeAccess?.permissions).length ? normalizePermissions(initialValues.employeeAccess?.permissions) : defaultEmployeePermissions,
+        employeeRole: initialValues.employeeAccess?.role || "staff",
+      });
+    }
+  }, [contactData, contactsForm, defaultEmployeePermissions, initialValues]);
+
+  useEffect(() => {
     if (contactData && isSuccess) {
       const normalizedPermissions = normalizePermissions(contactData.employeeAccess?.permissions);
       const normalizedCurrencyId = typeof contactData.currencyId === "string" ? contactData.currencyId : contactData.currencyId?.id;
@@ -123,8 +137,10 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
   const handleSubmit = async (values: ContactsFormValues) => {
     if (isCreating || isUpdating || isEnablingEmployeeAccess || isDisablingEmployeeAccess) return;
 
+    const normalizedCurrencyId = typeof values.currencyId === "string" ? values.currencyId : values.currencyId?.id;
     const payload: CreateContactInput | UpdateContactInput = {
       ...values,
+      currencyId: normalizedCurrencyId,
       roles: (values.roles || []).filter((role) => Object.values(ContactRole).includes(role)),
       status: values.status || initialValues?.status || ContactStatus.ACTIVE,
     } as CreateContactInput | UpdateContactInput;
@@ -154,7 +170,7 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
 
   return (
     <AppModal title={initialValues ? "Edit Contact" : "New Contact"} onOk={contactsForm.submit} okText={saving ? "Saving..." : "Save"} width={760} open={open} toggle={toggle}>
-      <Form size="small" disabled={saving} onFinish={handleSubmit} form={contactsForm} initialValues={initialValues} layout="vertical">
+      <Form size="small" disabled={saving} onFinish={handleSubmit} form={contactsForm} layout="vertical">
         <div className="grid gap-x-4 p-5">
           <div className="grid grid-cols-2 gap-x-5 gap-y-4">
             <InputFormItem label="Name" name="name" placeholder="Enter name" rules={[{ required: true, message: "Please enter name" }]} />

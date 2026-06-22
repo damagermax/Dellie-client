@@ -6,7 +6,7 @@ import { Form, Input, InputNumber, Select, MenuProps, Dropdown, message } from "
 import type { TableProps } from "antd/es/table";
 import { DatePickerFormItem } from "../ui/AppFormItems";
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
-import { useCreatePurchaseMutation, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdatePurchaseMutation } from "@/lib/redux/services";
+import { useCreatePurchaseMutation, useGetCurrencyQuery, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdatePurchaseMutation } from "@/lib/redux/services";
 import { ProductListItem, Purchase, PurchaseDiscountType, Tax } from "@/types/index";
 import { RiSearchLine } from "react-icons/ri";
 import { Trash2 } from "lucide-react";
@@ -15,10 +15,13 @@ import AppTable from "../ui/AppTable";
 import PreviewImage from "../ui/PreviewImage";
 import { SearchableLocationSelect } from "../location/SearchableLocationSelect";
 import dayjs from "dayjs";
+import { ExchangeRateFormItem } from "../system/ExchangeRateFormItem";
 
 import { TaxSelector } from "../settings/TaxSelector";
 import useToggle from "@/hooks/UseToggle";
 import { buildPaymentTermOptions, getLegacyPaymentTermDays } from "@/lib/payment-terms";
+import { ProductVariantSelectorModal } from "../products/ProductVariantSelectorModal";
+import { ResolvedProductName, useResolvedProductNameMap } from "../products/ResolvedProductName";
 
 interface PurchaseOrderFormModalProps extends ModalProps {
   purchase?: Purchase;
@@ -45,6 +48,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
   const [selectedTax, setSelectedTax] = useState<Tax>();
   const [selectedTaxProductId, setSelectedTaxProductId] = useState<string>();
   const [searchValue, setSearchValue] = useState("");
+  const [variantParent, setVariantParent] = useState<ProductListItem>();
   const [openTaxSelector, toggleTaxSelector] = useToggle();
   const [isDeferentProductTax, setIsDeferentProductTax] = useState(false);
   const toggleDeferentProductTax = useCallback(() => setIsDeferentProductTax((current) => !current), []);
@@ -58,10 +62,31 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
   const { data: taxes } = useGetTaxesQuery();
 
   const rate = Form.useWatch("rate", form) || 1;
-  const currency = "";
+  const selectedCurrencyId = Form.useWatch("currencyId", form) as string | undefined;
+  const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
+  const storeCurrencyId = user?.store?.currencyId as string | undefined;
+  const fallbackStoreCurrencyCode = user?.store?.currency?.code || user?.store?.currencyCode || "";
+  const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId as string, { skip: !selectedCurrencyId });
+  const { data: storeCurrency } = useGetCurrencyQuery(storeCurrencyId as string, { skip: !storeCurrencyId || Boolean(fallbackStoreCurrencyCode) });
+  const storeCurrencyCode = fallbackStoreCurrencyCode || storeCurrency?.code || "";
+  const currency = useMemo(() => {
+    if (selectedCurrencyId && storeCurrencyId && selectedCurrencyId === storeCurrencyId) {
+      return storeCurrencyCode;
+    }
+
+    return selectedCurrency?.code || storeCurrencyCode;
+  }, [selectedCurrency?.code, selectedCurrencyId, storeCurrencyCode, storeCurrencyId]);
   const loading = creating || updating;
   const cannotEdit = Boolean(purchase?.locked || purchase?.receiptStatus === "received");
   const paymentTermOptions = useMemo(() => buildPaymentTermOptions(paymentTerms || []), [paymentTerms]);
+  const formatMoney = useCallback(
+    (amount: number) =>
+      `${currency ? `${currency} ` : ""}${Number(amount || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`.trim(),
+    [currency],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -132,8 +157,14 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
 
   const items: MenuProps["items"] = [
     { key: "percent", label: "%" },
-    { key: "fixed", label: "$" },
+    { key: "fixed", label: currency || storeCurrencyCode || "Amount" },
   ];
+  const availableProductNames = useResolvedProductNameMap(
+    (productsData?.data || []).map((product) => ({
+      id: product.id,
+      name: product.name,
+    })),
+  );
 
   const updateLineItem = useCallback((id: string, patch: Partial<ProductLineItem>) => {
     setLineItems((prev) => prev.map((lineItem) => (lineItem.id === id ? { ...lineItem, ...patch } : lineItem)));
@@ -193,6 +224,13 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
       ];
     });
     setSearchValue("");
+  };
+  const selectProduct = (product: ProductListItem) => {
+    if (product.hasVariants || product.variants?.length) {
+      setVariantParent(product);
+      return;
+    }
+    addLineItem(product);
   };
 
   const removeLineItem = (productId: string) => {
@@ -265,7 +303,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
             <div className=" ">
               <PreviewImage width={28} height={28} src={record.productImageUrl} />
             </div>
-            <span className=" line-clamp-1">{record.productName}</span>
+            <ResolvedProductName name={record.productName} productId={record.id} className=" line-clamp-1" />
           </div>
         ),
       },
@@ -281,7 +319,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
         dataIndex: "unitPrice",
         key: "unitPrice",
         width: "10%",
-        render: (_: any, record: ProductLineItem) => <InputNumber prefix="$" variant="underlined" controls={false} min={0} value={record.unitPrice} onChange={(value) => updateLineItem(record.id, { unitPrice: Number(value || 0) })} />,
+        render: (_: any, record: ProductLineItem) => <InputNumber prefix={currency || undefined} variant="underlined" controls={false} min={0} value={record.unitPrice} onChange={(value) => updateLineItem(record.id, { unitPrice: Number(value || 0) })} />,
       },
 
       ...(isDeferentProductTax
@@ -301,9 +339,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
                   className={`cursor-pointer ${record.tax ? "text-gray-800" : "text-blue-600 hover:underline"}`}
                 >
                   {record?.tax ? (
-                    <p>
-                      {currency || "$"} {calculateLineTotal(record).tax.toLocaleString()}
-                    </p>
+                    <p>{formatMoney(calculateLineTotal(record).tax)}</p>
                   ) : (
                     <p className=" text-blue-600   hover:block">Add Tax</p>
                   )}
@@ -320,9 +356,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
         width: "15%",
         render: (_: any, record: ProductLineItem) => (
           <div>
-            <p>
-              {currency || "$"} {calculateLineTotal(record).total.toLocaleString()}
-            </p>
+            <p>{formatMoney(calculateLineTotal(record).total)}</p>
           </div>
         ),
       },
@@ -338,7 +372,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
         ),
       },
     ],
-    [currency, rate, updateLineItem, isDeferentProductTax],
+    [currency, formatMoney, updateLineItem, isDeferentProductTax],
   );
 
   const summary = useMemo(() => {
@@ -388,11 +422,11 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
       <div className="shadow-xl bg-white">
         {searchValue &&
           (productsData?.data || []).map((item) => (
-            <div key={item.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addLineItem(item)}>
+            <div key={item.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => selectProduct(item)}>
               <div className="flex gap-x-2 items-center">
                 <PreviewImage width={28} height={28} src={item.imageUrl} />
                 <div>
-                  <p>{item.name}</p>
+                  <ResolvedProductName name={availableProductNames[item.id] || item.name} productId={item.id} />
                   {item.sku !== "undefined" && <p className="text-gray-500">{item.sku}</p>}
                 </div>
               </div>
@@ -418,9 +452,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
             <Form.Item label="Currency" name="currencyId">
               <SearchableCurrenciesSelect />
             </Form.Item>
-            <Form.Item label="Exchange Rate" className="w-full" name="rate">
-              <InputNumber className="!w-full" prefix={"1 USD ="} defaultValue={1} placeholder="1" suffix={"GHS"} type="number" controls={false} />
-            </Form.Item>
+            <ExchangeRateFormItem name="rate" className="w-full" />
             <Form.Item name="paymentTerm" label="Payment Term">
               <Select options={paymentTermOptions} placeholder="Payment Term" onChange={handlePaymentTermChange} />
             </Form.Item>
@@ -438,9 +470,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
                 <div className="space-y-2">
                   <div className="flex justify-between gap-6">
                     <span>Items Total</span>
-                    <span>
-                      {currency} {summary.itemsSubTotal.toFixed(2)}
-                    </span>
+                    <span>{formatMoney(summary.itemsSubTotal)}</span>
                   </div>
 
                   <div className="flex justify-between items-center gap-6">
@@ -448,19 +478,15 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
                       <span className="inline-block mr-4">Discount </span>
                       <InputNumber min={0} controls={false} className="!w-[60px]" variant="underlined" value={discount.discountValue} onChange={(value) => setDiscount((current) => ({ ...current, discountValue: Number(value || 0) }))} />
                       <Dropdown menu={{ items, onClick: ({ key }) => setDiscount((current) => ({ ...current, discountType: key as PurchaseDiscountType })) }}>
-                        <p className="cursor-pointer">{discount.discountType === "percent" ? "%" : "$"}</p>
+                        <p className="cursor-pointer">{discount.discountType === "percent" ? "%" : currency || storeCurrencyCode || "Amount"}</p>
                       </Dropdown>
                     </div>
-                    <p>
-                      {currency} {summary.globalDiscount.toFixed(2)}
-                    </p>
+                    <p>{formatMoney(summary.globalDiscount)}</p>
                   </div>
 
                   <div className="flex  justify-between gap-6">
                     <span>Subtotal</span>
-                    <span>
-                      {currency} {summary.subTotal.toFixed(2)}
-                    </span>
+                    <span>{formatMoney(summary.subTotal)}</span>
                   </div>
 
                   <div className="flex flex-col gap-2">
@@ -477,22 +503,18 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
                       <div key={tax.name} className="flex justify-between ">
                         <span>{tax.name}</span>
 
-                        <span>
-                          {currency} {tax.amount.toFixed(2)}
-                        </span>
+                        <span>{formatMoney(tax.amount)}</span>
                       </div>
                     ))}
                   </div>
                   <div className="flex justify-between border-y py-2 border-gray-300 gap-6 font-medium">
                     <span>Total</span>
-                    <span>
-                      {currency} {summary.total.toFixed(2)}
-                    </span>
+                    <span>{formatMoney(summary.total)}</span>
                   </div>
                   {rate !== 1 && (
                     <div className="flex justify-between gap-6 text-xs text-gray-500">
                       <span>Base Total</span>
-                      <span>{summary.baseTotal.toFixed(2)}</span>
+                      <span>{`${storeCurrencyCode ? `${storeCurrencyCode} ` : ""}${summary.baseTotal.toFixed(2)}`.trim()}</span>
                     </div>
                   )}
                 </div>
@@ -501,6 +523,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
           }
         </Form>
       </AppModal>
+      <ProductVariantSelectorModal parent={variantParent} onClose={() => setVariantParent(undefined)} onSelect={(variant) => (addLineItem(variant), setVariantParent(undefined))} />
 
       <TaxSelector handleTaxSelect={handleTaxSelect} isDeferentProductTax={isDeferentProductTax} toggleDeferentProductTax={toggleDeferentProductTax} open={openTaxSelector} toggle={() => (toggleTaxSelector(), setSelectedTaxProductId(undefined))} />
     </>

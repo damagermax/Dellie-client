@@ -7,6 +7,7 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import { useFulfillPurchaseMutation } from "@/lib/redux/services";
 import { Purchase } from "@/types/index";
 import { purchaseApiError } from "./purchaseDetailUtils";
+import { ResolvedProductName } from "@/components/products/ResolvedProductName";
 
 interface PurchaseOrderStockOperationModalProps {
   open: boolean;
@@ -20,18 +21,25 @@ export default function PurchaseOrderStockOperationModal({ open, toggle, purchas
   const [fulfillPurchase, { isLoading: fulfilling }] = useFulfillPurchaseMutation();
   const productImage = (product: typeof purchase.lineItems[number]["productId"]) =>
     typeof product === "string" ? undefined : product.media?.[0]?.url;
-  const productType = (line: typeof purchase.lineItems[number]) =>
-    typeof line.productId === "string" ? line.productType : line.productId.type || line.productType;
-  const lines = purchase.lineItems.filter((line) => {
-    if (productType(line) === "BUNDLE") return false;
-    return Number(line.quantity) - Number(line.fulfilledQuantity || 0) > 0;
-  });
+  const lines = React.useMemo(
+    () =>
+      purchase.lineItems.filter((line) => {
+        const type = typeof line.productId === "string" ? line.productType : line.productId.type || line.productType;
+        if (type === "BUNDLE") return false;
+        return Number(line.quantity) - Number(line.fulfilledQuantity || 0) > 0;
+      }),
+    [purchase.lineItems],
+  );
 
   React.useEffect(() => {
     if (open) {
-      setQuantities({});
+      setQuantities(
+        Object.fromEntries(
+          lines.map((line) => [line.id, Math.max(Number(line.quantity) - Number(line.fulfilledQuantity || 0), 0)]),
+        ),
+      );
     }
-  }, [open]);
+  }, [lines, open]);
 
   const submit = async () => {
     const items = lines
@@ -68,7 +76,7 @@ export default function PurchaseOrderStockOperationModal({ open, toggle, purchas
                 <div className="flex items-center gap-x-3">
                   <PreviewImage width={32} height={32} src={line.productUrl || productImage(line.productId)} />
                   <div>
-                    <p className="text-sm font-medium">{line.productName}</p>
+                    <ResolvedProductName name={line.productName} product={line.productId} className="text-sm font-medium" />
                     <p className="text-xs text-gray-500">{max.toLocaleString()} available to fulfill</p>
                   </div>
                 </div>

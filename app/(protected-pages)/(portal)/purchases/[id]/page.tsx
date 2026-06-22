@@ -8,7 +8,6 @@ import PurchaseOrderLandedCostModal from "@/components/purchase-orders/PurchaseO
 import PurchaseReturnOperationModal from "@/components/purchase-orders/PurchaseReturnOperationModal";
 import PurchaseOrderStockOperationModal from "@/components/purchase-orders/PurchaseOrderStockOperationModal";
 import TransactionItemEditModal from "@/components/transactions/TransactionItemEditModal";
-import PurchaseOrderSummary from "@/components/purchase-orders/PurchaseOrderSummary";
 import { purchaseApiError, visiblePurchaseDeleteRestrictions } from "@/components/purchase-orders/purchaseDetailUtils";
 import PaymentFormModal from "@/components/payment/PaymentFormModel";
 import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
@@ -282,7 +281,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
           onEditReturn={(event) => setEditingItem({ kind: "return", item: event })}
           onDeleteReturn={confirmDeleteReturn}
         />
-        <PurchaseOrderSummary purchase={purchase} canReceive={canReceive} onReceive={toggleFulfill} onAddLandedCost={openAddLandedCostModal} onRecordPayment={() => openPaymentModal(TransactionType.PAYMENT)} />
+        <aside className="hidden w-full border-t border-gray-200 bg-gray-50 lg:block lg:w-[30%] lg:border-l lg:border-t-0" />
       </div>
 
       {editOpen && <PurchaseOrderFormModal open={editOpen} toggle={toggleEdit} purchase={purchase} onSaved={refetch} />}

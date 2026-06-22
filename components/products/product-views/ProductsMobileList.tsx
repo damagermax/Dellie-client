@@ -7,14 +7,13 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import ResponsiveActionMenu from "@/components/ui/ResponsiveActionMenu";
 import { ProductListItem } from "@/types/product";
 import { ITEM_TYPE } from "../ProductFormModal";
-import { getNormalPrice } from "@/lib/products/pricing";
+import { getProductPriceLabel } from "@/lib/products/pricing";
+import { getProductTypeLabel } from "@/lib/products/type-label";
+import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 
 interface ProductsMobileListProps {
   products: ProductListItem[];
 }
-
-const productTypeLabel = (type?: string) =>
-  type?.replaceAll("_", " ").toLowerCase() || "product";
 
 const getStockLabel = (product: ProductListItem) => {
   if (
@@ -44,6 +43,7 @@ const getStockColor = (product: ProductListItem) => {
 export default function ProductsMobileList({
   products,
 }: ProductsMobileListProps) {
+  const currencyCode = useStoreCurrencyCode();
   return (
     <div className="md:hidden">
       {products.map((product) => {
@@ -86,11 +86,11 @@ export default function ProductsMobileList({
                       {product.name}
                     </p>
                     <p className="mt-1 truncate text-sm capitalize text-gray-500">
-                      {product.sku} · {productTypeLabel(product.type)}
+                      {product.sku} · {getProductTypeLabel(product)}
                     </p>
                   </div>
                   <p className="shrink-0 text-sm font-semibold text-gray-900">
-                    {product.formattedNormalPrice || `GHS ${getNormalPrice(product).toFixed(2)}`}
+                    {getProductPriceLabel(product, currencyCode)}
                   </p>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">

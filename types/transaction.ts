@@ -13,7 +13,6 @@ export enum TransactionType {
   WRITE_OFF = "write_off",
   EXPENSE = "expense",
   PURCHASE_LANDED_COST = "purchase_landed_cost",
-  ACCOUNT_OPENING_BALANCE = "account_opening_balance",
 }
 
 export interface ExpenseCategory {
@@ -30,7 +29,6 @@ export interface ApplyPaymentInput {
   note?: string;
   rate?: number;
   amount: number;
-  accountId?: string;
   paymentMethodId?: string;
 }
 
@@ -59,8 +57,6 @@ export interface Payment {
   baseAmount: number;
   rate: number;
   currency: { code: string; id: string };
-  paidFrom?: { name: string; id: string };
-  paidTo?: { name: string; id: string };
   paymentMethod?: { name: string; id: string };
   note?: string;
   createdBy: { name: string; id: string };
@@ -165,6 +161,7 @@ export interface ExpenseSummary {
 }
 
 export interface ContactTransactionQueryParams {
+  bucket?: "all" | "receivables" | "payables";
   page?: number;
   limit?: number;
   search?: string;

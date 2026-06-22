@@ -22,7 +22,7 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
   ).map(([name, amount]) => ({ name, amount }));
 
   return (
-    <aside className="w-full bg-gray-50 px-7 pb-8 pt-6 lg:w-[30%]">
+    <aside id="sale-summary" className="w-full scroll-mt-14 border-t border-gray-200 bg-gray-50 px-5 pb-8 pt-6 lg:w-[30%] lg:border-l lg:border-t-0 lg:px-7">
       <div className="border-b border-gray-200 pb-6">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-base font-medium text-gray-900">Sale Summary</h2>

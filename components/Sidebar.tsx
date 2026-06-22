@@ -29,11 +29,10 @@ const MENU_ITEMS: SidebarMenuItem[] = [
   { title: "Dashboard", link: "/dashboard", icon: <TbLayoutGridAdd /> },
   { title: "Catalog", link: "/products", icon: <LuPackage2 />, permission: StorePermission.PRODUCTS_VIEW, moduleKey: "catalog" },
   { title: "Purchases", link: "/purchases", icon: <RiShoppingBag2Line />, permission: StorePermission.PURCHASES_VIEW, moduleKey: "purchases" },
-  { title: "Inventory", link: "/transactions", icon: <GoCreditCard /> },
+  // { title: "Inventory", link: "/transactions", icon: <GoCreditCard /> },
   { title: "Sales", link: "/orders", icon: <GoTag />, permission: StorePermission.SALES_VIEW, moduleKey: "sales" },
   { title: "Expenses", link: "/expenses", icon: <GoCreditCard />, permission: StorePermission.EXPENSES_VIEW, moduleKey: "expenses" },
   { title: "Contacts", link: "/contacts", icon: <RiGroupLine />, permission: StorePermission.CONTACTS_VIEW, moduleKey: "contacts" },
-  // { title: "Cash Book", link: "/wallet", icon: <IoWalletOutline />, permission: StorePermission.PAYMENTS_VIEW, moduleKey: "cashBook" },
   { title: "POS", link: "/pos", icon: <IoWalletOutline />, permission: StorePermission.SALES_VIEW, moduleKey: "pos" },
   { title: "Settings", link: "/settings", icon: <RiSettings2Line /> },
 ];

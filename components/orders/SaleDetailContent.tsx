@@ -222,15 +222,20 @@ export default function SaleDetailContent({
   return (
     <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
       <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-4 pb-7 pt-5 md:px-8">
-        <div className="flex flex-wrap items-start justify-center gap-5 md:justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="flex w-full items-start gap-x-4 md:w-fit">
             <GoBack />
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-normal text-gray-950">{saleDocumentNumber(sale)}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-normal text-gray-950 md:text-2xl">{saleDocumentNumber(sale)}</h1>
                 {!isCancelled && !isQuote && (
                   <Tag className="!m-0 !rounded-full !px-2 capitalize" color={statusTone}>
                     {fulfillmentStatus.replaceAll("_", " ")}
+                  </Tag>
+                )}
+                {!isCancelled && !isQuote && (
+                  <Tag className="!m-0 !rounded-full !px-2 capitalize" color={sale.paymentStatus === "paid" ? "green" : sale.paymentStatus === "partial" ? "orange" : "blue"}>
+                    {sale.paymentStatus}
                   </Tag>
                 )}
                 {!isCancelled && isQuote && (
@@ -305,8 +310,7 @@ export default function SaleDetailContent({
           </div>
         </div>
       </div>
-
-      <div className="pt-7">
+      <div id="sale-overview" className="scroll-mt-14 pt-5 md:pt-7">
         <div className="px-4 md:px-8">
           {isCancelled && <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">This sale has been cancelled and is currently view-only. Reopen it to make changes.</div>}
           {isClosed && <div className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">This sale is closed and read-only. Reopen it to make changes.</div>}
@@ -330,7 +334,7 @@ export default function SaleDetailContent({
             <p className="text-sm leading-6 text-gray-700">{sale.note}</p>
           </div>
         )}
-        <SaleDetailTables
+        <div id="sale-records" className="scroll-mt-14"><SaleDetailTables
           sale={sale}
           currency={currency}
           canManage={canManage}
@@ -342,7 +346,7 @@ export default function SaleDetailContent({
           onDeleteReturn={onDeleteReturn}
           onEditPayment={onEditPayment}
           onDeletePayment={onDeletePayment}
-        />
+        /></div>
       </div>
     </section>
   );

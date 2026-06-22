@@ -6,6 +6,7 @@ import { useReturnSaleMutation } from "@/lib/redux/services";
 import { Sale } from "@/types/index";
 import TransactionReturnModal from "@/components/transactions/TransactionReturnModal";
 import { saleApiError } from "./saleUtils";
+import { getProductRefId, useResolvedProductNameMap } from "@/components/products/ResolvedProductName";
 
 interface SaleReturnOperationModalProps {
   open: boolean;
@@ -24,19 +25,25 @@ function productSku(line: Sale["lineItems"][number]) {
 
 export default function SaleReturnOperationModal({ open, toggle, sale, onSaved }: SaleReturnOperationModalProps) {
   const [returnSale, { isLoading }] = useReturnSaleMutation();
+  const resolvedNames = useResolvedProductNameMap(
+    sale.lineItems.map((line) => ({
+      id: getProductRefId(line.productId),
+      name: line.productName,
+    })),
+  );
 
   const lines = React.useMemo(
     () =>
       sale.lineItems
         .map((line) => ({
           id: line.id,
-          name: line.productName,
+          name: resolvedNames[getProductRefId(line.productId) || line.productName] || line.productName,
           sku: productSku(line),
           imageUrl: line.productUrl || productImage(line.productId),
           maxQuantity: Math.max(Number(line.fulfilledQuantity || 0) - Number(line.returnedQuantity || 0), 0),
         }))
         .filter((line) => line.maxQuantity > 0),
-    [sale.lineItems],
+    [resolvedNames, sale.lineItems],
   );
 
   const submit = async (items: { lineItemId: string; quantity: number; reason?: string }[]) => {

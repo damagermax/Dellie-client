@@ -5,7 +5,6 @@ import { Button, Modal, message } from "antd";
 import PaymentFormModal from "@/components/payment/PaymentFormModel";
 import SaleDetailContent from "@/components/orders/SaleDetailContent";
 import SaleFormModal from "@/components/orders/SaleFormModal";
-import SaleSummary from "@/components/orders/SaleSummary";
 import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/SaleShareDocumentModal";
 import SaleReturnOperationModal from "@/components/orders/SaleReturnOperationModal";
 import SaleStockOperationModal from "@/components/orders/SaleStockOperationModal";
@@ -268,7 +267,7 @@ export default function SaleDetailPage() {
           onEditPayment={openEditPaymentModal}
           onDeletePayment={deletePayment}
         />
-        <SaleSummary sale={sale} />
+        <aside className="hidden w-full border-t border-gray-200 bg-gray-50 lg:block lg:w-[30%] lg:border-l lg:border-t-0" />
       </div>
 
       {editOpen && <SaleFormModal open={editOpen} toggle={toggleEdit} sale={sale} onSaved={refetch} />}

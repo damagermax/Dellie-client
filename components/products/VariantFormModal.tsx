@@ -2,9 +2,8 @@ import React from "react";
 import { AppModal, ModalProps } from "../ui/AppModal";
 
 import { useState } from "react";
-import { Button, Input, Tag } from "antd";
+import { Button, Input, Tag, message } from "antd";
 
-interface Props extends ModalProps {}
 import { RiDeleteBin3Line } from "react-icons/ri";
 
 import { CloseOutlined } from "@ant-design/icons";
@@ -111,12 +110,20 @@ export const VariantFormModal = ({ toggle, open, updateVariantCombinations }: Pr
   };
 
   const handleSubmit = () => {
+    if (!attributes.length || attributes.some((item) => !item.name.trim() || !item.options.length)) {
+      message.error("Add a name and at least one value for every variant option.");
+      return;
+    }
     const formatted = attributes.map((item) => ({
       name: item.name,
       options: item.options,
     }));
 
     const combinations = generateVariants(formatted);
+    if (combinations.length > 100) {
+      message.error("A product can have at most 100 variants.");
+      return;
+    }
     updateVariantCombinations(combinations);
 
     toggle();

@@ -38,6 +38,7 @@ export const generateVariants = (attributes: { name: string; options: string[] }
       name,
       costPrice: 0,
       sellingPrice: 0,
+      weight: 0,
       image: null,
       optionValues,
       stock: null,

@@ -58,6 +58,7 @@ export interface ProductQueryParams {
   categoryId?: string;
   purchasable?: boolean;
   stockStatus?: "in_stock" | "out_of_stock";
+  status?: "active" | "archived";
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   page?: number;
@@ -84,6 +85,14 @@ export interface ProductListItem {
   conversionType?: "source_to_repack" | "repack_to_source";
   conversionQuantity?: number;
   repackUnitName?: string;
+  bundleItems?: Array<{
+    productId?: string | { id?: string; name?: string };
+    quantity?: number;
+  }>;
+  productId?: string;
+  hasVariants?: boolean;
+  isAvailable?: boolean;
+  variants?: ProductListItem[];
   availableStock?: number;
   conversionRule?: string;
   channels: number;

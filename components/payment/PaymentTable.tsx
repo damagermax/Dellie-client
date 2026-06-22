@@ -1,8 +1,7 @@
-import { Payment, Transaction } from "@/types/transaction";
+import { Payment } from "@/types/transaction";
 import { TableProps } from "antd";
 import React from "react";
 import { ActionDropdown } from "../ui/ActionDropdown";
-import AppTag from "../ui/AppTag";
 import { formatDate } from "@/lib/dateUtils";
 import AppTable from "../ui/AppTable";
 import { PaymentViewItemAction } from "./PaymentView";
@@ -45,14 +44,6 @@ const PaymentTable = ({ payments, openEditModal, onDelete, canManage = true }: P
           {record.currency?.code} {record?.amount?.toLocaleString()}
         </p>
       ),
-    },
-
-    {
-      title: "Payment Account",
-      dataIndex: "paidFrom",
-      key: "paidFrom",
-      width: 220,
-      render: (_, record) => record.paidFrom?.name || record.paidTo?.name || "-",
     },
 
     {

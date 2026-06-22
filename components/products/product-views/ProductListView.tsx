@@ -3,7 +3,8 @@
 import { EllipsisVertical } from "lucide-react";
 import Link from "next/link";
 import PreviewImage from "@/components/ui/PreviewImage";
-import { ProductPriceTier, getNormalPrice } from "@/lib/products/pricing";
+import { ProductPriceTier, getProductPriceLabel } from "@/lib/products/pricing";
+import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 
 type ProductViewItem = {
   id?: string;
@@ -16,6 +17,7 @@ type ProductViewItem = {
   priceTiers?: ProductPriceTier[];
   normalPrice?: number;
   formattedNormalPrice?: string;
+  hasVariants?: boolean;
   stock?: number;
   availableStock?: number;
   sku?: string;
@@ -26,12 +28,13 @@ interface ProductListViewProps {
 }
 
 export default function ProductListView({ products }: ProductListViewProps) {
+  const currencyCode = useStoreCurrencyCode();
   return (
     <div className="divide-y divide-gray-200">
       {products.map((product) => {
         const productId = product.id || product.key;
         const stock = Number(product.availableStock ?? product.stock ?? 0);
-        const price = product.price || product.formattedNormalPrice || `GHS ${getNormalPrice(product).toFixed(2)}`;
+        const price = getProductPriceLabel(product, currencyCode);
 
         return (
           <div

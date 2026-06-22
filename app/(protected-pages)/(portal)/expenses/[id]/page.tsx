@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { Button, Divider, Tag, message } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { CalendarDays, CreditCard, FileText, Pencil, Plus, ReceiptText, Trash2, WalletCards } from "lucide-react";
+import { Pencil, Plus, ReceiptText, Trash2 } from "lucide-react";
 import ExpenseFormModal from "@/components/expenses/ExpenseFormModel";
 import PaymentFormModal from "@/components/payment/PaymentFormModel";
 import PaymentView from "@/components/payment/PaymentView";
@@ -41,7 +41,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   const remainingAttachments = Math.max(attachmentLimit - attachments.length, 0);
   const totalAmount = Number(expense?.amount || 0);
   const totalPaidAmount =
-    expense?.payments?.reduce((sum, tx: any) => {
+    expense?.payments?.reduce<number>((sum, tx) => {
       if (!tx) return sum;
       const amount = Number(tx.amount || 0);
 
@@ -60,9 +60,6 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   const isOverPayment = balance < 0;
   const showWriteOff = balance > 0;
   const showRefund = balance <= 0;
-  const lastPayment = expense?.payments?.[Math.max((expense?.payments?.length || 1) - 1, 0)];
-  const progress = totalAmount > 0 ? (totalPaidAmount / totalAmount) * 100 : 0;
-
   const paymentStatus = useMemo(() => {
     if (balance <= 0) return "paid";
     if (totalPaidAmount > 0) return "partial";
@@ -192,7 +189,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          <div className="px-4 py-6 md:px-8">
+          <div id="expense-overview" className="scroll-mt-14 px-4 py-6 md:px-8">
             <div className="grid gap-4 sm:grid-cols-2">
               <IdentityPanel label="Description" title={expense.title || expense.note || "Expense"} description={""} />
               <IdentityPanel label="Contact" title={expense.contact?.displayName || expense.contact?.name || "Open Market"} description={""} />
@@ -200,34 +197,16 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
 
             <Divider className="!mt-2" />
 
-            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
-              <Detail className="border-b border-r border-gray-200 pb-5 pr-5 sm:border-b-0 sm:pb-0" icon={<CalendarDays size={17} />} label="Date" value={formatDate(expense.date || expense.createdAt)} />
-              <Detail className="border-b border-gray-200 pb-5 pl-5 sm:border-b-0 sm:border-r sm:pr-5 sm:pb-0" icon={<WalletCards size={17} />} label="Category" value={expense.category?.name || "Uncategorized"} />
-              <Detail className="border-r border-gray-200 pr-5 pt-5 sm:pl-5 sm:pt-0" icon={<CreditCard size={17} />} label="Paid Amount" value={`${currency} ${totalPaidAmount.toLocaleString()}`} />
-              <Detail className="pl-5 pt-5 sm:pt-0" icon={<ReceiptText size={17} />} label="Balance" value={`${currency} ${balance.toLocaleString()}`} />
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
-              <Detail className="border-b border-r border-gray-200 pb-5 pr-5 sm:border-b-0 sm:pb-0" icon={<FileText size={17} />} label="Total Expense" value={`${currency} ${totalAmount.toLocaleString()}`} />
-              <Detail className="border-b border-gray-200 pb-5 pl-5 sm:border-b-0 sm:border-r sm:pr-5 sm:pb-0" icon={<WalletCards size={17} />} label="Last Payment" value={`${currency} ${Number(lastPayment?.amount || 0).toLocaleString() || "-"}`} />
-              <Detail className="border-r border-gray-200 pr-5 pt-5 sm:pl-5 sm:pt-0" icon={<CalendarDays size={17} />} label="Last Payment Date" value={formatDate(lastPayment?.date)} />
-              <Detail className="pl-5 pt-5 sm:pt-0" icon={<ReceiptText size={17} />} label="Progress" value={`${progress.toFixed(1)}%`} />
-            </div>
-
-            <div className="mt-5 hidden">
-              <div className="mb-2 flex justify-between text-xs text-gray-500">
-                <span>Payment Progress</span>
-                <span>{progress.toFixed(1)}%</span>
-              </div>
-              {/* <div className="h-2 w-full rounded-full bg-gray-200">
-                <div className="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-green-500" style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }} />
-              </div> */}
+            <div className="mt-5 grid grid-cols-2 sm:grid-cols-3">
+              <Detail className="border-r border-gray-200 pr-5" label="Date" value={formatDate(expense.date || expense.createdAt)} />
+              <Detail className="pl-5 sm:border-r sm:pr-5" label="Category" value={expense.category?.name || "Uncategorized"} />
+              <Detail className="col-span-2 mt-5 border-t border-gray-200 pt-5 sm:col-span-1 sm:mt-0 sm:border-t-0 sm:pl-5 sm:pt-0" label="Total Expense" value={`${currency} ${totalAmount.toLocaleString()}`} />
             </div>
           </div>
 
           <Divider className="!m-0" />
 
-          <div className="px-4 py-5 md:px-8">
+          <div id="expense-transactions" className="scroll-mt-14 px-4 py-5 md:px-8">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <h2 className="text-lg font-medium text-gray-950">Transactions</h2>
             </div>
@@ -236,7 +215,21 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           <PaymentView payments={expense.payments as Payment[]} canManage={canManageExpense} />
         </section>
 
-        <aside className="hidden w-full flex-col gap-4 bg-[#f7f8fd] px-4 pb-4 pt-5 lg:flex lg:w-[30%] lg:px-6 xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto">
+        <aside id="expense-attachments" className="flex w-full scroll-mt-14 flex-col gap-4 border-t border-gray-200 bg-[#f7f8fd] px-4 pb-4 pt-5 lg:w-[30%] lg:border-l lg:border-t-0 lg:px-6 xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto">
+          <div className="border-b border-gray-200">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h2 className="text-base font-medium text-gray-900">Expense Summary</h2>
+              <Tag className="!m-0 !rounded-full !px-3 capitalize" color={paymentStatus === "paid" ? "green" : paymentStatus === "partial" ? "orange" : "blue"}>
+                {paymentStatus}
+              </Tag>
+            </div>
+
+            <Summary label="Total Expense" value={money(currency, totalAmount)} />
+            <Summary label="Paid" value={money(currency, totalPaidAmount)} />
+            <Divider className="my-3" />
+            <Summary label="Balance" value={money(currency, balance)} strong />
+          </div>
+
           <div className="overflow-hidden bg-gray-100  ">
             <div className="border-b border-gray-200  p-4">
               <p className="text-lg font-medium text-gray-900">Attachments</p>
@@ -258,7 +251,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-xs text-gray-400">You can add up to 4 images. JPG or PNG only.</p>
                 </button>
               ) : (
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {attachments.map((item, index) => (
                     <div key={item.key || item.url || index} className="group h-fit overflow-hidden rounded-lg border border-gray-200 bg-white ">
                       <div className="relative aspect-square ">
@@ -267,14 +260,14 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
                           <button
                             type="button"
                             disabled={isDeletingAttachment}
-                            className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-gray-600 opacity-0 shadow-sm transition hover:text-red-500 group-hover:opacity-100 disabled:opacity-60"
+                            className="absolute right-2 top-2 rounded-full border border-gray-200 bg-white/90 p-1.5 text-gray-600 opacity-0 transition hover:text-red-500 group-hover:opacity-100 disabled:opacity-60"
                             onClick={() => handleDeleteAttachment(item.key)}
                             aria-label="Remove attachment"
                           >
                             <Trash2 size={14} />
                           </button>
                         )}
-                        <div className="absolute hidden left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium text-gray-700 shadow-sm">{index + 1}</div>
+                        <div className="absolute left-2 top-2 hidden rounded-full border border-gray-200 bg-white/90 px-2 py-1 text-[11px] font-medium text-gray-700">{index + 1}</div>
                       </div>
                     </div>
                   ))}
@@ -315,14 +308,26 @@ function IdentityPanel({ label, title, description }: { label: string; title: st
   );
 }
 
-function Detail({ icon, label, value, className = "" }: { icon: React.ReactNode; label: string; value: string; className?: string }) {
+function Detail({ label, value, className = "" }: { label: string; value: string; className?: string }) {
   return (
     <div className={`min-w-0 ${className}`}>
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-gray-400">{label}</p>
-      <div className="mt-1 flex items-start gap-2">
-        <span className="mt-0.5 text-gray-400">{icon}</span>
-        <p className="text-sm font-medium text-gray-900">{value || "-"}</p>
-      </div>
+      <p className="mt-1 text-sm font-medium text-gray-900">{value || "-"}</p>
     </div>
   );
+}
+
+function Summary({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={`mb-3 flex justify-between gap-4 ${strong ? "text-sm font-semibold text-gray-950 md:text-[15px]" : "text-xs text-gray-600 md:text-sm"}`}>
+      <span>{label}</span>
+      <span className="text-right">{value || "-"}</span>
+    </div>
+  );
+}
+
+function money(currency: string, value: number | undefined) {
+  const amount = Number(value || 0);
+  const prefix = amount < 0 ? "-" : "";
+  return `${prefix}${currency} ${Math.abs(amount).toFixed(2)}`;
 }

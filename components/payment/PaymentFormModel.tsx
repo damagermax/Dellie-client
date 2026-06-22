@@ -6,11 +6,11 @@ import { AppModal, ModalProps } from "../ui/AppModal";
 import { ApplyPaymentInput, UpdateAppliedPaymentInput, Payment, TransactionType } from "../../types/transaction";
 import { useEffect } from "react";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
+import { ExchangeRateFormItem } from "../system/ExchangeRateFormItem";
 import dayjs from "dayjs";
 
 import { useCreateTransactionActionMutation, useUpdateTransactionActionMutation, useGetTransactionQuery } from "@/lib/redux/services";
 
-import { SearchablePaymentAccountSelect } from "../paymentAccounts/SearchabalePaymentAccountSelect";
 import { SearchablePaymentMethodSelect } from "../paymentMethods/SearchablePaymentMethodSelect";
 import { TextAreaFormItem } from "../ui/AppFormItems";
 
@@ -67,7 +67,6 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
     if (initialValues) {
       expenseForm.setFieldsValue({
         currencyId: initialValues.currency?.id,
-        accountId: initialValues.paidFrom?.id || initialValues.paidTo?.id,
         paymentMethodId: initialValues.paymentMethod?.id,
         note: initialValues.note,
       });
@@ -124,7 +123,7 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
               <SearchableCurrenciesSelect />
             </Form.Item>
 
-            <InputFormItem label="Exchange Rate" name="rate" placeholder="1" />
+            <ExchangeRateFormItem name="rate" />
 
             <>
               <InputFormItem placeholder="00.00" type="number" label="Amount" name="amount" rules={[{ required: true, message: "Enter payment amount" }]} />
@@ -133,12 +132,6 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
                   <SearchablePaymentMethodSelect allowClear />
                 </Form.Item>
               )}
-              {showPayment && (
-                <Form.Item label="Payment Account" name="accountId" rules={[{ required: true, message: "Select payment account" }]}>
-                  <SearchablePaymentAccountSelect />
-                </Form.Item>
-              )}
-
               <div className="col-span-2">
                 <TextAreaFormItem label="Note" name="note" placeholder="Add an optional note" />
               </div>

@@ -29,6 +29,13 @@ export interface TransferBatchInput {
   effectiveDate?: string;
 }
 
+export interface DisassembleBatchInput {
+  id: string;
+  quantity: number;
+  reason?: string;
+  effectiveDate?: string;
+}
+
 export interface RestockProductInput {
   productId: string;
   locationId: string;

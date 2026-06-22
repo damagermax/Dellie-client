@@ -6,8 +6,8 @@ import type { TableProps } from "antd/es/table";
 import { AppModal } from "@/components/ui/AppModal";
 import { SearchableContactSelect } from "@/components/contacts/SeachableContactSelect";
 import { SearchablePaymentMethodSelect } from "@/components/paymentMethods/SearchablePaymentMethodSelect";
-import { SearchablePaymentAccountSelect } from "@/components/paymentAccounts/SearchabalePaymentAccountSelect";
 import { SearchableCurrenciesSelect } from "@/components/system/SearchableCurrencySelect";
+import { ExchangeRateFormItem } from "@/components/system/ExchangeRateFormItem";
 import { useAddPurchaseLandedCostMutation, useUpdatePurchaseLandedCostMutation } from "@/lib/redux/services";
 import { useGetCurrencyQuery } from "@/lib/redux/services";
 import { Purchase, PurchaseLandedCost, PurchaseLandedCostAllocation, PurchaseLandedCostScope, PurchaseLineItem } from "@/types/index";
@@ -102,7 +102,6 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
         contactId: values.contactId,
         note: values.note,
         paymentMethodId: values.paymentMethodId,
-        accountId: values.accountId,
         ...(values.appliesTo === "SELECTED_ITEMS" ? { lineItemIds: selectedLineItemIds.map(String) } : {}),
         currencyId: values.currencyId,
         exchangeRate: Number(values.exchangeRate),
@@ -147,16 +146,13 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
           <Form.Item name="currencyId" label="Currency" rules={[{ required: true, message: "Select a currency" }]}>
             <SearchableCurrenciesSelect />
           </Form.Item>
-          <Form.Item
+          <ExchangeRateFormItem
             name="exchangeRate"
-            label="Exchange Rate"
             rules={[
               { required: true, message: "Enter an exchange rate" },
               { type: "number", min: 0.000001, message: "Exchange rate must be greater than 0" },
             ]}
-          >
-            <InputNumber className="!w-full" min={0.000001} controls={false} />
-          </Form.Item>
+          />
           <Form.Item name="amount" label={`Amount (${amountCurrencyCode})`} rules={[{ required: true, message: "Enter an amount" }]}>
             <InputNumber className="!w-full" min={0.01} controls={false} />
           </Form.Item>
@@ -171,9 +167,6 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
           </Form.Item>
           <Form.Item name="paymentMethodId" label="Payment Method">
             <SearchablePaymentMethodSelect allowClear />
-          </Form.Item>
-          <Form.Item name="accountId" label="Paid From Account">
-            <SearchablePaymentAccountSelect allowClear />
           </Form.Item>
         </div>
 

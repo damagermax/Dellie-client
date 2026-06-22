@@ -10,8 +10,6 @@ export * from "./discountApi";
 export * from "./inventoryApi";
 export * from "./transactionsApi";
 export * from "./systemsApi";
-export * from "./paymentAccountsApi";
-export * from "./paymentAccountsApi";
 export * from "./paymentTermsApi";
 export * from "./paymentMethodsApi";
 export * from "./pricingGroupsApi";

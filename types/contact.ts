@@ -29,6 +29,15 @@ export interface Contact {
     status?: "pending" | "active" | "disabled";
     isDefault?: boolean;
   };
+  transactionSummary?: {
+    sales: ContactTransactionSummaryItem;
+    purchases: ContactTransactionSummaryItem;
+    expenses: ContactTransactionSummaryItem;
+    landedCosts: ContactTransactionSummaryItem;
+  };
+  assignedEmployeeContactId?: string | null;
+  assignedEmployee?: ContactAssignmentPreview;
+  assignedCustomers?: ContactAssignmentPreview[];
   note?: string;
   paymentTerms?: string;
   currencyId?: string | { id: string; code: string; name?: string };
@@ -51,6 +60,8 @@ export interface CreateContactInput {
 export interface UpdateContactInput extends Partial<CreateContactInput> {
   id: string;
   defaultCurrencyId?: string;
+  assignedEmployeeContactId?: string | null;
+  assignedCustomerIds?: string[];
 }
 
 export interface EmployeeAccessInput {
@@ -83,4 +94,18 @@ export interface Address {
   state?: string;
   country?: string;
   postalCode?: string;
+}
+
+export interface ContactAssignmentPreview {
+  id: string;
+  name: string;
+  displayName?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface ContactTransactionSummaryItem {
+  total: number;
+  count: number;
+  formattedTotal: string;
 }

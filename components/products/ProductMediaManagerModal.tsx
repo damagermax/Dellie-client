@@ -2,7 +2,7 @@
 
 import { AppModal, ModalProps } from "@/components/ui/AppModal";
 import { useAddProductMediaMutation, useDeleteProductMediaMutation, useReorderProductMediaMutation } from "@/lib/redux/services";
-import { Button, Empty, message, Spin } from "antd";
+import { Button, message, Spin } from "antd";
 import { GripVertical, ImagePlus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -123,9 +123,9 @@ export function ProductMediaManagerModal({ open, toggle, productId, productName,
 
           <div className="flex gap-2">
             <Button onClick={toggle}>Close</Button>
-            {/* <Button type="primary" className="!bg-gray-950 !shadow-none" disabled={!hasOrderChanged || isBusy} loading={isSavingOrder} onClick={saveOrder}>
+            <Button type="primary" className="!bg-gray-950 !shadow-none" disabled={!hasOrderChanged || isBusy} loading={isSavingOrder} onClick={saveOrder}>
               Save Order
-            </Button> */}
+            </Button>
           </div>
         </div>
       }

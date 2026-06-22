@@ -2,119 +2,135 @@
 
 import AppTable from "@/components/ui/AppTable";
 import PreviewImage from "../ui/PreviewImage";
-import useToggle from "@/hooks/UseToggle";
-import { VariantDetailModal } from "./VariantDetailModal";
-import { useState } from "react";
 import { ProductPriceTier, getNormalPrice } from "@/lib/products/pricing";
-
-type VariantInventoryLevel = {
-  available?: number;
-};
+import type { TableProps } from "antd/es/table";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowUpRight } from "lucide-react";
 
 export type ProductVariantRow = {
   id: string;
   name: string;
+  sku?: string;
+  barcode?: string;
   imageUrl?: string;
+  categoryName?: string;
   productId?: string;
   priceTiers?: ProductPriceTier[];
-  inventory?: {
-    inventoryLevels?: VariantInventoryLevel[];
-  };
+  costPrice?: number;
+  availableStock?: number;
+  statusLabel?: string;
+  formattedNormalPrice?: string;
 };
 
 export function ProductVariantsTable({ variants }: { variants: ProductVariantRow[] }) {
-  const [openVariantModal, toggleVariantModal] = useToggle();
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariantRow>();
+  const router = useRouter();
 
-  // safely get inventory levels from the first variant
-  const inventoryLevels = variants?.[0]?.inventory?.inventoryLevels ?? [];
-
-  const handleVariantItemClick = (variant: ProductVariantRow) => {
-    setSelectedVariant(variant);
-    toggleVariantModal();
-  };
-
-  function getTotalAvailableStock(inventory?: ProductVariantRow["inventory"]) {
-    const levels = inventory?.inventoryLevels || [];
-    return levels.reduce((sum, lvl) => sum + (lvl.available || 0), 0);
-  }
-  const tableColumns = [
+  const tableColumns: TableProps<ProductVariantRow>["columns"] = [
     {
       title: "Variant",
       className: "!pl-8",
-      dataIndex: "id",
-      key: "id",
-      render: (_: unknown, variant: ProductVariantRow) => (
+      dataIndex: "name",
+      key: "name",
+      width: "34%",
+      render: (name: string, variant: ProductVariantRow) => (
         <div className="flex items-center space-x-4">
-          <div className=" ">
-            <PreviewImage height={50} width={50} src={variant.imageUrl ? variant.imageUrl : "/images/dellie-logo.png"} />
+          <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-sm bg-gray-100">
+            <PreviewImage height={44} width={44} src={variant.imageUrl} />
           </div>
-          <div className="min-w-0 cursor-pointer" onClick={() => handleVariantItemClick(variant)}>
-            <div className="font-medium  text-gray-900 truncate">{variant?.name}</div>
-            <div className=" text-xs text-gray-400 truncate">SKU: {variant?.name}</div>
+          <div className="min-w-0">
+            <Link href={`/products/${variant.id}`} className="block font-medium text-gray-800 transition-colors hover:text-[#2d837d]">
+              <span className="line-clamp-1">{name || "-"}</span>
+            </Link>
           </div>
         </div>
       ),
-      width: "300px",
     },
     {
-      title: "Selling Price",
+      title: "SKU",
+      dataIndex: "sku",
+      key: "sku",
+      render: (sku?: string) => <span className="text-gray-600">{sku || "-"}</span>,
+    },
+    {
+      title: "Price",
       dataIndex: "priceTiers",
       key: "priceTiers",
-      align: "center" as const,
-      width: `${inventoryLevels.length == 1 ? 20 : 8}%`,
-      render: (_: unknown, variant: ProductVariantRow) => `GHS ${getNormalPrice(variant).toFixed(2)}`,
+      render: (_: unknown, variant: ProductVariantRow) => variant.formattedNormalPrice || `GHS ${getNormalPrice(variant).toFixed(2)}`,
     },
-
     {
-      title: "Stocks",
-      dataIndex: "inventory",
-      key: "inventory",
-      align: "center" as const,
-      width: `${inventoryLevels.length == 1 ? 20 : 8}%`,
-      render: (inventory: ProductVariantRow["inventory"]) => getTotalAvailableStock(inventory),
+      title: "Available",
+      dataIndex: "availableStock",
+      key: "availableStock",
+      render: (availableStock?: number) => <span className="font-medium text-gray-700">{Number(availableStock || 0)}</span>,
     },
-
-    // {
-    //   title: "Locations",
-    //   align: "center",
-    //   children: [
-    //     ...inventoryLevels.map((level: any) => ({
-    //       title: level.locationName,
-    //       dataIndex: level.id,
-    //       key: level.id,
-    //       render: (id: string, variant: any) => {
-    //         const variantLevel = variant.inventory?.inventoryLevels?.find((lvl: any) => lvl.locationName === level.locationName);
-    //         return <QuantityCell key={id} inventoryLevel={variantLevel} />;
-    //       },
-    //       width: `${Math.max(15, 50 / inventoryLevels.length)}%`,
-    //       className: "!pl-8",
-    //       onCell: () => ({
-    //         className: "p-0 hover:bg-gray-50",
-    //       }),
-    //     })),
-    //   ],
-    // },
-
     {
-      title: "",
-      dataIndex: "",
-      key: "",
-      align: "center" as const,
-      width: `${inventoryLevels.length == 1 ? 10 : 6}%`,
+      title: "Status",
+      dataIndex: "statusLabel",
+      key: "statusLabel",
+      render: (statusLabel?: string, variant?: ProductVariantRow) => {
+        const isOutOfStock = Number(variant?.availableStock || 0) <= 0;
+        return (
+          <span className={`inline-flex rounded-full border px-2 py-0.5 text-sm font-medium ${isOutOfStock ? "border-red-200 bg-red-50 text-red-600" : "border-green-200 bg-green-50 text-green-700"}`}>
+            {statusLabel || (isOutOfStock ? "Sold out" : "Available")}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      align: "right" as const,
+      className: "!pr-8",
+      render: (_: unknown, variant: ProductVariantRow) => (
+        <Link href={`/products/${variant.id}`} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200 hover:text-gray-900" aria-label={`Open ${variant.name}`}>
+          <ArrowUpRight size={15} />
+        </Link>
+      ),
     },
   ];
 
   return (
-    <div className="border-t border-gray-200">
+    <div className="border-t border-gray-200 bg-white">
       <div className="px-5 py-4">
-        <h2 className="text-lg font-medium text-gray-600">Variants & Inventory</h2>
-        <p className="mt-1 text-sm text-gray-500">Manage inventory for each variant across different locations</p>
+        <h2 className="text-lg font-medium text-gray-800">Variants</h2>
+        <p className="mt-1 text-sm text-gray-500">Open a variant to manage its stock, batches, pricing, and order history.</p>
       </div>
 
-      <AppTable dataSource={variants} columns={tableColumns} className="custom-table" pagination={false} scrollY={6000} />
-
-      {selectedVariant && <VariantDetailModal open={openVariantModal} selectedVariant={selectedVariant} toggle={toggleVariantModal} />}
+      {variants.length ? (
+        <>
+          <div className="divide-y divide-gray-200 border-t border-gray-200 md:hidden">
+            {variants.map((variant) => {
+              const outOfStock = Number(variant.availableStock || 0) <= 0;
+              return (
+                <Link key={variant.id} href={`/products/${variant.id}`} className="flex items-center gap-3 px-4 py-4 active:bg-gray-50">
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+                    <PreviewImage height={48} width={48} src={variant.imageUrl} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-gray-950">{variant.name || "Unnamed variant"}</p>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">SKU: {variant.sku || "-"}</p>
+                      </div>
+                      <span className="shrink-0 font-semibold text-gray-950">{variant.formattedNormalPrice || `GHS ${getNormalPrice(variant).toFixed(2)}`}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                      <span className={outOfStock ? "text-red-600" : "text-gray-600"}>{Number(variant.availableStock || 0)} available</span>
+                      <ArrowUpRight size={16} className="text-gray-400" />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          <div className="hidden md:block">
+            <AppTable<ProductVariantRow> dataSource={variants} columns={tableColumns} className="custom-table" pagination={false} rowKey="id" onRow={(variant) => ({ onClick: () => router.push(`/products/${variant.id}`), className: "cursor-pointer" })} />
+          </div>
+        </>
+      ) : (
+        <div className="border-t border-gray-200 px-5 py-10 text-center text-sm text-gray-500">No variants have been added for this product yet.</div>
+      )}
     </div>
   );
 }

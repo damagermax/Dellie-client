@@ -17,16 +17,16 @@ import { useState } from "react";
 export default function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const router = useRouter();
-  const [transactionQuery, setTransactionQuery] = useState({ page: 1, limit: 10 });
+  const [transactionQuery, setTransactionQuery] = useState({ page: 1, limit: 10, bucket: "all" as const });
+  const [receivablesQuery, setReceivablesQuery] = useState({ page: 1, limit: 10, bucket: "receivables" as const });
+  const [payablesQuery, setPayablesQuery] = useState({ page: 1, limit: 10, bucket: "payables" as const });
   const { ready, hasAnyPermission } = usePermissions();
   const [editOpen, toggleEdit] = useToggle();
   const canViewContact = hasAnyPermission([StorePermission.CONTACTS_VIEW, StorePermission.CONTACTS_MANAGE]);
   const { data: contact, isLoading, isError, refetch } = useGetContactQuery(id, { refetchOnMountOrArgChange: true, skip: !ready || !canViewContact });
-  const {
-    data: contactTransactions,
-    isLoading: isTransactionsLoading,
-    isError: isTransactionsError,
-  } = useGetContactTransactionsQuery({ id, params: transactionQuery }, { skip: !ready || !canViewContact || !id });
+  const { data: contactTransactions, isLoading: isTransactionsLoading, isError: isTransactionsError } = useGetContactTransactionsQuery({ id, params: transactionQuery }, { skip: !ready || !canViewContact || !id });
+  const { data: receivablesTransactions, isLoading: isReceivablesLoading, isError: isReceivablesError } = useGetContactTransactionsQuery({ id, params: receivablesQuery }, { skip: !ready || !canViewContact || !id });
+  const { data: payablesTransactions, isLoading: isPayablesLoading, isError: isPayablesError } = useGetContactTransactionsQuery({ id, params: payablesQuery }, { skip: !ready || !canViewContact || !id });
   const [deleteContact, { isLoading: isDeleting }] = useDeleteContactMutation();
 
   const confirmDelete = () => {
@@ -67,6 +67,17 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
           transactionsError={isTransactionsError}
           transactionsMeta={contactTransactions?.meta}
           onTransactionPageChange={(page, limit) => setTransactionQuery((current) => ({ ...current, page, limit }))}
+          receivables={receivablesTransactions?.data || []}
+          receivablesLoading={isReceivablesLoading}
+          receivablesError={isReceivablesError}
+          receivablesMeta={receivablesTransactions?.meta}
+          onReceivablesPageChange={(page, limit) => setReceivablesQuery((current) => ({ ...current, page, limit }))}
+          payables={payablesTransactions?.data || []}
+          payablesLoading={isPayablesLoading}
+          payablesError={isPayablesError}
+          payablesMeta={payablesTransactions?.meta}
+          onPayablesPageChange={(page, limit) => setPayablesQuery((current) => ({ ...current, page, limit }))}
+          onContactUpdated={refetch}
         />
         <ContactSummary contact={contact} />
       </div>

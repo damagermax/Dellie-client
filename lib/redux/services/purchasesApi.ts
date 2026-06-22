@@ -79,6 +79,22 @@ export const purchasesApi = baseApi.injectEndpoints({
       query: ({ id, landedCostId }) => ({ url: `purchases/${id}/landed-costs/${landedCostId}`, method: "DELETE" }),
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES, TAG_TYPES.TRANSACTIONS, TAG_TYPES.CONTACTS],
     }),
+    addPurchaseAttachments: builder.mutation<Purchase, { id: string; data: FormData }>({
+      query: ({ id, data }) => ({
+        url: `purchases/${id}/attachments`,
+        method: "POST",
+        formData: true,
+        body: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+    }),
+    deletePurchaseAttachment: builder.mutation<Purchase, { id: string; key: string }>({
+      query: ({ id, key }) => ({
+        url: `purchases/${id}/attachments/${encodeURIComponent(key)}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.PURCHASE, id }, TAG_TYPES.PURCHASES],
+    }),
   }),
 });
 
@@ -99,4 +115,6 @@ export const {
   useAddPurchaseLandedCostMutation,
   useUpdatePurchaseLandedCostMutation,
   useDeletePurchaseLandedCostMutation,
+  useAddPurchaseAttachmentsMutation,
+  useDeletePurchaseAttachmentMutation,
 } = purchasesApi;

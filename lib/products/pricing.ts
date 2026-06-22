@@ -10,11 +10,24 @@ export type ProductWithPriceTiers = {
   normalPrice?: number;
 };
 
+type ProductPriceDisplay = ProductWithPriceTiers & {
+  formattedNormalPrice?: string;
+  hasVariants?: boolean;
+  variants?: unknown[];
+  price?: string;
+};
+
 export const NORMAL_PRICE_TIER_NAME = "Normal Selling Price";
 export const TRADE_PRICE_TIER_NAME = "Trade Price";
 
 export function getNormalPrice(product?: ProductWithPriceTiers | null) {
   return Number(product?.priceTiers?.[0]?.price ?? product?.normalPrice ?? 0);
+}
+
+export function getProductPriceLabel(product: ProductPriceDisplay, currencyCode = "") {
+  if (product.hasVariants || product.variants?.length) return "Variant pricing";
+
+  return product.price || (currencyCode ? `${currencyCode} ${getNormalPrice(product).toFixed(2)}` : product.formattedNormalPrice || getNormalPrice(product).toFixed(2));
 }
 
 export function normalPriceTier(price = 0): ProductPriceTier {

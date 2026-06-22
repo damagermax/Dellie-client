@@ -10,6 +10,7 @@ import { RootState } from "@/lib/store";
 import { Sale, Store } from "@/types/index";
 import { PaymentTerm } from "@/types/payment-term";
 import { saleDocumentNumber } from "./saleUtils";
+import { getProductRefId, useResolvedProductNameMap } from "@/components/products/ResolvedProductName";
 
 export type SaleDocumentType = "invoice" | "receipt";
 export type SaleDocumentPaperSize = "compact" | "full_page";
@@ -41,12 +42,12 @@ function escapeHtml(value: string | number | undefined) {
     .replaceAll("'", "&#39;");
 }
 
-function saleDocumentText(sale: Sale, store: Store | null, type: SaleDocumentType) {
+function saleDocumentText(sale: Sale, store: Store | null, type: SaleDocumentType, resolvedNames: Record<string, string>) {
   const currency = sale.currencyId?.code || "";
   const label = documentLabel(type);
   const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
   const itemLines = sale.lineItems.map(
-    (line) => `${line.productName} x ${line.quantity} @ ${amount(currency, line.unitPrice)} = ${amount(currency, line.total)}`,
+    (line) => `${resolvedNames[getProductRefId(line.productId) || line.productName] || line.productName} x ${line.quantity} @ ${amount(currency, line.unitPrice)} = ${amount(currency, line.total)}`,
   );
 
   return [
@@ -69,7 +70,7 @@ function saleDocumentText(sale: Sale, store: Store | null, type: SaleDocumentTyp
     .join("\n");
 }
 
-function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentType, paperSize: SaleDocumentPaperSize, paymentTerms: PaymentTerm[] = []) {
+function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentType, paperSize: SaleDocumentPaperSize, resolvedNames: Record<string, string>, paymentTerms: PaymentTerm[] = []) {
   const label = documentLabel(type);
   const currency = sale.currencyId?.code || "";
   const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
@@ -80,7 +81,7 @@ function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentTy
   const rows = sale.lineItems
     .map(
       (line) => `<tr>
-        <td>${escapeHtml(line.productName)}${line.productSku ? `<div class="muted">SKU: ${escapeHtml(line.productSku)}</div>` : ""}</td>
+        <td>${escapeHtml(resolvedNames[getProductRefId(line.productId) || line.productName] || line.productName)}${line.productSku ? `<div class="muted">SKU: ${escapeHtml(line.productSku)}</div>` : ""}</td>
         <td class="right">${escapeHtml(line.quantity)}</td>
         <td class="right">${escapeHtml(amount(currency, line.unitPrice))}</td>
         <td class="right">${escapeHtml(amount(currency, line.total))}</td>
@@ -148,13 +149,19 @@ function printableDocument(sale: Sale, store: Store | null, type: SaleDocumentTy
 export default function SaleShareDocumentModal({ open, toggle, sale, type, paperSize = "full_page" }: SaleShareDocumentModalProps) {
   const store = useSelector((state: RootState) => state.currentUser.store);
   const { data: paymentTerms } = useGetPaymentTermsQuery();
+  const resolvedNames = useResolvedProductNameMap(
+    sale.lineItems.map((line) => ({
+      id: getProductRefId(line.productId),
+      name: line.productName,
+    })),
+  );
   const label = documentLabel(type);
   const currency = sale.currencyId?.code || "";
   const paid = Number(sale.amount) - Number(sale.balance);
 
   const handleShare = async () => {
-    const text = saleDocumentText(sale, store, type);
-    const html = printableDocument(sale, store, type, paperSize, paymentTerms || []);
+    const text = saleDocumentText(sale, store, type, resolvedNames);
+    const html = printableDocument(sale, store, type, paperSize, resolvedNames, paymentTerms || []);
     const file = new File([html], `${label.toLowerCase()}-${saleDocumentNumber(sale)}.html`, { type: "text/html" });
 
     try {
@@ -181,7 +188,7 @@ export default function SaleShareDocumentModal({ open, toggle, sale, type, paper
       message.error("Allow pop-ups to print this document.");
       return;
     }
-    printWindow.document.write(printableDocument(sale, store, type, paperSize, paymentTerms || []));
+    printWindow.document.write(printableDocument(sale, store, type, paperSize, resolvedNames, paymentTerms || []));
     printWindow.document.close();
     printWindow.focus();
     printWindow.addEventListener("load", () => printWindow.print());
@@ -243,7 +250,7 @@ export default function SaleShareDocumentModal({ open, toggle, sale, type, paper
             {sale.lineItems.map((line) => (
               <tr key={line.id} className="border-b border-gray-100">
                 <td className="px-3 py-3">
-                  {line.productName}
+                  {resolvedNames[getProductRefId(line.productId) || line.productName] || line.productName}
                   {line.productSku && <p className="text-xs text-gray-500">SKU: {line.productSku}</p>}
                 </td>
                 <td className="px-3 py-3 text-right">{line.quantity}</td>
