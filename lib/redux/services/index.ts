@@ -16,4 +16,8 @@ export * from "./pricingGroupsApi";
 export * from "./taxesApi";
 export * from "./purchasesApi";
 export * from "./salesApi";
+export * from "./salesReportsApi";
+export * from "./purchaseReportsApi";
+export * from "./inventoryReportsApi";
+export * from "./financeReportsApi";
 export * from "./storeSettingsApi";

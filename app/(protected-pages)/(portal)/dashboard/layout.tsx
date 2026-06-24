@@ -1,9 +1,17 @@
+"use client";
+
+import { usePermissions } from "@/hooks/usePermissions";
+import { DashboardTabs } from "@/components/dashboard/DashboardTabs";
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    return (
-        <div>
-            {/* Layout UI */}
-            {/* Place children where you want to render a page or nested layout */}
-            <main>{children}</main>
-        </div>
-    );
+  const { ready } = usePermissions();
+
+  if (!ready) return <>{children}</>;
+
+  return (
+    <div>
+      <DashboardTabs />
+      {children}
+    </div>
+  );
 }

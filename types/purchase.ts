@@ -3,6 +3,7 @@ import { TransactionAttachment } from "./transaction";
 
 export type PurchaseDiscountType = "fixed" | "percent";
 export type PurchaseReceiptStatus = "pending" | "partially_received" | "received";
+export type SaleLineCostSource = "sale_snapshot" | "legacy_estimate";
 
 export interface PurchaseLineItemInput {
   productId: string;
@@ -44,6 +45,8 @@ export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId
   taxRate?: number;
   taxAmount: number;
   baseUnitPrice?: number;
+  baseUnitCost?: number;
+  costSource?: SaleLineCostSource;
   baseTaxAmount?: number;
   baseTotal?: number;
   total: number;

@@ -20,3 +20,7 @@ export * from "./purchase";
 export * from "./sale";
 export * from "./store-access";
 export * from "./store-settings";
+export * from "./sales-report";
+export * from "./purchase-report";
+export * from "./inventory-report";
+export * from "./finance-report";
