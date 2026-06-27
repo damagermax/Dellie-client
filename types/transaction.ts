@@ -9,6 +9,7 @@ export enum TransactionType {
   ISSUE_CREDIT = "issue_credit",
   APPLY_CREDIT = "apple_credit",
   PAYMENT = "payment",
+  CHANGE = "change",
   REFUND = "refund",
   WRITE_OFF = "write_off",
   EXPENSE = "expense",
@@ -139,6 +140,7 @@ export interface ExpenseQueryParams {
   search?: string | "";
   category?: string;
   categoryId?: string;
+  contactId?: string;
   status?: string;
   dateFrom?: string;
   dateTo?: string;

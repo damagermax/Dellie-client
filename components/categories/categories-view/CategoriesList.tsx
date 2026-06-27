@@ -46,19 +46,10 @@ export default function CategoriesList({ query }: CategoriesListProps) {
     if (!isDeleting) await deleteCategory(categoryId);
   };
 
-  const title = query.type === CategoryType.EXPENSE ? "Expense Categories" : "Product Categories";
-
   return (
     <div>
       <AppViewLoader loading={loadingCategories} />
       <AppNotFoundView dataLength={categories?.data?.length || 0} loading={loadingCategories} query={query} entity="Categories" />
-
-      <div className="sticky -top-[calc(6.5rem)] border-b border-blue-100 bg-gray-50 px-5 py-5">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{title}</p>
-          <p className="text-xs text-gray-500">{query.type === CategoryType.EXPENSE ? "Expense-related labels and statuses" : "Product labels with storefront and POS visibility"}</p>
-        </div>
-      </div>
 
       <div className="px-5 pb-32">
         {categories?.data?.map((category, index) => {
@@ -67,25 +58,35 @@ export default function CategoriesList({ query }: CategoriesListProps) {
           return (
             <div key={category.id} className={`flex items-start justify-between gap-4 py-5 ${index !== categories.data.length - 1 ? "border-b border-blue-100" : ""}`}>
               <button type="button" className="flex min-w-0 flex-1 flex-col items-start text-left" onClick={() => openEditModal(category)}>
-                <div className="flex min-w-0 items-center gap-2">
-                  <h3 className="truncate font-medium text-gray-800">{category.name}</h3>
-                  <Tag color={category.status === CategoryStatus.ACTIVE ? "green" : "default"} className="!m-0 !rounded-full !px-2">
-                    {category.status === CategoryStatus.ACTIVE ? "Active" : "Inactive"}
-                  </Tag>
-                </div>
+                <div className="flex min-w-0 items-start gap-3">
+                  {isProductCategory ? (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
+                      {category.imageUrl ? <img src={category.imageUrl} alt={category.name} className="h-full w-full object-cover" /> : <span className="text-xs font-medium text-gray-400">IMG</span>}
+                    </div>
+                  ) : null}
 
-                <p className="mt-1 line-clamp-2 text-sm text-gray-500">{category.description || "No description provided."}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <h3 className="truncate font-medium text-gray-800">{category.name}</h3>
+                      <Tag color={category.status === CategoryStatus.ACTIVE ? "green" : "default"} className="!m-0 !rounded-full !px-1.5 !py-0 !text-[10px] !leading-4">
+                        {category.status === CategoryStatus.ACTIVE ? "Active" : "Inactive"}
+                      </Tag>
+                    </div>
 
-                {isProductCategory && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Tag color={category.showInStorefront ? "blue" : "default"} className="!m-0 !rounded-full !px-2">
-                      {category.showInStorefront ? "Storefront" : "Hidden from Storefront"}
-                    </Tag>
-                    <Tag color={category.showInPOS ? "purple" : "default"} className="!m-0 !rounded-full !px-2">
-                      {category.showInPOS ? "POS" : "Hidden from POS"}
-                    </Tag>
+                    {isProductCategory ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        {[
+                          category.showInStorefront ? "Storefront" : null,
+                          category.showInPOS ? "POS" : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ") || "Hidden"}
+                      </p>
+                    ) : (
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">{category.description || "No description provided."}</p>
+                    )}
                   </div>
-                )}
+                </div>
               </button>
 
               <ActionDropdown

@@ -2,7 +2,7 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { GoChevronLeft, GoChevronRight, GoCreditCard, GoTag } from "react-icons/go";
 import { RiGroupLine, RiSettings2Line, RiShoppingBag2Line } from "react-icons/ri";
 import { TbLayoutGridAdd } from "react-icons/tb";
@@ -55,8 +55,14 @@ const MenuItem = memo(({ title, link, icon, isActive, isCollapsed = true }: { ti
 MenuItem.displayName = "MenuItem";
 
 const Sidebar = () => {
+  const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const toggleSidebar = useCallback(() => setIsCollapsed((prev) => !prev), []);
+  const isPosPage = pathname === "/pos";
+
+  useEffect(() => {
+    setIsCollapsed(isPosPage);
+  }, [isPosPage]);
 
   return (
     <aside className={cn("h-screen bg-gray-100 hidden md:block    border-gray-200 transition-all duration-300 relative flex-shrink-0", isCollapsed ? "w-14 " : "w-56 ")} aria-label="Sidebar navigation">
@@ -78,13 +84,15 @@ const Sidebar = () => {
         <SidebarAccountDropdown isCollapsed={isCollapsed} />
 
         {/* Collapse Toggle */}
-        <button
-          onClick={toggleSidebar}
-          className="absolute right-[-9px] top-5 w-5 h-5 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors z-10"
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? <GoChevronRight size={14} /> : <GoChevronLeft size={14} />}
-        </button>
+        {!isPosPage ? (
+          <button
+            onClick={toggleSidebar}
+            className="absolute right-[-9px] top-5 w-5 h-5 rounded-full bg-white border border-gray-300 flex items-center justify-center shadow-md hover:bg-gray-50 transition-colors z-10"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? <GoChevronRight size={14} /> : <GoChevronLeft size={14} />}
+          </button>
+        ) : null}
       </div>
     </aside>
   );

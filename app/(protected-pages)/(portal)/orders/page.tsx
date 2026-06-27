@@ -28,6 +28,7 @@ import useToggle from "@/hooks/UseToggle";
 import { useMobileInfiniteList } from "@/hooks/useMobileInfiniteList";
 import { formatDate } from "@/lib/dateUtils";
 import { useConvertSaleQuoteMutation, useDeleteSaleMutation, useGetSalesQuery, useReopenSaleMutation } from "@/lib/redux/services";
+import { SalesFilterDrawer } from "@/components/orders/SalesFilterDrawer";
 import { Sale, SaleQueryParams } from "@/types/index";
 
 const saleSourceLabel = (source?: string) => source || "Manual Sale";
@@ -42,18 +43,74 @@ export default function SalesPage() {
   const router = useRouter();
   const [formOpen, toggleForm] = useToggle();
   const [editOpen, toggleEdit] = useToggle();
+  const [filterOpen, setFilterOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale>();
   const [shareDocumentType, setShareDocumentType] = useState<SaleDocumentType>();
   const [deletingSaleId, setDeletingSaleId] = useState<string>();
   const [reopeningSaleId, setReopeningSaleId] = useState<string>();
   const [convertingSaleId, setConvertingSaleId] = useState<string>();
   const [query, setQuery] = useState<SaleQueryParams>({ page: 1, limit: 20 });
+  const [draftFilters, setDraftFilters] = useState<SaleQueryParams>({});
   const { data, error, isLoading, isError, isFetching } = useGetSalesQuery(query, { refetchOnMountOrArgChange: true });
   const meta = data?.meta;
   const mobileList = useMobileInfiniteList({ query, response: data, isFetching, setQuery });
   const [cancelSale] = useDeleteSaleMutation();
   const [reopenSale] = useReopenSaleMutation();
   const [convertSaleQuote] = useConvertSaleQuoteMutation();
+  const filterCount =
+    Number(Boolean(query.status)) +
+    Number(Boolean(query.fulfillmentStatus)) +
+    Number(Boolean(query.paymentStatus)) +
+    Number(Boolean(query.customerId)) +
+    Number(Boolean(query.source)) +
+    Number(Boolean(query.dateFrom || query.dateTo)) +
+    Number(Boolean(query.locationId));
+
+  const openFilters = () => {
+    setDraftFilters({
+      status: query.status,
+      fulfillmentStatus: query.fulfillmentStatus,
+      paymentStatus: query.paymentStatus,
+      customerId: query.customerId,
+      source: query.source,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+      locationId: query.locationId,
+    });
+    setFilterOpen(true);
+  };
+
+  const applyFilters = () => {
+    setQuery((current) => ({
+      ...current,
+      status: draftFilters.status,
+      fulfillmentStatus: draftFilters.fulfillmentStatus,
+      paymentStatus: draftFilters.paymentStatus,
+      customerId: draftFilters.customerId,
+      source: draftFilters.source,
+      dateFrom: draftFilters.dateFrom,
+      dateTo: draftFilters.dateTo,
+      locationId: draftFilters.locationId,
+      page: 1,
+    }));
+    setFilterOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters({});
+    setQuery((current) => ({
+      ...current,
+      status: undefined,
+      fulfillmentStatus: undefined,
+      paymentStatus: undefined,
+      customerId: undefined,
+      source: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      locationId: undefined,
+      page: 1,
+    }));
+  };
 
   const confirmCancel = (sale: Sale) => {
     if (deletingSaleId === sale.id) return;
@@ -249,7 +306,7 @@ export default function SalesPage() {
       <h3 className="pageTittle px-4 md:px-8">Sales</h3>
       <hr className="border-gray-200/80" />
       <div className="flex w-full flex-col gap-4 px-4 py-5 md:flex-row md:justify-between md:px-8 md:py-8">
-        <AppSearch placeholder="Search sale number..." onReset={() => setQuery({ page: 1, limit: 20 })} onSearchChange={(values) => setQuery((current) => ({ ...current, ...values, page: 1 }))} />
+        <AppSearch placeholder="Search sale number..." onReset={() => setQuery((current) => ({ ...current, search: undefined, page: 1 }))} onSearchChange={(values) => setQuery((current) => ({ ...current, ...values, page: 1 }))} onFilterClick={openFilters} filterCount={filterCount} />
         <div className="flex gap-x-3 md:gap-x-5">
           <AddButton onClick={toggleForm} label="New Sale" />
           <SettingsDrawer />
@@ -274,6 +331,7 @@ export default function SalesPage() {
 
       {formOpen && <SaleFormModal open={formOpen} toggle={toggleForm} />}
       {editOpen && selectedSale && <SaleFormModal open={editOpen} toggle={toggleEdit} sale={selectedSale} />}
+      <SalesFilterDrawer open={filterOpen} filters={draftFilters} onChange={(values) => setDraftFilters((prev) => ({ ...prev, ...values }))} onClose={() => setFilterOpen(false)} onApply={applyFilters} onClear={clearFilters} />
       {shareDocumentType && selectedSale && <SaleShareDocumentModal open={Boolean(shareDocumentType)} toggle={() => setShareDocumentType(undefined)} sale={selectedSale} type={shareDocumentType} />}
     </div>
   );

@@ -15,11 +15,53 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { StorePermission } from "@/types/store-access";
 import { ExpenseQueryParams } from "@/types/transaction";
 import { useState } from "react";
+import { ExpensesFilterDrawer } from "@/components/expenses/ExpensesFilterDrawer";
 
 export default function ExpensePage() {
   const { ready, hasPermission } = usePermissions();
   const [openExpenseModal, toggleOpenExpenseModal] = useToggle();
+  const [filterOpen, setFilterOpen] = useState(false);
   const [query, setQuery] = useState<ExpenseQueryParams>({ type: TransactionType.EXPENSE, page: 1, limit: 20 });
+  const [draftFilters, setDraftFilters] = useState<ExpenseQueryParams>({ type: TransactionType.EXPENSE });
+  const filterCount = Number(Boolean(query.status)) + Number(Boolean(query.categoryId)) + Number(Boolean(query.contactId)) + Number(Boolean(query.dateFrom || query.dateTo));
+
+  const openFilters = () => {
+    setDraftFilters({
+      type: TransactionType.EXPENSE,
+      status: query.status,
+      categoryId: query.categoryId,
+      contactId: query.contactId,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+    });
+    setFilterOpen(true);
+  };
+
+  const applyFilters = () => {
+    setQuery((current) => ({
+      ...current,
+      status: draftFilters.status,
+      categoryId: draftFilters.categoryId,
+      contactId: draftFilters.contactId,
+      dateFrom: draftFilters.dateFrom,
+      dateTo: draftFilters.dateTo,
+      page: 1,
+    }));
+    setFilterOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters({ type: TransactionType.EXPENSE });
+    setQuery((current) => ({
+      ...current,
+      status: undefined,
+      categoryId: undefined,
+      contactId: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      page: 1,
+    }));
+  };
 
   if (!ready) return <AppViewLoader loading />;
   if (!hasPermission(StorePermission.EXPENSES_VIEW)) {
@@ -38,7 +80,7 @@ export default function ExpensePage() {
 
       <div className="flex w-full flex-col gap-4 px-4 py-5 md:flex-row md:justify-between md:px-8 md:pb-8">
         <div className="flex gap-x-5">
-          <AppSearch placeholder="Search ..." onReset={() => setQuery({ type: TransactionType.EXPENSE, page: 1, limit: 20 })} onSearchChange={(values) => setQuery((current) => ({ ...current, ...values, page: 1 }))} />
+          <AppSearch placeholder="Search ..." onReset={() => setQuery((current) => ({ ...current, search: undefined, page: 1 }))} onSearchChange={(values) => setQuery((current) => ({ ...current, ...values, page: 1 }))} onFilterClick={openFilters} filterCount={filterCount} />
           {/* <AppViewSegments view={"table"} onChange={(view) => console.log(view)} /> */}
         </div>
         <div className="flex items-center gap-x-3">
@@ -71,6 +113,7 @@ export default function ExpensePage() {
       </div> */}
 
       <ExpenseView query={query} onQueryChange={setQuery} />
+      <ExpensesFilterDrawer open={filterOpen} filters={draftFilters} onChange={(values) => setDraftFilters((prev) => ({ ...prev, ...values }))} onClose={() => setFilterOpen(false)} onApply={applyFilters} onClear={clearFilters} />
 
       {openExpenseModal && <ExpenseFormModal open={openExpenseModal} toggle={toggleOpenExpenseModal} />}
     </div>

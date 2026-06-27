@@ -16,9 +16,10 @@ export type AppModalProps = {
   okText?: string;
   loading?: boolean;
   footer?: ReactNode | null;
+  overlayClassName?: string;
 } & ModalProps;
 
-export function AppModal({ open, title, footer, toggle, children, width = 900, height = "60vh", onOk, okText, loading = false }: AppModalProps) {
+export function AppModal({ open, title, footer, toggle, children, width = 900, height = "60vh", onOk, okText, loading = false, overlayClassName }: AppModalProps) {
   return (
     <Modal
       width={width}
@@ -28,8 +29,7 @@ export function AppModal({ open, title, footer, toggle, children, width = 900, h
           <p className="  text-sm  text-gray-600 font-normal">{}</p>
         </div>
       }
-      wrapClassName={"bg-black/60  backdrop-blur-xs "}
-      onClose={toggle}
+      wrapClassName={overlayClassName || "bg-black/60 backdrop-blur-xs"}
       styles={{ header: { background: "white" } }}
       onCancel={toggle}
       className="  !rounded-4xl"
@@ -37,7 +37,6 @@ export function AppModal({ open, title, footer, toggle, children, width = 900, h
       footer={footer}
       okText={okText || "Save"}
       onOk={onOk}
-      destroyOnClose
       okButtonProps={{ className: "bg-indigo-600 hover:bg-indigo-700" }}
     >
       <div className=" overflow-auto">

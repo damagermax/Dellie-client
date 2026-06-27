@@ -13,51 +13,45 @@ type ProductCardProps = {
   onIncrease: () => void;
 };
 
-export default function ProductCard({
-  name,
-  imageUrl,
-  price,
-  onIncrease,
-}: ProductCardProps) {
+export default function ProductCard({ name, imageUrl, price, quantity, available, onIncrease }: ProductCardProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const showPlaceholder = !imageUrl || imageFailed;
 
   return (
     <article
-      onClick={onIncrease}
-      className="group p-2 cursor-pointer flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(15,23,42,0.08)]"
+      onClick={() => {
+        if (available) {
+          onIncrease();
+        }
+      }}
+      className={`group flex h-full cursor-pointer flex-col overflow-hidden  bg-white rounded-md  transition-all duration-200 ${available ? "border-gray-200/80  hover:-translate-y-0.5 hover:border-[#2d837d]/25 " : "border-gray-200 bg-gray-50/70 opacity-70"}`}
     >
-      <div className="relative  aspect-[4/2.5] w-full rounded-lg   rounded-b-2xl overflow-clip! p-5! from-white to-gray-50">
+      <div className="relative aspect-[4/2.8] w-full overflow-hidden ">
+        <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
+          {!available ? <span className="rounded-full bg-stone-900 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">Sold out</span> : null}
+          {quantity > 0 ? <span className="rounded-full bg-[#2d837d] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">x{quantity}</span> : null}
+        </div>
+
         {showPlaceholder ? (
-          <ProductImagePlaceholder label="Product image" />
+          <div className="h-full w-full p-4">
+            <ProductImagePlaceholder label="Product image" />
+          </div>
         ) : (
           <NextImage
             src={imageUrl}
             alt={name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 16vw"
-            className="object-cover scale-[1]  transition-transform duration-300 group-hover:scale-[1.02]"
+            className={`object-cover transition-transform duration-300 ${available ? "scale-[1] group-hover:scale-[1.03]" : "grayscale-[0.2]"}`}
             onError={() => setImageFailed(true)}
           />
         )}
       </div>
 
-      <div className="flex flex-1 flex-col px-1 pt-2">
-        <h3 className="line-clamp-1 -min-h-[48px] text-xs xl:text-[15px] text-gray-700">
-          {name}
-        </h3>
-
-        {/* <div className="mt-2 hidden inline-flex hidden items-center rounded-full px-3 py-1 text-[12px] font-medium">
-          <span className={`mr-2 h-2 w-2 rounded-full ${available ? "bg-[#34d399]" : "bg-[#fca5a5]"}`} />
-          {available ? "Available" : "Not Available"}
-        </div> */}
-
-        <div className="  text-xs xl:text-[15px] font-semibold tracking-[-0.03em] text-[#121212]">
-          {price}
-        </div>
-
-        <div className="">
-          {/* <QuantityControl value={quantity} onDecrease={onDecrease} onIncrease={onIncrease} decreaseDisabled={quantity <= 0} increaseDisabled={!available} /> */}
+      <div className="flex flex-1 flex-col p-3">
+        <div>
+          <h3 className="line-clamp-1  text-sm font-medium leading-5 text-stone-900">{name}</h3>
+          <p className="mt-1 text-base font-semibold tracking-[-0.02em] text-stone-950">{price}</p>
         </div>
       </div>
     </article>

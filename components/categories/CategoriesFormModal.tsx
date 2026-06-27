@@ -1,11 +1,13 @@
 "use client";
 
 import { Checkbox, Form, Switch } from "antd";
-import { useEffect, useMemo } from "react";
+import { UploadFile } from "antd/es/upload";
+import { useEffect, useMemo, useState } from "react";
 import { AppModal, ModalProps } from "../ui/AppModal";
 import { InputFormItem, TextAreaFormItem } from "../ui/AppFormItems";
 import { Category, CategoryCreateInput, CategoryStatus, CategoryType } from "@/types/category";
 import { useCreateCategoryMutation, useUpdateCategoryMutation } from "@/lib/redux/services";
+import AppSingleImagePicker from "../ui/AppSingleImagePicker";
 
 interface CategoriesFormModalProp extends ModalProps {
   initialValues?: Category;
@@ -19,29 +21,56 @@ type CategoryFormValues = Omit<CategoryCreateInput, "status"> & {
 export default function CategoriesFormModal({ open, toggle, initialValues, type }: CategoriesFormModalProp) {
   const [categoryForm] = Form.useForm();
   const categoryType = useMemo(() => initialValues?.type || type || CategoryType.PRODUCT, [initialValues?.type, type]);
+  const [imageFiles, setImageFiles] = useState<UploadFile[]>([]);
 
-  const [createCategory, { isLoading: isCreating, isSuccess: createSuccess }] = useCreateCategoryMutation();
-  const [updateCategory, { isLoading: isUpdating, isSuccess: updateSuccess }] = useUpdateCategoryMutation();
+  const [createCategory, { isLoading: isCreating }] = useCreateCategoryMutation();
+  const [updateCategory, { isLoading: isUpdating }] = useUpdateCategoryMutation();
 
   const handleSubmit = async (values: CategoryFormValues) => {
-    const payload = {
-      ...values,
-      type: categoryType,
-      status: values.status ? CategoryStatus.ACTIVE : CategoryStatus.INACTIVE,
-      showInStorefront: categoryType === CategoryType.PRODUCT ? Boolean(values.showInStorefront) : false,
-      showInPOS: categoryType === CategoryType.PRODUCT ? Boolean(values.showInPOS) : false,
-    };
+    const payload = new FormData();
+    const nextStatus = values.status ? CategoryStatus.ACTIVE : CategoryStatus.INACTIVE;
+    const hasExistingImage = Boolean(initialValues?.imageUrl);
+    const selectedImage = imageFiles[0];
+    const hasNewImage = Boolean(selectedImage?.originFileObj);
 
-    if (initialValues?.id) {
-      await updateCategory({ id: initialValues.id, ...payload });
-      return;
+    payload.append("name", values.name);
+    payload.append("type", categoryType);
+    payload.append("status", nextStatus);
+    payload.append("description", values.description || "");
+    payload.append("showInStorefront", String(categoryType === CategoryType.PRODUCT ? Boolean(values.showInStorefront) : false));
+    payload.append("showInPOS", String(categoryType === CategoryType.PRODUCT ? Boolean(values.showInPOS) : false));
+
+    if (hasNewImage) {
+      payload.append("image", selectedImage.originFileObj as File);
+    } else if (hasExistingImage && imageFiles.length === 0) {
+      payload.append("removeImage", "true");
     }
 
-    await createCategory(payload);
+    if (initialValues?.id) {
+      await updateCategory({ id: initialValues.id, data: payload }).unwrap();
+    } else {
+      await createCategory(payload).unwrap();
+    }
+
+    categoryForm.resetFields();
+    setImageFiles([]);
+    toggle();
   };
 
   useEffect(() => {
     if (open && initialValues) {
+      setImageFiles(
+        initialValues.imageUrl
+          ? [
+              {
+                uid: initialValues.id,
+                name: initialValues.name,
+                status: "done",
+                url: initialValues.imageUrl,
+              },
+            ]
+          : [],
+      );
       categoryForm.setFieldsValue({
         ...initialValues,
         status: initialValues.status === CategoryStatus.ACTIVE,
@@ -52,21 +81,15 @@ export default function CategoriesFormModal({ open, toggle, initialValues, type 
     }
 
     if (open && !initialValues?.id) {
+      setImageFiles([]);
       categoryForm.setFieldsValue({
         type: categoryType,
-        status: CategoryStatus.ACTIVE,
+        status: true,
         showInStorefront: false,
         showInPOS: false,
       });
     }
   }, [categoryForm, categoryType, initialValues, open]);
-
-  useEffect(() => {
-    if (updateSuccess || createSuccess) {
-      categoryForm.resetFields();
-      toggle();
-    }
-  }, [updateSuccess, createSuccess, categoryForm, toggle]);
 
   return (
     <AppModal
@@ -91,11 +114,21 @@ export default function CategoriesFormModal({ open, toggle, initialValues, type 
         }}
       >
         <div className="space-y-5 p-5 px-6">
+          {categoryType === CategoryType.PRODUCT ? (
+            <div className="flex items-start gap-4">
+              <AppSingleImagePicker value={imageFiles} onChange={setImageFiles} size={72} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900">Category image</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">Optional image used to represent this category visually.</p>
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid ">
             <InputFormItem label="Name" name="name" placeholder="Enter category name" rules={[{ message: "Enter category name", required: true }]} />
           </div>
 
-          <TextAreaFormItem label="Description" name="description" placeholder="Add a short description" />
+          {categoryType === CategoryType.EXPENSE ? <TextAreaFormItem label="Description" name="description" placeholder="Add a short description" /> : null}
 
           <div>
             <div className="flex w-full items-center justify-between    py-3">
@@ -109,23 +142,19 @@ export default function CategoriesFormModal({ open, toggle, initialValues, type 
             </div>
           </div>
 
-          {categoryType === CategoryType.PRODUCT && (
-            <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
-              <div className="mb-3">
-                <p className="text-sm font-medium text-gray-900">Product Visibility</p>
-                <p className="mt-1 text-xs text-gray-500">Choose where this category should appear.</p>
-              </div>
-
-              <div className="space-y-3">
+          {categoryType === CategoryType.PRODUCT ? (
+            <div className="">
+              <p className="text-sm font-medium text-gray-900">Visibility</p>
+              <div className="mt-3 space-y-3">
                 <Form.Item name="showInStorefront" valuePropName="checked" className="!mb-0">
-                  <Checkbox>Show in Storefront</Checkbox>
+                  <Checkbox>Storefront</Checkbox>
                 </Form.Item>
                 <Form.Item name="showInPOS" valuePropName="checked" className="!mb-0">
-                  <Checkbox>Show in POS</Checkbox>
+                  <Checkbox>POS</Checkbox>
                 </Form.Item>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </Form>
     </AppModal>

@@ -315,6 +315,13 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
         render: (_: any, record: ProductLineItem) => <InputNumber variant="underlined" controls={false} min={1} value={record.quantity} onChange={(value) => updateLineItem(record.id, { quantity: Number(value || 1) })} />,
       },
       {
+        title: "Weight",
+        dataIndex: "weight",
+        key: "weight",
+        width: "12%",
+        render: (_: any, record: ProductLineItem) => <InputNumber variant="underlined" controls={false} min={0} suffix="kg" value={record.weight} onChange={(value) => updateLineItem(record.id, { weight: Number(value || 0) })} />,
+      },
+      {
         title: "Cost",
         dataIndex: "unitPrice",
         key: "unitPrice",

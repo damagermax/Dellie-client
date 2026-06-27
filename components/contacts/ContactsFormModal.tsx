@@ -14,6 +14,8 @@ import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
 interface ContactsFormModalProps extends ModalProps {
   initialValues?: Contact;
   onSaved?: () => void;
+  hideRoles?: boolean;
+  defaultRoles?: ContactRole[];
 }
 
 type ContactsFormValues = CreateContactInput &
@@ -61,7 +63,7 @@ const contactRoleCards = [
   },
 ] as const;
 
-export default function ContactsFormModal({ open, toggle, initialValues, onSaved }: ContactsFormModalProps) {
+export default function ContactsFormModal({ open, toggle, initialValues, onSaved, hideRoles = false, defaultRoles }: ContactsFormModalProps) {
   const storeCurrencyId = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}")?.store?.currencyId : undefined;
   const [contactsForm] = Form.useForm<ContactsFormValues>();
 
@@ -79,15 +81,17 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
 
   useEffect(() => {
     if (!initialValues) {
+      const fallbackRoles = hideRoles ? defaultRoles || [ContactRole.CUSTOMER] : [];
+
       contactsForm.setFieldsValue({
         currencyId: storeCurrencyId,
-        roles: [],
+        roles: fallbackRoles,
         enableEmployeeAccess: false,
         employeePermissions: defaultEmployeePermissions,
         employeeRole: "staff",
       });
     }
-  }, [contactsForm, defaultEmployeePermissions, initialValues, storeCurrencyId]);
+  }, [contactsForm, defaultEmployeePermissions, defaultRoles, hideRoles, initialValues, storeCurrencyId]);
 
   useEffect(() => {
     if (initialValues && !contactData) {
@@ -141,7 +145,7 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
     const payload: CreateContactInput | UpdateContactInput = {
       ...values,
       currencyId: normalizedCurrencyId,
-      roles: (values.roles || []).filter((role) => Object.values(ContactRole).includes(role)),
+      roles: (hideRoles ? defaultRoles || [ContactRole.CUSTOMER] : values.roles || []).filter((role) => Object.values(ContactRole).includes(role)),
       status: values.status || initialValues?.status || ContactStatus.ACTIVE,
     } as CreateContactInput | UpdateContactInput;
 
@@ -184,9 +188,11 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
 
             <Divider className="!my-0 col-span-2" />
 
-            <Form.Item className="col-span-2" label="Contact Roles" name="roles" help="">
-              <RolePicker />
-            </Form.Item>
+            {!hideRoles ? (
+              <Form.Item className="col-span-2" label="Contact Roles" name="roles" help="">
+                <RolePicker />
+              </Form.Item>
+            ) : null}
           </div>
 
           {selectedRoles.includes(ContactRole.EMPLOYEE) && (

@@ -26,7 +26,14 @@ export function ProductVariantSelectorModal({ parent, onClose, onSelect, priceLa
   };
 
   return (
-    <AppModal open={Boolean(parent)} toggle={onClose} title={`Select ${parent?.name || "product"} variant`} footer={null} width={560}>
+    <AppModal
+      open={Boolean(parent)}
+      toggle={onClose}
+      title={`Select ${parent?.name || "product"} variant`}
+      footer={null}
+      width={560}
+      overlayClassName="bg-[#1c1917]/70 backdrop-blur-[2px]"
+    >
       <div className="divide-y divide-gray-100 px-5 pb-5">
         {(parent?.variants || []).filter((variant) => variant.isAvailable !== false).map((variant) => (
           <button

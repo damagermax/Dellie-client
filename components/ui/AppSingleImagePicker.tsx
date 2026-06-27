@@ -3,7 +3,7 @@
 import { UploadOutlined } from "@ant-design/icons";
 import { Image, Upload, UploadFile, UploadProps } from "antd";
 import { RcFile } from "antd/es/upload";
-import { CSSProperties, useState } from "react";
+import { CSSProperties, useEffect, useState } from "react";
 
 interface AppSingleImagePickerProps {
   value?: UploadFile[];
@@ -13,11 +13,33 @@ interface AppSingleImagePickerProps {
 }
 
 const AppSingleImagePicker: React.FC<AppSingleImagePickerProps> = ({
+  value = [],
   onChange,
   className = "",
   size = 60, // Default size in pixels
 }) => {
   const [previewImage, setPreviewImage] = useState<string>("");
+
+  useEffect(() => {
+    const file = value[0];
+    if (!file) {
+      setPreviewImage("");
+      return;
+    }
+
+    if (file.url) {
+      setPreviewImage(file.url);
+      return;
+    }
+
+    if (file.originFileObj) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewImage((e.target?.result as string) || "");
+      };
+      reader.readAsDataURL(file.originFileObj as RcFile);
+    }
+  }, [value]);
 
   const handleChange: UploadProps["onChange"] = ({ fileList: newFileList }) => {
     if (newFileList.length > 0) {

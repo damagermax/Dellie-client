@@ -22,11 +22,10 @@ import {
 import CategoriesFormModal from "../categories/CategoriesFormModal";
 import CategoriesList from "../categories/categories-view/CategoriesList";
 import DiscountsList from "../discounts/discount-view/DiscountsList";
-import { CategoryType } from "@/types/category";
+import { Category, CategoryType } from "@/types/category";
 import { Location, Tax } from "@/types/index";
 import { PaymentMethod } from "@/types/payment-method";
 import { PaymentTerm } from "@/types/payment-term";
-import { PricingGroup } from "@/types/pricing-group";
 import LocationList from "./locations/LocationList";
 import LocationsFormModal from "./locations/LocationsFormModal";
 import PaymentMethodsForm from "./PaymentMethodsForm";
@@ -34,15 +33,13 @@ import PaymentMethodsList from "./PaymentMethodsList";
 import PaymentTermsForm from "./PaymentTermsForm";
 import PaymentTermsList from "./PaymentTermsList";
 import POSSettings from "./POSSettings";
-import PricingGroupsForm from "./PricingGroupsForm";
-import PricingGroupsList from "./PricingGroupsList";
 import BusinessProfileSettings from "./BusinessProfileSettings";
 import GeneralSettings from "./GeneralSettings";
 import { TaxesDrawer } from "./TaxForm";
 import TaxList from "./TaxList";
 
-export type SettingTab = "Business Profile" | "General" | "POS" | "Taxes" | "Locations" | "Discount" | "product_categories" | "expense_categories" | "payment_term" | "payment_method" | "pricing_group";
-type SettingItem = Tax | Location | PaymentTerm | PaymentMethod | PricingGroup | null;
+export type SettingTab = "Business Profile" | "General" | "POS" | "Taxes" | "Locations" | "Discount" | "product_categories" | "expense_categories" | "payment_term" | "payment_method";
+type SettingItem = Tax | Location | PaymentTerm | PaymentMethod | Category | null;
 
 type SettingOption = {
   key: SettingTab;
@@ -52,6 +49,12 @@ type SettingOption = {
   canCreate: boolean;
   icon: IconType;
   tone: string;
+};
+
+type SettingGroup = {
+  title: string;
+  description: string;
+  items: SettingTab[];
 };
 
 export const SETTING_OPTIONS: SettingOption[] = [
@@ -141,14 +144,28 @@ export const SETTING_OPTIONS: SettingOption[] = [
     icon: LuCreditCard,
     tone: "bg-cyan-50 text-cyan-700",
   },
+];
+
+const SETTINGS_GROUPS: SettingGroup[] = [
   {
-    key: "pricing_group",
-    label: "Pricing Groups",
-    description: "Customer pricing groups and defaults",
-    createLabel: "New Pricing Group",
-    canCreate: true,
-    icon: LuBadgePercent,
-    tone: "bg-orange-50 text-orange-700",
+    title: "Store",
+    description: "Business identity, modules, POS defaults, and operating locations.",
+    items: ["Business Profile", "General", "POS", "Locations"],
+  },
+  {
+    title: "Catalog",
+    description: "Product structure, pricing rules, discounts, and tax setup.",
+    items: ["product_categories", "Discount", "Taxes"],
+  },
+  {
+    title: "Payments & Pricing",
+    description: "Terms and methods used to manage transaction payments.",
+    items: ["payment_term", "payment_method"],
+  },
+  {
+    title: "Expenses",
+    description: "Expense labels used across operating cost tracking and reporting.",
+    items: ["expense_categories"],
   },
 ];
 
@@ -194,6 +211,23 @@ export default function SettingsWorkspace() {
     setOpenForm(true);
   };
 
+  const renderSettingsRow = (option: SettingOption) => {
+    const Icon = option.icon;
+
+    return (
+      <button key={option.key} type="button" className="flex w-full items-center gap-3 border-b border-gray-100 px-4 py-4 text-left last:border-b-0 active:bg-gray-50" onClick={() => setSection(option.key)}>
+        <span className={`flex size-11 shrink-0 items-center justify-center rounded-lg ${option.tone}`}>
+          <Icon size={21} strokeWidth={1.9} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium text-gray-900">{option.label}</span>
+          <span className="mt-1 block text-sm leading-5 text-gray-500">{option.description}</span>
+        </span>
+        <LuChevronRight className="shrink-0 text-gray-400" />
+      </button>
+    );
+  };
+
   const renderSettingsContent = () => {
     switch (selectedTab) {
       case "Business Profile":
@@ -216,8 +250,6 @@ export default function SettingsWorkspace() {
         return <PaymentTermsList onSelect={(paymentTerm) => openEditForm(paymentTerm)} />;
       case "payment_method":
         return <PaymentMethodsList onSelect={(paymentMethod) => openEditForm(paymentMethod)} />;
-      case "pricing_group":
-        return <PricingGroupsList onSelect={(pricingGroup) => openEditForm(pricingGroup)} />;
       default:
         return null;
     }
@@ -230,15 +262,13 @@ export default function SettingsWorkspace() {
       case "Locations":
         return <LocationsFormModal initialValues={selectedItem as Location} open={openForm} toggle={toggleOpenForm} />;
       case "product_categories":
-        return <CategoriesFormModal type={CategoryType.PRODUCT} open={openForm} toggle={toggleOpenForm} />;
+        return <CategoriesFormModal type={CategoryType.PRODUCT} initialValues={selectedItem as Category} open={openForm} toggle={toggleOpenForm} />;
       case "expense_categories":
-        return <CategoriesFormModal type={CategoryType.EXPENSE} open={openForm} toggle={toggleOpenForm} />;
+        return <CategoriesFormModal type={CategoryType.EXPENSE} initialValues={selectedItem as Category} open={openForm} toggle={toggleOpenForm} />;
       case "payment_term":
         return <PaymentTermsForm initialValues={selectedItem as PaymentTerm} open={openForm} toggle={toggleOpenForm} />;
       case "payment_method":
         return <PaymentMethodsForm initialValues={selectedItem as PaymentMethod} open={openForm} toggle={toggleOpenForm} />;
-      case "pricing_group":
-        return <PricingGroupsForm initialValues={selectedItem as PricingGroup} open={openForm} toggle={toggleOpenForm} />;
       default:
         return null;
     }
@@ -247,7 +277,7 @@ export default function SettingsWorkspace() {
   return (
     <>
       <div className="min-h-full bg-white">
-        <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-3xl flex-col bg-white">
+        <div className={`mx-auto flex min-h-[calc(100vh-4rem)] w-full flex-col bg-white ${showSettingsList ? "" : "md:w-1/2"}`}>
           {showSettingsList && (
             <div className="border-b border-gray-200 px-4 py-5 sm:px-6">
               <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
@@ -275,23 +305,23 @@ export default function SettingsWorkspace() {
             <main className={`min-h-0 flex-1 overflow-y-auto bg-white ${showCreateAction && !showSettingsList ? "pb-24" : "pb-8"}`}>
               {showSettingsList ? (
                 <div className="px-4 py-3 sm:px-6">
-                  <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                    {SETTING_OPTIONS.map((option) => {
-                      const Icon = option.icon;
+                  <div className="overflow-hidden rounded-lg border border-gray-200 bg-white md:hidden">{SETTING_OPTIONS.map((option) => renderSettingsRow(option))}</div>
 
-                      return (
-                        <button key={option.key} type="button" className="flex w-full items-center gap-3 border-b border-gray-100 px-4 py-4 text-left last:border-b-0 active:bg-gray-50" onClick={() => setSection(option.key)}>
-                          <span className={`flex size-11 shrink-0 items-center justify-center rounded-lg ${option.tone}`}>
-                            <Icon size={21} strokeWidth={1.9} />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-medium text-gray-900">{option.label}</span>
-                            <span className="mt-1 block text-sm leading-5 text-gray-500">{option.description}</span>
-                          </span>
-                          <LuChevronRight className="shrink-0 text-gray-400" />
-                        </button>
-                      );
-                    })}
+                  <div className="hidden md:grid md:grid-cols-2 md:gap-4">
+                    {SETTINGS_GROUPS.map((group) => (
+                      <section key={group.title} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                        <div className="border-b border-gray-100 px-4 py-4">
+                          <h2 className="text-base font-semibold text-gray-900">{group.title}</h2>
+                          <p className="mt-1 text-sm leading-5 text-gray-500">{group.description}</p>
+                        </div>
+                        <div>
+                          {group.items.map((itemKey) => {
+                            const option = getSettingOption(itemKey);
+                            return renderSettingsRow(option);
+                          })}
+                        </div>
+                      </section>
+                    ))}
                   </div>
                 </div>
               ) : (

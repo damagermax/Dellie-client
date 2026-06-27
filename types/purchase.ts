@@ -118,6 +118,7 @@ export interface PurchaseQueryParams {
   fulfillmentStatus?: PurchaseReceiptStatus;
   paymentStatus?: "paid" | "partial" | "unpaid";
   supplierId?: string;
+  locationId?: string;
   dateFrom?: string;
   dateTo?: string;
   sortBy?: string;

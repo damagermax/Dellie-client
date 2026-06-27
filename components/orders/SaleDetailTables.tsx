@@ -67,19 +67,7 @@ const tableOptions = [
   { label: <SegmentLabel icon={<CreditCard size={15} />} text="Payments" />, value: "payments" },
 ] as const;
 
-export default function SaleDetailTables({
-  sale,
-  currency,
-  canManage = false,
-  isCancelled,
-  isReadOnly = false,
-  onEditFulfillment,
-  onDeleteFulfillment,
-  onEditReturn,
-  onDeleteReturn,
-  onEditPayment,
-  onDeletePayment,
-}: SaleDetailTablesProps) {
+export default function SaleDetailTables({ sale, currency, canManage = false, isCancelled, isReadOnly = false, onEditFulfillment, onDeleteFulfillment, onEditReturn, onDeleteReturn, onEditPayment, onDeletePayment }: SaleDetailTablesProps) {
   const [view, setView] = React.useState<SaleTableView>("items");
   const canMutate = canManage && !isCancelled && !isReadOnly;
   const availableOptions = React.useMemo(() => tableOptions.filter((option) => option.value !== "returns" || Boolean(sale.returnedItems?.length)), [sale.returnedItems?.length]);
@@ -91,14 +79,20 @@ export default function SaleDetailTables({
   const hasReturnedItems = sale.lineItems.some((line) => Number(line.returnedQuantity || 0) > 0);
   const hasTaxedItems = sale.lineItems.some((line) => Boolean(line.taxDescription) || Number(line.taxAmount || 0) > 0);
   const itemColumns: TableProps<PurchaseLineItem>["columns"] = [
-    { title: "Product", key: "productName", className: "!pl-8", width: "45%", render: (_, line) => <ProductCell name={line.productName} product={line.productId} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} /> },
+    {
+      title: "Product",
+      key: "productName",
+      className: "!pl-8",
+      width: "45%",
+      render: (_, line) => <ProductCell name={line.productName} product={line.productId} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} />,
+    },
     { title: "Ordered", dataIndex: "quantity", key: "quantity" },
     { title: "Fulfilled", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
     ...(hasReturnedItems ? [{ title: "Returned", key: "returned", render: (_: unknown, line: PurchaseLineItem) => Number(line.returnedQuantity || 0).toLocaleString() }] : []),
     { title: "Remaining", key: "remaining", render: (_, line) => Math.max(Number(line.quantity || 0) - Number(line.fulfilledQuantity || 0), 0).toLocaleString() },
     { title: "Unit Price", key: "unitPrice", render: (_, line) => Number(line.unitPrice).toFixed(2) },
     ...(hasTaxedItems ? [{ title: "Tax", key: "tax", render: (_: unknown, line: PurchaseLineItem) => (line.taxDescription ? `${line.taxRate || 0}%` : "-") }] : []),
-    { title: "Total", key: "total", className: "!pr-8", render: (_, line) => Number(line.total).toFixed(2) },
+    { title: "Total", key: "total", className: "!pr-8", align: "end", render: (_, line) => Number(line.total).toFixed(2) },
   ];
   const fulfillmentColumns: TableProps<PurchaseStockEvent>["columns"] = [
     { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
@@ -195,7 +189,13 @@ export default function SaleDetailTables({
               />
             </div>
             <div className="hidden md:block">
-              <AppTable columns={(current.columns || []) as TableProps<PurchaseLineItem | PurchaseStockEvent | PurchaseReturnEvent | Payment>["columns"]} dataSource={current.data as Array<PurchaseLineItem | PurchaseStockEvent | PurchaseReturnEvent | Payment>} rowKey="id" pagination={false} scrollX={860} />
+              <AppTable
+                columns={(current.columns || []) as TableProps<PurchaseLineItem | PurchaseStockEvent | PurchaseReturnEvent | Payment>["columns"]}
+                dataSource={current.data as Array<PurchaseLineItem | PurchaseStockEvent | PurchaseReturnEvent | Payment>}
+                rowKey="id"
+                pagination={false}
+                scrollX={860}
+              />
             </div>
             {view === "items" ? (
               <SaleItemsTotalsCard
@@ -249,11 +249,7 @@ function SaleItemsTotalsCard({
           <InlineSummaryRow label="Items Total" value={money(currency, subTotal)} />
           <InlineSummaryRow label="Discount" value={`- ${money(currency, discountAmount)}`} />
           <InlineSummaryRow label="Subtotal" value={money(currency, discountedSubtotal)} />
-          {taxSummary.length
-            ? taxSummary.map((tax) => <InlineSummaryRow key={tax.name} label={tax.name} value={money(currency, tax.amount)} />)
-            : taxAmount > 0
-              ? <InlineSummaryRow label="Taxes" value={money(currency, taxAmount)} />
-              : null}
+          {taxSummary.length ? taxSummary.map((tax) => <InlineSummaryRow key={tax.name} label={tax.name} value={money(currency, tax.amount)} />) : taxAmount > 0 ? <InlineSummaryRow label="Taxes" value={money(currency, taxAmount)} /> : null}
           <div className="border-t border-gray-300 pt-4">
             <InlineSummaryRow label="Total" value={money(currency, total)} strong />
           </div>
@@ -282,10 +278,13 @@ function money(currency: string, value: number | undefined) {
   return `${prefix}${currency} ${Math.abs(amount).toFixed(2)}`;
 }
 
-type MobileSaleListProps = Pick<
-  SaleDetailTablesProps,
-  "currency" | "onEditFulfillment" | "onDeleteFulfillment" | "onEditReturn" | "onDeleteReturn" | "onEditPayment" | "onDeletePayment"
-> & { view: SaleTableView; sale: Sale; canMutate: boolean; hasReturnedItems: boolean; hasTaxedItems: boolean };
+type MobileSaleListProps = Pick<SaleDetailTablesProps, "currency" | "onEditFulfillment" | "onDeleteFulfillment" | "onEditReturn" | "onDeleteReturn" | "onEditPayment" | "onDeletePayment"> & {
+  view: SaleTableView;
+  sale: Sale;
+  canMutate: boolean;
+  hasReturnedItems: boolean;
+  hasTaxedItems: boolean;
+};
 
 function MobileSaleList({ view, sale, currency, hasReturnedItems, hasTaxedItems, canMutate, onEditFulfillment, onDeleteFulfillment, onEditReturn, onDeleteReturn, onEditPayment, onDeletePayment }: MobileSaleListProps) {
   if (view === "items") {
@@ -301,7 +300,12 @@ function MobileSaleList({ view, sale, currency, hasReturnedItems, hasTaxedItems,
               <MobileMetric label="Remaining" value={Math.max(Number(line.quantity || 0) - Number(line.fulfilledQuantity || 0), 0).toLocaleString()} />
               {hasTaxedItems ? <MobileMetric label="Tax" value={line.taxDescription ? `${line.taxRate || 0}%` : "-"} /> : null}
             </div>
-            <div className="mt-3 flex justify-between border-t border-gray-100 pt-3 text-sm"><span className="text-gray-500">Line total</span><span className="font-semibold text-gray-950">{currency} {Number(line.total || 0).toFixed(2)}</span></div>
+            <div className="mt-3 flex justify-between border-t border-gray-100 pt-3 text-sm">
+              <span className="text-gray-500">Line total</span>
+              <span className="font-semibold text-gray-950">
+                {currency} {Number(line.total || 0).toFixed(2)}
+              </span>
+            </div>
           </div>
         ))}
       </div>
@@ -309,25 +313,76 @@ function MobileSaleList({ view, sale, currency, hasReturnedItems, hasTaxedItems,
   }
 
   if (view === "payments") {
-    return <div className="divide-y divide-gray-200 border-y border-gray-200">{((sale.payments || []) as Payment[]).map((payment) => <MobileEvent key={payment.id} title={payment.type?.replaceAll("_", " ") || "Payment"} date={formatDate(payment.date)} detail={payment.note || "No reference"} value={`${currency} ${Number(payment.amount || 0).toFixed(2)}`} action={canMutate ? <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} /> : null} />)}</div>;
+    return (
+      <div className="divide-y divide-gray-200 border-y border-gray-200">
+        {((sale.payments || []) as Payment[]).map((payment) => (
+          <MobileEvent
+            key={payment.id}
+            title={payment.type?.replaceAll("_", " ") || "Payment"}
+            date={formatDate(payment.date)}
+            detail={payment.note || "No reference"}
+            value={`${currency} ${Number(payment.amount || 0).toFixed(2)}`}
+            action={canMutate ? <ActionDropdown openEditModal={() => onEditPayment(payment)} onDelete={() => onDeletePayment(payment)} /> : null}
+          />
+        ))}
+      </div>
+    );
   }
 
   if (view === "returns") {
-    return <div className="divide-y divide-gray-200 border-y border-gray-200">{(sale.returnedItems || []).map((event) => <MobileEvent key={event.id} title={<ResolvedProductName name={productName(event.productId)} product={event.productId} />} date={formatDate(event.returnedAt)} detail={event.reason || "No reason provided"} value={`${Number(event.quantity || 0).toLocaleString()} returned`} action={canMutate ? <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} /> : null} />)}</div>;
+    return (
+      <div className="divide-y divide-gray-200 border-y border-gray-200">
+        {(sale.returnedItems || []).map((event) => (
+          <MobileEvent
+            key={event.id}
+            title={<ResolvedProductName name={productName(event.productId)} product={event.productId} />}
+            date={formatDate(event.returnedAt)}
+            detail={event.reason || "No reason provided"}
+            value={`${Number(event.quantity || 0).toLocaleString()} returned`}
+            action={canMutate ? <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} /> : null}
+          />
+        ))}
+      </div>
+    );
   }
 
-  return <div className="divide-y divide-gray-200 border-y border-gray-200">{(sale.fulfilledItems || []).map((event) => <MobileEvent key={event.id} title={<ResolvedProductName name={productName(event.productId)} product={event.productId} />} date={formatDate(event.fulfilledAt)} detail={productSku(event.productId) ? `SKU: ${productSku(event.productId)}` : "Fulfillment"} value={`${Number(event.quantity || 0).toLocaleString()} fulfilled`} action={canMutate ? <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} /> : null} />)}</div>;
+  return (
+    <div className="divide-y divide-gray-200 border-y border-gray-200">
+      {(sale.fulfilledItems || []).map((event) => (
+        <MobileEvent
+          key={event.id}
+          title={<ResolvedProductName name={productName(event.productId)} product={event.productId} />}
+          date={formatDate(event.fulfilledAt)}
+          detail={productSku(event.productId) ? `SKU: ${productSku(event.productId)}` : "Fulfillment"}
+          value={`${Number(event.quantity || 0).toLocaleString()} fulfilled`}
+          action={canMutate ? <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} /> : null}
+        />
+      ))}
+    </div>
+  );
 }
 
 function MobileMetric({ label, value }: { label: string; value: string }) {
-  return <div><p className="text-xs text-gray-500">{label}</p><p className="mt-0.5 font-medium text-gray-900">{value}</p></div>;
+  return (
+    <div>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="mt-0.5 font-medium text-gray-900">{value}</p>
+    </div>
+  );
 }
 
 function MobileEvent({ title, detail, date, value, action }: { title: React.ReactNode; detail: string; date: string; value: string; action: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 px-4 py-4">
-      <div className="min-w-0 flex-1"><p className="truncate font-medium capitalize text-gray-950">{title}</p><p className="mt-1 truncate text-sm text-gray-500">{detail}</p><p className="mt-1 text-xs text-gray-400">{date}</p></div>
-      <div className="flex shrink-0 items-start gap-2"><span className="text-sm font-semibold text-gray-950">{value}</span>{action}</div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium capitalize text-gray-950">{title}</p>
+        <p className="mt-1 truncate text-sm text-gray-500">{detail}</p>
+        <p className="mt-1 text-xs text-gray-400">{date}</p>
+      </div>
+      <div className="flex shrink-0 items-start gap-2">
+        <span className="text-sm font-semibold text-gray-950">{value}</span>
+        {action}
+      </div>
     </div>
   );
 }

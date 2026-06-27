@@ -104,89 +104,89 @@ export default function SaleDetailContent({
   const moreItems: MenuProps["items"] = isClosed
     ? readOnlyItems
     : isQuote
-    ? [
-        ...(canManage
-          ? [
-              {
-                key: "edit",
-                disabled: !canEdit,
-                icon: <Pencil size={15} />,
-                label: "Edit Quote",
-                onClick: onEdit,
-              },
-            ]
-          : []),
-        ...readOnlyItems,
-        ...(canManage
-          ? [
-              {
-                type: "divider" as const,
-              },
-              {
-                key: "delete",
-                icon: <Trash2 size={15} />,
-                danger: true,
-                disabled: isCancelling,
-                label: "Cancel Quote",
-                onClick: onDelete,
-              },
-            ]
-          : []),
-      ]
-    : [
-        ...(canManage
-          ? [
-              {
-                key: "edit",
-                disabled: !canEdit,
-                icon: <Pencil size={15} />,
-                label: "Edit Sale",
-                onClick: onEdit,
-              },
-              {
-                key: "refund",
-                icon: <RotateCcw size={15} />,
-                label: "Refund Payment",
-              },
-              {
-                key: "return",
-                icon: <Undo2 size={15} />,
-                label: "Return Items",
-              },
-              // {
-              //   key: "issue_credit",
-              //   icon: <RotateCcw size={15} />,
-              //   label: "Issue Credit",
-              // },
-              {
-                key: "write_off",
-                icon: <Receipt size={15} />,
-                label: "Write Off Balance",
-              },
-              {
-                key: "close",
-                icon: <Lock size={15} />,
-                label: "Close Sale",
-              },
-            ]
-          : []),
-        ...readOnlyItems,
-        ...(canManage
-          ? [
-              {
-                type: "divider" as const,
-              },
-              {
-                key: "delete",
-                icon: <Trash2 size={15} />,
-                danger: true,
-                disabled: isCancelling,
-                label: "Cancel Sale",
-                onClick: onDelete,
-              },
-            ]
-          : []),
-      ];
+      ? [
+          ...(canManage
+            ? [
+                {
+                  key: "edit",
+                  disabled: !canEdit,
+                  icon: <Pencil size={15} />,
+                  label: "Edit Quote",
+                  onClick: onEdit,
+                },
+              ]
+            : []),
+          ...readOnlyItems,
+          ...(canManage
+            ? [
+                {
+                  type: "divider" as const,
+                },
+                {
+                  key: "delete",
+                  icon: <Trash2 size={15} />,
+                  danger: true,
+                  disabled: isCancelling,
+                  label: "Cancel Quote",
+                  onClick: onDelete,
+                },
+              ]
+            : []),
+        ]
+      : [
+          ...(canManage
+            ? [
+                {
+                  key: "edit",
+                  disabled: !canEdit,
+                  icon: <Pencil size={15} />,
+                  label: "Edit Sale",
+                  onClick: onEdit,
+                },
+                {
+                  key: "refund",
+                  icon: <RotateCcw size={15} />,
+                  label: "Refund Payment",
+                },
+                {
+                  key: "return",
+                  icon: <Undo2 size={15} />,
+                  label: "Return Items",
+                },
+                // {
+                //   key: "issue_credit",
+                //   icon: <RotateCcw size={15} />,
+                //   label: "Issue Credit",
+                // },
+                {
+                  key: "write_off",
+                  icon: <Receipt size={15} />,
+                  label: "Write Off Balance",
+                },
+                {
+                  key: "close",
+                  icon: <Lock size={15} />,
+                  label: "Close Sale",
+                },
+              ]
+            : []),
+          ...readOnlyItems,
+          ...(canManage
+            ? [
+                {
+                  type: "divider" as const,
+                },
+                {
+                  key: "delete",
+                  icon: <Trash2 size={15} />,
+                  danger: true,
+                  disabled: isCancelling,
+                  label: "Cancel Sale",
+                  onClick: onDelete,
+                },
+              ]
+            : []),
+        ];
 
   const handleMoreClick: MenuProps["onClick"] = ({ key }) => {
     if (key === "invoice" || key === "receipt") {
@@ -297,7 +297,13 @@ export default function SaleDetailContent({
                         Return
                       </Button>
                     )}
-                    <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={canRefundPayment ? <RotateCcw size={15} /> : <CreditCard size={15} />} disabled={Boolean(sale.locked)} onClick={canRefundPayment ? onRefund : onRecordPayment}>
+                    <Button
+                      type="primary"
+                      className="!bg-[#f7c855] !font-semibold !text-black !shadow-none"
+                      icon={canRefundPayment ? <RotateCcw size={15} /> : <CreditCard size={15} />}
+                      disabled={Boolean(sale.locked)}
+                      onClick={canRefundPayment ? onRefund : onRecordPayment}
+                    >
                       {canRefundPayment ? "Refund Payment" : "Record Payment"}
                     </Button>
                   </>
@@ -314,7 +320,7 @@ export default function SaleDetailContent({
         <div className="px-4 md:px-8">
           {isCancelled && <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">This sale has been cancelled and is currently view-only. Reopen it to make changes.</div>}
           {isClosed && <div className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">This sale is closed and read-only. Reopen it to make changes.</div>}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-4 sm:grid-cols-2">
             <IdentityPanel label="Customer" title={customerName} description={customerMeta} />
             <IdentityPanel label="Location" title={locationName} description={locationMeta} />
           </div>
@@ -334,19 +340,21 @@ export default function SaleDetailContent({
             <p className="text-sm leading-6 text-gray-700">{sale.note}</p>
           </div>
         )}
-        <div id="sale-records" className="scroll-mt-14"><SaleDetailTables
-          sale={sale}
-          currency={currency}
-          canManage={canManage}
-          isCancelled={isCancelled}
-          isReadOnly={isClosed}
-          onEditFulfillment={onEditFulfillment}
-          onDeleteFulfillment={onDeleteFulfillment}
-          onEditReturn={onEditReturn}
-          onDeleteReturn={onDeleteReturn}
-          onEditPayment={onEditPayment}
-          onDeletePayment={onDeletePayment}
-        /></div>
+        <div id="sale-records" className="scroll-mt-14">
+          <SaleDetailTables
+            sale={sale}
+            currency={currency}
+            canManage={canManage}
+            isCancelled={isCancelled}
+            isReadOnly={isClosed}
+            onEditFulfillment={onEditFulfillment}
+            onDeleteFulfillment={onDeleteFulfillment}
+            onEditReturn={onEditReturn}
+            onDeleteReturn={onDeleteReturn}
+            onEditPayment={onEditPayment}
+            onDeletePayment={onDeletePayment}
+          />
+        </div>
       </div>
     </section>
   );
@@ -360,6 +368,7 @@ function IdentityPanel({ label, title, description }: { label: string; title: st
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">{label}</p>
           <p className="mt-1 truncate text-lg font-medium text-gray-800">{title}</p>
           <p className="mt-1 text-sm text-gray-500">{description}</p>
+          <p>Spintex</p>
         </div>
       </div>
     </div>

@@ -14,6 +14,8 @@ export interface Category {
   type: CategoryType;
   name: string;
   description?: string;
+  imageUrl?: string;
+  imageKey?: string;
   status?: CategoryStatus;
   showInStorefront?: boolean;
   showInPOS?: boolean;
@@ -25,6 +27,8 @@ export interface CategoryCreateInput {
   type: CategoryType;
   parentId?: string;
   description?: string;
+  image?: File;
+  removeImage?: boolean;
   status?: CategoryStatus;
   showInStorefront?: boolean;
   showInPOS?: boolean;

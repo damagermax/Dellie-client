@@ -22,8 +22,8 @@ export default function ResponsiveActionMenu({ items = [], onClick, title = "Act
   const actionItems = items.filter(isActionItem);
 
   const trigger = (
-    <button type="button" aria-label="Open actions" className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-      <RiMoreLine size={17} />
+    <button type="button" aria-label="Open actions" className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600">
+      <RiMoreLine size={15} />
     </button>
   );
 

@@ -58,7 +58,7 @@ export function ActionDropdown({ menu, openEditModal, onDelete, onActivate, onDe
     ...(status === "inactive" && onActivate
       ? [
           {
-            key: "deactivate",
+            key: "activate",
             label: <DropdownItemLabel icon={<LuEyeOff size={15} />} text="Activate" />,
             onClick: onActivate,
           },

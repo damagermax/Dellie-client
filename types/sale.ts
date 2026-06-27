@@ -71,6 +71,8 @@ export interface SaleQueryParams {
   fulfillmentStatus?: PurchaseReceiptStatus;
   paymentStatus?: "paid" | "partial" | "unpaid";
   customerId?: string;
+  locationId?: string;
+  createdBy?: string;
   source?: string;
   dateFrom?: string;
   dateTo?: string;

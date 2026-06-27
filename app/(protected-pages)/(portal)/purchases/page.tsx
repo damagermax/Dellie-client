@@ -22,6 +22,7 @@ import useToggle from "@/hooks/UseToggle";
 import { useMobileInfiniteList } from "@/hooks/useMobileInfiniteList";
 import { formatDate } from "@/lib/dateUtils";
 import { useDeletePurchaseMutation, useGetPurchasesQuery, useReopenPurchaseMutation } from "@/lib/redux/services";
+import { PurchasesFilterDrawer } from "@/components/purchase-orders/PurchasesFilterDrawer";
 import { Purchase, PurchaseQueryParams } from "@/types/index";
 import { GrEdit } from "react-icons/gr";
 import { HiOutlineTrash } from "react-icons/hi2";
@@ -50,15 +51,67 @@ export default function PurchaseOrdersPage() {
   const router = useRouter();
   const [formOpen, toggleForm] = useToggle();
   const [editOpen, toggleEdit] = useToggle();
+  const [filterOpen, setFilterOpen] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase>();
   const [deletingPurchaseId, setDeletingPurchaseId] = useState<string>();
   const [reopeningPurchaseId, setReopeningPurchaseId] = useState<string>();
   const [query, setQuery] = useState<PurchaseQueryParams>({ page: 1, limit: 20 });
+  const [draftFilters, setDraftFilters] = useState<PurchaseQueryParams>({});
   const { data, error, isLoading, isError, isFetching } = useGetPurchasesQuery(query, { refetchOnMountOrArgChange: true });
   const meta = data?.meta;
   const mobileList = useMobileInfiniteList({ query, response: data, isFetching, setQuery });
   const [cancelPurchase] = useDeletePurchaseMutation();
   const [reopenPurchase] = useReopenPurchaseMutation();
+  const filterCount =
+    Number(Boolean(query.status)) +
+    Number(Boolean(query.fulfillmentStatus)) +
+    Number(Boolean(query.paymentStatus)) +
+    Number(Boolean(query.supplierId)) +
+    Number(Boolean(query.dateFrom || query.dateTo)) +
+    Number(Boolean(query.locationId));
+
+  const openFilters = () => {
+    setDraftFilters({
+      status: query.status,
+      fulfillmentStatus: query.fulfillmentStatus,
+      paymentStatus: query.paymentStatus,
+      supplierId: query.supplierId,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+      locationId: query.locationId,
+    });
+    setFilterOpen(true);
+  };
+
+  const applyFilters = () => {
+    setQuery((current) => ({
+      ...current,
+      status: draftFilters.status,
+      fulfillmentStatus: draftFilters.fulfillmentStatus,
+      paymentStatus: draftFilters.paymentStatus,
+      supplierId: draftFilters.supplierId,
+      dateFrom: draftFilters.dateFrom,
+      dateTo: draftFilters.dateTo,
+      locationId: draftFilters.locationId,
+      page: 1,
+    }));
+    setFilterOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters({});
+    setQuery((current) => ({
+      ...current,
+      status: undefined,
+      fulfillmentStatus: undefined,
+      paymentStatus: undefined,
+      supplierId: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      locationId: undefined,
+      page: 1,
+    }));
+  };
 
   const openEdit = (purchase: Purchase) => {
     setSelectedPurchase(purchase);
@@ -213,7 +266,7 @@ export default function PurchaseOrdersPage() {
       <h3 className="pageTittle px-4 md:px-8">Purchases</h3>
       <hr className="border-gray-200/80" />
       <div className="flex w-full flex-col gap-4 px-4 py-5 md:flex-row md:justify-between md:px-8 md:py-8">
-        <AppSearch placeholder="Search purchase number..." onReset={() => setQuery({ page: 1, limit: 20 })} onSearchChange={(values) => setQuery((current: PurchaseQueryParams) => ({ ...current, ...values, page: 1 }))} />
+        <AppSearch placeholder="Search purchase number..." onReset={() => setQuery((current) => ({ ...current, search: undefined, page: 1 }))} onSearchChange={(values) => setQuery((current: PurchaseQueryParams) => ({ ...current, ...values, page: 1 }))} onFilterClick={openFilters} filterCount={filterCount} />
         <div className="flex gap-x-3 md:gap-x-5">
           <AddButton onClick={toggleForm} label="New Purchase" />
           <SettingsDrawer />
@@ -238,6 +291,7 @@ export default function PurchaseOrdersPage() {
 
       {formOpen && <PurchaseOrderFormModal open={formOpen} toggle={toggleForm} />}
       {editOpen && selectedPurchase && <PurchaseOrderFormModal open={editOpen} toggle={toggleEdit} purchase={selectedPurchase} />}
+      <PurchasesFilterDrawer open={filterOpen} filters={draftFilters} onChange={(values) => setDraftFilters((prev) => ({ ...prev, ...values }))} onClose={() => setFilterOpen(false)} onApply={applyFilters} onClear={clearFilters} />
     </div>
   );
 }

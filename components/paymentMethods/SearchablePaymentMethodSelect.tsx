@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function SearchablePaymentMethodSelect({ value, onChange, allowClear = false }: Props) {
-  const [paymentMethodQuery, setPaymentMethodQuery] = useState<PaymentMethodsQueryParams>({});
+  const [paymentMethodQuery, setPaymentMethodQuery] = useState<PaymentMethodsQueryParams>({ status: "active" });
   const debouncedQuery = useDebouncedValue(paymentMethodQuery);
   const { data, isLoading } = useGetPaymentMethodsQuery(debouncedQuery);
 
@@ -28,7 +28,7 @@ export function SearchablePaymentMethodSelect({ value, onChange, allowClear = fa
       }}
       className="w-full"
       filterOption={false}
-      onSearch={(value) => setPaymentMethodQuery({ search: value })}
+      onSearch={(value) => setPaymentMethodQuery({ search: value, status: "active" })}
       options={data?.map((method) => ({
         value: method.id,
         label: method.name,
