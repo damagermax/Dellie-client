@@ -1,8 +1,12 @@
+import AuthHeroIllustration from "@/components/auth/AuthHeroIllustration";
+
 export default function AuthLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className=" grid xl:grid-cols-2  ">
-      <div className=" w-full h-screen hidden xl:block"></div>
-      <div className=" bg-gray-100">{children}</div>
+    <div className="relative min-h-screen overflow-hidden bg-[#102d2b]">
+      <AuthHeroIllustration />
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-6 sm:px-8 lg:justify-end lg:px-12 xl:px-16">
+        <div className="w-full max-w-[520px] lg:mr-[7vw] xl:mr-[9vw]">{children}</div>
+      </div>
     </div>
   );
 }

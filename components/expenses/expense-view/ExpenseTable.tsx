@@ -2,19 +2,18 @@
 
 import AppTable from "@/components/ui/AppTable";
 import type { TableProps } from "antd/es/table";
-import { ActionDropdown } from "../../ui/ActionDropdown";
 
-import { ExpenseViewItemAction } from "./ExpenseView";
 import { Expense } from "@/types/transaction";
 import { formatDate } from "@/lib/dateUtils";
 import Link from "next/link";
+import { TransactionBalancePill } from "@/components/ui/TransactionBalancePill";
 
-interface ExpenseTableProps extends ExpenseViewItemAction {
+interface ExpenseTableProps {
   expenses: Expense[];
   pagination?: TableProps<Expense>["pagination"];
 }
 
-export default function ExpenseTable({ expenses, onDelete, openEditModal, pagination }: ExpenseTableProps) {
+export default function ExpenseTable({ expenses, pagination }: ExpenseTableProps) {
   const columns: TableProps<Expense>["columns"] = [
     {
       title: "Description",
@@ -31,11 +30,17 @@ export default function ExpenseTable({ expenses, onDelete, openEditModal, pagina
             <Link href={`expenses/${record.id}`} className="line-clamp-1 text-gray-600! hover:text-blue-500! text-ellipsis capitalize cursor-pointer">
               {record?.note}
             </Link>
-            <p className=" text-xs">{formatDate(record?.date)}</p>
           </div>
         </div>
       ),
       className: "!pl-8",
+    },
+    {
+      title: "Date",
+      dataIndex: "date",
+      key: "expenseDate",
+      width: 140,
+      render: (_, record) => formatDate(record?.date),
     },
 
     {
@@ -72,24 +77,7 @@ export default function ExpenseTable({ expenses, onDelete, openEditModal, pagina
       dataIndex: "baseBalance",
       key: "baseBalance",
       width: 150,
-      render: (_, record) => {
-        const owing = record.balance && record.balance < 0;
-        return (
-          <div>
-            <p className={`line-clamp-1 text-ellipsis capitalize w-fit px-2 font-semibold ${owing && "border   rounded-xl border-red-500 text-red-500"} `}>
-              {record.currency?.code} {record.balance?.toLocaleString()}
-            </p>
-          </div>
-        );
-      },
-    },
-    {
-      key: "id",
-      align: "right",
-      dataIndex: "id",
-      className: "!pr-8",
-      width: 120,
-      render: (id, expense) => <ActionDropdown openEditModal={() => openEditModal(expense)} onDelete={() => onDelete(id)} />,
+      render: (_, record) => <TransactionBalancePill balance={Number(record.balance || 0)} currencyCode={record.currency?.code || ""} />,
     },
   ];
 

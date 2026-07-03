@@ -1,4 +1,4 @@
-import { PosSettings, StoreEnabledModules, StorePricingSettings } from "./store-settings";
+import { PosSettings, StoreEnabledModules, StoreFeatureSettings, StoreIntegrationsSettings, StorePricingSettings } from "./store-settings";
 
 export interface StoreOwner {
   id: string;
@@ -55,6 +55,8 @@ export interface Store {
     enabledModules?: StoreEnabledModules;
     pos?: PosSettings;
     pricing?: StorePricingSettings;
+    features?: StoreFeatureSettings;
+    integrations?: StoreIntegrationsSettings;
   };
 }
 

@@ -13,6 +13,54 @@ export function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function roundMoney(value: number) {
+  return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+export function buildTaxBreakdown(taxableSubtotal: number, tax?: Tax) {
+  if (!tax?.items?.length) {
+    return [];
+  }
+
+  const rawBreakdown = tax.items.map((rule) => {
+    const rawAmount = taxableSubtotal * (Number(rule.value || 0) / 100);
+    const roundedAmount = roundMoney(rawAmount);
+
+    return {
+      name: `${rule.name} @${rule.value}%`,
+      value: Number(rule.value || 0),
+      rawAmount,
+      amount: roundedAmount,
+      remainder: rawAmount - roundedAmount,
+    };
+  });
+
+  const targetTotal = roundMoney(
+    taxableSubtotal * (rawBreakdown.reduce((sum, taxRule) => sum + Number(taxRule.value || 0), 0) / 100),
+  );
+  let differenceInCents = Math.round((targetTotal - roundMoney(rawBreakdown.reduce((sum, rule) => sum + rule.amount, 0))) * 100);
+
+  if (differenceInCents !== 0) {
+    const orderedIndexes = rawBreakdown
+      .map((rule, index) => ({ index, remainder: rule.remainder }))
+      .sort((left, right) => (differenceInCents > 0 ? right.remainder - left.remainder : left.remainder - right.remainder));
+
+    let cursor = 0;
+    while (differenceInCents !== 0 && orderedIndexes.length) {
+      const target = rawBreakdown[orderedIndexes[cursor % orderedIndexes.length].index];
+      target.amount = roundMoney(target.amount + (differenceInCents > 0 ? 0.01 : -0.01));
+      differenceInCents += differenceInCents > 0 ? -1 : 1;
+      cursor += 1;
+    }
+  }
+
+  return rawBreakdown.map((rule) => ({
+    name: rule.name,
+    value: rule.value,
+    amount: roundMoney(rule.amount),
+  }));
+}
+
 export function formatMoney(currency: string, value: number) {
   const amount = Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return currency ? `${currency} ${amount}` : amount;
@@ -52,20 +100,21 @@ export function formatHistoryTime(value?: string) {
 }
 
 export function lineDiscountAmount(item: PosCartItem) {
-  const subtotal = item.unitPrice * item.quantity;
-  return item.discountType === "percent" ? (subtotal * item.discountValue) / 100 : item.discountValue;
+  const subtotal = roundMoney(item.unitPrice * item.quantity);
+  return roundMoney(item.discountType === "percent" ? (subtotal * item.discountValue) / 100 : item.discountValue);
+}
+
+function lineSubtotalAfterDiscount(item: PosCartItem) {
+  const subtotal = roundMoney(item.unitPrice * item.quantity);
+  const discountAmount = lineDiscountAmount(item);
+  return roundMoney(Math.max(subtotal - discountAmount, 0));
 }
 
 export function getSavedCartTotal(savedCart: SavedPosCart) {
-  const subtotal = (savedCart.cart || []).reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const discounts = (savedCart.cart || []).reduce((sum, item) => sum + lineDiscountAmount(item), 0);
-  const taxableSubtotal = Math.max(subtotal - discounts, 0);
-  const taxAmount =
-    savedCart.selectedTax?.items?.reduce((sum, tax) => {
-      return sum + taxableSubtotal * (Number(tax.value) / 100);
-    }, 0) || 0;
+  const taxableSubtotal = roundMoney((savedCart.cart || []).reduce((sum, item) => sum + lineSubtotalAfterDiscount(item), 0));
+  const taxAmount = roundMoney(buildTaxBreakdown(taxableSubtotal, savedCart.selectedTax).reduce((sum, tax) => sum + tax.amount, 0));
 
-  return Math.max(taxableSubtotal + taxAmount, 0);
+  return roundMoney(Math.max(taxableSubtotal + taxAmount, 0));
 }
 
 export function getSavedCartItemCount(savedCart: SavedPosCart) {
@@ -92,17 +141,14 @@ export function getCartItem(cart: PosCartItem[], productId: string) {
 
 export function getCartTotals(cart: PosCartItem[], selectedTax?: Tax, payments: PosPaymentEntry[] = []) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
-  const discounts = cart.reduce((sum, item) => sum + lineDiscountAmount(item), 0);
-  const taxableSubtotal = Math.max(subtotal - discounts, 0);
-  const taxAmount =
-    selectedTax?.items.reduce((sum, tax) => {
-      return sum + taxableSubtotal * (Number(tax.value) / 100);
-    }, 0) || 0;
-  const grandTotal = Math.max(taxableSubtotal + taxAmount, 0);
-  const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-  const balance = Math.max(grandTotal - totalPaid, 0);
-  const change = Math.max(totalPaid - grandTotal, 0);
+  const subtotal = roundMoney(cart.reduce((sum, item) => sum + roundMoney(item.unitPrice * item.quantity), 0));
+  const discounts = roundMoney(cart.reduce((sum, item) => sum + lineDiscountAmount(item), 0));
+  const taxableSubtotal = roundMoney(cart.reduce((sum, item) => sum + lineSubtotalAfterDiscount(item), 0));
+  const taxAmount = roundMoney(buildTaxBreakdown(taxableSubtotal, selectedTax).reduce((sum, tax) => sum + tax.amount, 0));
+  const grandTotal = roundMoney(Math.max(taxableSubtotal + taxAmount, 0));
+  const totalPaid = roundMoney(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
+  const balance = roundMoney(Math.max(grandTotal - totalPaid, 0));
+  const change = roundMoney(Math.max(totalPaid - grandTotal, 0));
 
   return {
     totalItems,

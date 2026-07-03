@@ -8,8 +8,10 @@ import { useEffect } from "react";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
 import { ExchangeRateFormItem } from "../system/ExchangeRateFormItem";
 import dayjs from "dayjs";
+import { useSelector } from "react-redux";
 
 import { useCreateTransactionActionMutation, useUpdateTransactionActionMutation, useGetTransactionQuery } from "@/lib/redux/services";
+import { RootState } from "@/lib/redux/store";
 
 import { SearchablePaymentMethodSelect } from "../paymentMethods/SearchablePaymentMethodSelect";
 import { TextAreaFormItem } from "../ui/AppFormItems";
@@ -29,6 +31,8 @@ type PaymentFormValues = ApplyPaymentInput | UpdateAppliedPaymentInput;
 export default function PaymentFormModal({ open, toggle, initialValues, linkTransaction, type = TransactionType.PAYMENT }: ExpenseFormModalProps) {
   const [expenseForm] = Form.useForm();
   const storeCurrencyId = JSON.parse(localStorage.getItem("user")!)?.store?.currencyId;
+  const featureSettings = useSelector((state: RootState) => state.currentUser.storeSettings.features);
+  const multiCurrencyEnabled = featureSettings?.multiCurrencyEnabled !== false;
 
   const transactionType = initialValues?.type || type;
   const showPayment = transactionType == TransactionType.PAYMENT || transactionType == TransactionType.REFUND;
@@ -61,12 +65,13 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
 
   useEffect(() => {
     if (!initialValues) {
-      expenseForm.setFieldsValue({ currencyId: storeCurrencyId });
+      expenseForm.setFieldsValue({ currencyId: storeCurrencyId, rate: 1 });
     }
 
     if (initialValues) {
       expenseForm.setFieldsValue({
         currencyId: initialValues.currency?.id,
+        rate: initialValues.rate ?? 1,
         paymentMethodId: initialValues.paymentMethod?.id,
         note: initialValues.note,
       });
@@ -78,6 +83,15 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
       expenseForm.setFieldsValue({ currencyId: linkTransaction.currencyId, rate: linkTransaction.rate });
     }
   }, [expenseForm, linkTransaction]);
+
+  useEffect(() => {
+    if (!multiCurrencyEnabled) {
+      expenseForm.setFieldsValue({
+        currencyId: linkTransaction?.currencyId || initialValues?.currency?.id || storeCurrencyId,
+        rate: 1,
+      });
+    }
+  }, [expenseForm, initialValues?.currency?.id, linkTransaction?.currencyId, multiCurrencyEnabled, storeCurrencyId]);
 
   const handleSubmit = async (values: PaymentFormValues) => {
     if (initialValues?.id) {
@@ -119,11 +133,15 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
           <div className={`grid ${showPayment ? "grid-cols-2" : "grid-cols-2"}  gap-x-5 px-5 `}>
             <DatePickerFormItem name="date" label="Date" />
 
-            <Form.Item label="Currency" name="currencyId">
-              <SearchableCurrenciesSelect />
-            </Form.Item>
+            {multiCurrencyEnabled ? (
+              <>
+                <Form.Item label="Currency" name="currencyId">
+                  <SearchableCurrenciesSelect />
+                </Form.Item>
 
-            <ExchangeRateFormItem name="rate" />
+                <ExchangeRateFormItem name="rate" />
+              </>
+            ) : null}
 
             <>
               <InputFormItem placeholder="00.00" type="number" label="Amount" name="amount" rules={[{ required: true, message: "Enter payment amount" }]} />

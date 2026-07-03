@@ -1,5 +1,5 @@
 "use client";
-import { AddButton } from "@/components/ui/AppButtons";
+import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 import useToggle from "@/hooks/UseToggle";
 import { DiscountView } from "@/components/discounts/discount-view/DiscountView";
@@ -28,13 +28,16 @@ export default function DiscountsPage() {
           <AppSearch placeholder="Search tags..." onReset={handleFilterRest} onSearchChange={handleFilterChange} menu={{ items: DiscountsFilters({ onChange: handleFilterChange, filters: discountQuery }) }} />
         </div>
         <div className=" flex gap-x-5 ">
-          <AddButton onClick={toggleDiscountForm} label="New Discount" />
+          <div className="hidden md:block">
+            <AddButton onClick={toggleDiscountForm} label="New Discount" />
+          </div>
         </div>
       </div>
 
       <DiscountView query={discountQuery} />
 
       {openDiscountForm && <DiscountFormModal open={openDiscountForm} toggle={toggleDiscountForm} />}
+      <FloatingAddButton onClick={toggleDiscountForm} label="New Discount" />
     </div>
   );
 }

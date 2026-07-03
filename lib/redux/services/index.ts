@@ -20,3 +20,5 @@ export * from "./purchaseReportsApi";
 export * from "./inventoryReportsApi";
 export * from "./financeReportsApi";
 export * from "./storeSettingsApi";
+export * from "./auditLogsApi";
+export * from "./dashboardOverviewApi";

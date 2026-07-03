@@ -23,3 +23,5 @@ export * from "./sales-report";
 export * from "./purchase-report";
 export * from "./inventory-report";
 export * from "./finance-report";
+export * from "./audit-log";
+export * from "./dashboard-overview";

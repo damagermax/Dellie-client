@@ -193,45 +193,58 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
                 <RolePicker />
               </Form.Item>
             ) : null}
+
+            {selectedRoles.includes(ContactRole.EMPLOYEE) && (
+              <section className="col-span-2 rounded-md border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Employee Access</p>
+                    <p className="mt-1 text-xs text-gray-500">Create a store user and choose what this person can do inside the store.</p>
+                  </div>
+                  <Form.Item className="!mb-0" name="enableEmployeeAccess" valuePropName="checked">
+                    <Checkbox>Enable access</Checkbox>
+                  </Form.Item>
+                </div>
+
+                {employeeAccessEnabled && (
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <Form.Item label="Employee Role" name="employeeRole" rules={[{ required: true, message: "Select employee role" }]}>
+                      <Select
+                        options={[
+                          { value: "staff", label: "Staff" },
+                          { value: "manager", label: "Manager" },
+                        ]}
+                        placeholder="Select employee role"
+                      />
+                    </Form.Item>
+
+                    <Form.Item label="Permissions" name="employeePermissions" rules={[{ required: true, message: "Select at least one permission" }]}>
+                      <Select mode="multiple" allowClear options={employeePermissionOptions} placeholder="Select permissions" />
+                    </Form.Item>
+                  </div>
+                )}
+              </section>
+            )}
+
+            <Divider className="!my-0 col-span-2" />
+
+            <div className="col-span-2">
+              <p className="text-sm font-semibold text-gray-900">Primary Address</p>
+              <p className="mt-1 text-xs text-gray-500">Add the main delivery or billing address for this contact.</p>
+            </div>
+
+            <InputFormItem className="col-span-2" label="Street address" name={["addresses", 0, "street"]} placeholder="Street address" />
+            <InputFormItem label="City" name={["addresses", 0, "city"]} placeholder="City" />
+            <InputFormItem label="State" name={["addresses", 0, "state"]} placeholder="State or region" />
+            <InputFormItem label="Country" name={["addresses", 0, "country"]} placeholder="Country" />
+            <InputFormItem label="Postal Code" name={["addresses", 0, "postalCode"]} placeholder="Postal code" />
           </div>
-
-          {selectedRoles.includes(ContactRole.EMPLOYEE) && (
-            <section className="rounded-md border border-gray-200 bg-gray-50 p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">Employee Access</p>
-                  <p className="mt-1 text-xs text-gray-500">Create a store user and choose what this person can do inside the store.</p>
-                </div>
-                <Form.Item className="!mb-0" name="enableEmployeeAccess" valuePropName="checked">
-                  <Checkbox>Enable access</Checkbox>
-                </Form.Item>
-              </div>
-
-              {employeeAccessEnabled && (
-                <div className=" grid -grid-cols-2 mb-4 gap-4">
-                  <Form.Item label="Employee Role" name="employeeRole" rules={[{ required: true, message: "Select employee role" }]}>
-                    <Select
-                      options={[
-                        { value: "staff", label: "Staff" },
-                        { value: "manager", label: "Manager" },
-                      ]}
-                      placeholder="Select employee role"
-                    />
-                  </Form.Item>
-
-                  <Form.Item label="Permissions" name="employeePermissions" rules={[{ required: true, message: "Select at least one permission" }]}>
-                    <Select mode="multiple" allowClear options={employeePermissionOptions} placeholder="Select permissions" />
-                  </Form.Item>
-                </div>
-              )}
-            </section>
-          )}
 
           <Divider className="!my-6" />
 
           <Divider className="!my-0" />
 
-          {initialValues && <TextAreaFormItem label="Note" name="note" />}
+          <TextAreaFormItem label="Note" name="note" />
         </div>
       </Form>
     </AppModal>

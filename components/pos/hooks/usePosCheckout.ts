@@ -4,18 +4,39 @@ import { FormInstance, message } from "antd";
 import { Dispatch, SetStateAction, useCallback, useMemo } from "react";
 import type { ApplyPaymentInput, CreateSaleInput, PaymentMethod, Sale, Tax, TransactionType } from "@/types/index";
 import type { PosCartItem, PosPaymentEntry } from "../types";
-import { isCashPaymentMethodName, paymentStatus, uid } from "../utils";
+import { isCashPaymentMethodName, paymentStatus, roundMoney, uid } from "../utils";
+
+const normalizeEntityId = (value: unknown): string | undefined => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value && typeof value === "object") {
+    const candidate = value as { id?: unknown; _id?: unknown };
+    if (typeof candidate.id === "string") {
+      return candidate.id;
+    }
+    if (typeof candidate._id === "string") {
+      return candidate._id;
+    }
+  }
+
+  return undefined;
+};
 
 type SubmitCheckoutParams = {
   cart: PosCartItem[];
   payments: PosPaymentEntry[];
   form: FormInstance;
   grandTotal: number;
+  posFulfillmentMode?: 'fulfill_now' | 'pending';
   posSettings: {
     customerMode?: string;
     fulfillmentDefault?: string;
     receiptAutoOpen?: boolean;
   };
+  fallbackLocationId?: string;
+  fallbackCurrencyId?: string;
   selectedTax?: Tax;
   createSaleAction: (payload: CreateSaleInput) => Promise<Sale>;
   createPaymentAction: (payload: ApplyPaymentInput) => Promise<unknown>;
@@ -37,29 +58,71 @@ type UsePosCheckoutParams = {
   form: FormInstance;
   posSettings: {
     customerMode?: string;
-    fulfillmentDefault?: string;
+    fulfillmentDefault?: 'fulfill_now' | 'pending';
     receiptAutoOpen?: boolean;
   };
+  setPosFulfillmentMode: Dispatch<SetStateAction<'fulfill_now' | 'pending' | undefined>>;
   submitParams: SubmitCheckoutParams;
 };
 
-export function usePosCheckout({ payments, setPayments, availablePaymentMethods, grandTotal, form, posSettings, submitParams }: UsePosCheckoutParams) {
+export function usePosCheckout({ payments, setPayments, availablePaymentMethods, grandTotal, form, posSettings, setPosFulfillmentMode, submitParams }: UsePosCheckoutParams) {
   const cashPaymentMethodIds = useMemo(() => new Set(availablePaymentMethods.filter((method) => isCashPaymentMethodName(method.name)).map((method) => method.id)), [availablePaymentMethods]);
 
+  const getPaymentAmountLimit = useCallback(
+    (entryId: string, paymentMethodId?: string, entries: PosPaymentEntry[] = payments) => {
+      if (!paymentMethodId || cashPaymentMethodIds.has(paymentMethodId)) {
+        return undefined;
+      }
+
+      const otherPaymentsTotal = entries.reduce((sum, entry) => {
+        if (entry.id === entryId) {
+          return sum;
+        }
+
+        return sum + Number(entry.amount || 0);
+      }, 0);
+
+      return roundMoney(Math.max(grandTotal - otherPaymentsTotal, 0));
+    },
+    [cashPaymentMethodIds, grandTotal, payments],
+  );
+
   const addPaymentRow = useCallback(() => {
-    setPayments((current) => [...current, { id: uid(), amount: 0, paymentMethodId: availablePaymentMethods[0]?.id || undefined }]);
+    setPayments((current: PosPaymentEntry[]) => [...current, { id: uid(), amount: 0, paymentMethodId: availablePaymentMethods[0]?.id || undefined }]);
   }, [availablePaymentMethods, setPayments]);
 
   const updatePaymentRow = useCallback(
     (id: string, patch: Partial<PosPaymentEntry>) => {
-      setPayments((current) => current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)));
+      setPayments((current: PosPaymentEntry[]) =>
+        current.map((entry: PosPaymentEntry) => {
+          if (entry.id !== id) {
+            return entry;
+          }
+
+          const nextEntry = { ...entry, ...patch };
+          const roundedEntry = {
+            ...nextEntry,
+            amount: roundMoney(Number(nextEntry.amount || 0)),
+          };
+          const amountLimit = getPaymentAmountLimit(id, roundedEntry.paymentMethodId, current);
+
+          if (amountLimit === undefined) {
+            return roundedEntry;
+          }
+
+          return {
+            ...roundedEntry,
+            amount: roundMoney(Math.min(Number(roundedEntry.amount || 0), amountLimit)),
+          };
+        }),
+      );
     },
-    [setPayments],
+    [getPaymentAmountLimit, setPayments],
   );
 
   const removePaymentRow = useCallback(
     (id: string) => {
-      setPayments((current) => (current.length > 1 ? current.filter((entry) => entry.id !== id) : [{ id: uid(), amount: 0 }]));
+      setPayments((current: PosPaymentEntry[]) => (current.length > 1 ? current.filter((entry: PosPaymentEntry) => entry.id !== id) : [{ id: uid(), amount: 0 }]));
     },
     [setPayments],
   );
@@ -68,7 +131,7 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
     const primaryMethodId = payments[0]?.paymentMethodId || availablePaymentMethods[0]?.id;
     const secondaryMethodId = availablePaymentMethods.find((method) => method.id !== primaryMethodId)?.id;
 
-    setPayments((current) => {
+    setPayments((current: PosPaymentEntry[]) => {
       if (current.length >= 2) {
         return current;
       }
@@ -76,7 +139,7 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
       const firstPayment = current[0] || { id: uid(), amount: grandTotal, paymentMethodId: primaryMethodId };
 
       return [
-        { ...firstPayment, amount: Number(firstPayment.amount || grandTotal) },
+        { ...firstPayment, amount: roundMoney(Number(firstPayment.amount || grandTotal)) },
         { id: uid(), amount: 0, paymentMethodId: secondaryMethodId || primaryMethodId },
       ];
     });
@@ -84,9 +147,9 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
 
   const prepareCheckout = useCallback(() => {
     const cashMethod = availablePaymentMethods.find((method) => isCashPaymentMethodName(method.name)) || availablePaymentMethods[0];
-    setPayments([{ id: uid(), amount: grandTotal, paymentMethodId: cashMethod?.id || undefined }]);
-    form.setFieldValue("posFulfillmentMode", posSettings.fulfillmentDefault);
-  }, [availablePaymentMethods, form, grandTotal, posSettings.fulfillmentDefault, setPayments]);
+    setPayments([{ id: uid(), amount: roundMoney(grandTotal), paymentMethodId: cashMethod?.id || undefined }]);
+    setPosFulfillmentMode(posSettings.fulfillmentDefault);
+  }, [availablePaymentMethods, grandTotal, posSettings.fulfillmentDefault, setPayments, setPosFulfillmentMode]);
 
   const submitCheckout = useCallback(async () => {
     const {
@@ -119,17 +182,28 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
         return;
       }
 
-      const validPayments = checkoutPayments.filter((payment) => Number(payment.amount || 0) > 0);
+      const locationId = normalizeEntityId(values.locationId) || submitParams.fallbackLocationId;
+      const currencyId = normalizeEntityId(values.currencyId) || submitParams.fallbackCurrencyId;
+      const contactId = normalizeEntityId(values.contactId);
+
+      if (!locationId || !currencyId) {
+        message.error("Select a valid sale location and currency before checkout.");
+        return;
+      }
+
+      const validPayments = checkoutPayments
+        .map((payment) => ({ ...payment, amount: roundMoney(Number(payment.amount || 0)) }))
+        .filter((payment) => payment.amount > 0);
       if (validPayments.some((payment) => !payment.paymentMethodId)) {
         message.error("Select a payment method for every payment entry.");
         return;
       }
 
-      const paymentTotal = validPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+      const paymentTotal = roundMoney(validPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
       const cashPayments = validPayments.filter((payment) => payment.paymentMethodId && cashPaymentMethodIds.has(payment.paymentMethodId));
-      const cashPaymentTotal = cashPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-      const changeAmount = Math.max(paymentTotal - grandTotal, 0);
-      const nonCashPaymentTotal = paymentTotal - cashPaymentTotal;
+      const cashPaymentTotal = roundMoney(cashPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
+      const changeAmount = roundMoney(Math.max(paymentTotal - grandTotal, 0));
+      const nonCashPaymentTotal = roundMoney(paymentTotal - cashPaymentTotal);
 
       if (changeAmount > 0.005 && cashPayments.length === 0) {
         message.error("Only cash payments can exceed the sale total.");
@@ -142,16 +216,16 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
       }
 
       const payload: CreateSaleInput = {
-        contactId: values.contactId,
+        contactId,
         date: new Date().toISOString(),
         deliveryDate: values.deliveryDate?.toISOString?.(),
-        locationId: values.locationId,
-        currencyId: values.currencyId,
+        locationId,
+        currencyId,
         rate: Number(values.rate || 1),
         paymentTerms: values.paymentTerm,
         dueDate: values.dueDate?.toISOString?.(),
         source: "POS",
-        posFulfillmentMode: form.getFieldValue("posFulfillmentMode") || posSettings.fulfillmentDefault,
+        posFulfillmentMode: submitParams.posFulfillmentMode || posSettings.fulfillmentDefault,
         discountValue: 0,
         discountType: "fixed",
         taxId: selectedTax?.id,
@@ -171,7 +245,7 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
           linkTransactionId: sale.id,
           type: "payment" as TransactionType,
           date: new Date(),
-          amount: Number(payment.amount),
+          amount: roundMoney(Number(payment.amount)),
           paymentMethodId: payment.paymentMethodId,
           rate: Number(values.rate || 1),
         };
@@ -192,13 +266,54 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
         await createPaymentAction(changePayload);
       }
 
-      const netPaid = Math.max(paymentTotal - changeAmount, 0);
+      const netPaid = roundMoney(Math.max(paymentTotal - changeAmount, 0));
+      const paymentSnapshots = validPayments.map((payment) => ({
+        id: payment.id,
+        type: "payment",
+        date: new Date(),
+        status: "completed",
+        amount: roundMoney(Number(payment.amount)),
+        baseAmount: roundMoney(Number(payment.amount)),
+        rate: Number(values.rate || 1),
+        currency: { code: sale.currencyId?.code || "", id: sale.currencyId?.id || currencyId },
+        paymentMethod: payment.paymentMethodId
+          ? {
+              id: payment.paymentMethodId,
+              name: availablePaymentMethods.find((method) => method.id === payment.paymentMethodId)?.name || "Payment",
+            }
+          : undefined,
+        createdBy: { id: "", name: "POS" },
+      }));
+      const changeSnapshot =
+        changeAmount > 0.005
+          ? [
+              {
+                id: `${sale.id}-change`,
+                type: "change",
+                date: new Date(),
+                status: "completed",
+                amount: Number(changeAmount.toFixed(2)),
+                baseAmount: Number(changeAmount.toFixed(2)),
+                rate: Number(values.rate || 1),
+                currency: { code: sale.currencyId?.code || "", id: sale.currencyId?.id || currencyId },
+                paymentMethod: cashPayments[0]?.paymentMethodId
+                  ? {
+                      id: cashPayments[0].paymentMethodId,
+                      name: availablePaymentMethods.find((method) => method.id === cashPayments[0].paymentMethodId)?.name || "Cash",
+                    }
+                  : undefined,
+                note: "POS change given",
+                createdBy: { id: "", name: "POS" },
+              },
+            ]
+          : [];
       const finalSale = {
         ...sale,
         paid: netPaid,
-        balance: Math.max(Number(sale.amount || 0) - netPaid, 0),
+        balance: roundMoney(Math.max(Number(sale.amount || 0) - netPaid, 0)),
         paymentStatus: paymentStatus(Number(sale.amount || 0), netPaid),
         source: "POS",
+        payments: [...paymentSnapshots, ...changeSnapshot],
       } as Sale;
 
       setCompletedSale(finalSale);
@@ -211,13 +326,17 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
       }
       clearCart();
       message.success(`Sale ${sale.saleNumber} completed.`);
-    } catch {
-      message.error("Checkout failed. Please check the payment details and stock availability.");
+    } catch (error) {
+      const apiMessage = typeof error === "object" && error !== null && "data" in error ? (error as { data?: { message?: string | string[] } }).data?.message : undefined;
+
+      const detail = Array.isArray(apiMessage) ? apiMessage.join(", ") : apiMessage;
+      message.error(detail || "Checkout failed. Please check the payment details and stock availability.");
     }
-  }, [cashPaymentMethodIds, form, grandTotal, posSettings, submitParams]);
+  }, [availablePaymentMethods, cashPaymentMethodIds, form, grandTotal, posSettings, submitParams]);
 
   return {
     cashPaymentMethodIds,
+    getPaymentAmountLimit,
     addPaymentRow,
     updatePaymentRow,
     removePaymentRow,

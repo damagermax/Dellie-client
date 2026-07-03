@@ -9,7 +9,7 @@ import { GoBack } from "@/components/ui/GoBack";
 import { PhoneDisplay } from "@/components/ui/DisplayPhoneNumber";
 import { formatDate } from "@/lib/dateUtils";
 import { Contact, ContactRole, ContactStatus } from "@/types/contact";
-import { formatContactAddress } from "./contactUtils";
+import { formatContactAddress, formatContactRole } from "./contactUtils";
 import { Transaction } from "@/types/transaction";
 import AppPaginationFooter from "../ui/AppPaginationFooter";
 import AppTable from "../ui/AppTable";
@@ -180,6 +180,11 @@ export default function ContactDetailContent({
     { title: "Balance", key: "balance", render: (_, transaction) => transaction.formattedBalance || "-" },
   ];
   const visibleTransactions = view === "transactions" ? transactions : view === "receivables" ? receivables : payables;
+  const outstandingTotal = React.useMemo(
+    () => visibleTransactions.reduce((sum, transaction) => sum + Number(transaction.balance || 0), 0),
+    [visibleTransactions],
+  );
+  const formattedOutstandingTotal = formatContactMoney(outstandingTotal, currency);
 
   return (
     <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
@@ -194,6 +199,11 @@ export default function ContactDetailContent({
                   <Tag className="!m-0 !rounded-full !px-2 capitalize" color={statusTone}>
                     {contact.status}
                   </Tag>
+                  {roles.map((role) => (
+                    <Tag key={role} className="!m-0 !rounded-full !px-2 capitalize" color="blue">
+                      {formatContactRole(role)}
+                    </Tag>
+                  ))}
                 </div>
                 <p className="mt-2 max-w-xl text-sm text-gray-500">
                   Created {formatDate(contact.createdAt)} by {contact.createdBy?.name || "-"}
@@ -242,7 +252,7 @@ export default function ContactDetailContent({
         {view === "overview" ? (
           <div className="">
             <div className="grid mt-8  ">
-              <section className=" border-y border-gray-200 bg-white py-5 px-8">
+              <section className="border-y border-gray-200 bg-white px-8 py-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Transaction Summary</p>
@@ -250,7 +260,7 @@ export default function ContactDetailContent({
                 </div>
 
                 {summaryCards.length ? (
-                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4 ">
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     {summaryCards.map((card) => (
                       <SummaryCard key={card.key} title={card.title} amount={card.item?.formattedTotal || "0.00"} count={card.item?.count || 0} tone={card.tone} />
                     ))}
@@ -381,6 +391,14 @@ export default function ContactDetailContent({
                   })}
                 </div>
                 <div className="hidden md:block"><AppTable<Transaction> columns={transactionColumns} dataSource={visibleTransactions} rowKey={(transaction) => transaction.id || `${transaction.type || "transaction"}-${transaction.documentNumber || transaction.createdAt || transaction.updatedAt || "row"}`} pagination={false} /></div>
+                {view === "receivables" || view === "payables" ? (
+                  <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 md:px-8">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <p className="font-medium text-gray-600">Total outstanding balance</p>
+                      <p className="text-base font-semibold text-gray-950">{formattedOutstandingTotal}</p>
+                    </div>
+                  </div>
+                ) : null}
                 <AppPaginationFooter
                   entity={view === "transactions" ? "transactions" : view}
                   sticky={false}
@@ -405,11 +423,21 @@ export default function ContactDetailContent({
   );
 }
 
-function IdentityPanel({ label, title, description, icon }: { label: string; title: string; description: string; icon: React.ReactNode }) {
+function IdentityPanel({
+  label,
+  title,
+  description,
+  icon,
+}: {
+  label: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex w-full items-start gap-3">
       <div className="mt-1 text-gray-400">{icon}</div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">{label}</p>
         <p className="mt-1 truncate text-lg font-medium text-gray-800">{title}</p>
         <p className="mt-1 text-sm text-gray-500">{description}</p>
@@ -422,10 +450,10 @@ function SummaryCard({ title, amount, count, tone }: { title: string; amount: st
   const toneClass = tone === "emerald" ? "border-emerald-200 bg-emerald-50" : tone === "sky" ? "border-sky-200 bg-sky-50" : tone === "amber" ? "border-amber-200 bg-amber-50" : "border-violet-200 bg-violet-50";
 
   return (
-    <div className={`rounded-lg border px-4 py-4 ${toneClass}`}>
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500">{title}</p>
-      <p className="mt-2 text-xl font-semibold text-gray-950">{amount}</p>
-      <p className="mt-1 text-sm text-gray-600">
+    <div className={`rounded-md border px-3 py-3 ${toneClass}`}>
+      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-gray-500">{title}</p>
+      <p className="mt-1.5 text-lg font-semibold leading-tight text-gray-950">{amount}</p>
+      <p className="mt-1 text-xs text-gray-600">
         {count} transaction{count === 1 ? "" : "s"}
       </p>
     </div>
@@ -508,4 +536,9 @@ function transactionReference(transaction: Transaction) {
   }
 
   return transaction.documentNumber || transaction.note?.trim() || "-";
+}
+
+function formatContactMoney(amount: number, currencyCode?: string) {
+  const formattedAmount = Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return currencyCode ? `${currencyCode} ${formattedAmount}` : formattedAmount;
 }

@@ -13,6 +13,7 @@ export type PosCartItem = {
   name: string;
   sku: string;
   imageUrl?: string;
+  type?: string;
   unitPrice: number;
   quantity: number;
   availableStock?: number;

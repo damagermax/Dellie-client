@@ -3,9 +3,13 @@ import { Dropdown, type MenuProps } from "antd";
 import { useRouter } from "next/navigation";
 
 import { FiSettings, FiHelpCircle, FiLogOut } from "react-icons/fi";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
-import { RootState } from "@/lib/store";
+import { clearAccessToken } from "@/lib/redux/features/authSlice";
+import { clearUser } from "@/lib/redux/features/userSlice";
+import { AppDispatch, RootState } from "@/lib/redux/store";
+import { useLogoutMutation } from "@/lib/redux/services";
+import { baseApi } from "@/lib/redux/services/baseApi";
 
 const items: MenuProps["items"] = [
   {
@@ -31,10 +35,27 @@ interface AccountProps {
 }
 
 const SidebarAccountDropdown = ({ isCollapsed }: AccountProps) => {
+  const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
   const currentUser = useSelector((state: RootState) => state.currentUser);
+  const [logout] = useLogoutMutation();
 
-  const onMenuClick: MenuProps["onClick"] = ({ key }) => {
+  const handleLogout = async () => {
+    try {
+      await logout().unwrap();
+    } catch {
+      // Clear the local session even if the server logout request fails.
+    } finally {
+      dispatch(clearAccessToken());
+      dispatch(clearUser());
+      dispatch(baseApi.util.resetApiState());
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+      router.replace("/auth/signin");
+    }
+  };
+
+  const onMenuClick: MenuProps["onClick"] = async ({ key }) => {
     switch (key) {
       case "settings":
         router.push("/settings");
@@ -45,7 +66,7 @@ const SidebarAccountDropdown = ({ isCollapsed }: AccountProps) => {
         break;
 
       case "logout":
-        // logout user
+        await handleLogout();
         break;
     }
   };

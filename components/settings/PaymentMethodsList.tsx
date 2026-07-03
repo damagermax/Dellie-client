@@ -12,6 +12,10 @@ interface PaymentMethodsListProps {
   onSelect: (paymentMethod: PaymentMethod) => void;
 }
 
+function isProtectedCashMethod(paymentMethod: PaymentMethod) {
+  return Boolean(paymentMethod.isSystem) || paymentMethod.name.trim().toLowerCase() === "cash";
+}
+
 export default function PaymentMethodsList({ onSelect }: PaymentMethodsListProps) {
   const { data: paymentMethods, isLoading } = useGetPaymentMethodsQuery();
   const [deletePaymentMethod] = useDeletePaymentMethodMutation();
@@ -42,9 +46,10 @@ export default function PaymentMethodsList({ onSelect }: PaymentMethodsListProps
       <div className="px-5">
         {paymentMethods?.map((paymentMethod, index) => (
           <div key={paymentMethod.id} className={`flex items-center justify-between gap-4 py-4 border-b border-blue-100 ${index !== paymentMethods.length - 1 ? "" : ""}`}>
-            <button type="button" className="flex min-w-0 flex-1 flex-col items-start text-left" onClick={() => onSelect(paymentMethod)}>
+            <button type="button" className="flex min-w-0 flex-1 flex-col items-start text-left disabled:cursor-default" onClick={() => (isProtectedCashMethod(paymentMethod) ? undefined : onSelect(paymentMethod))} disabled={isProtectedCashMethod(paymentMethod)}>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="truncate font-medium text-gray-800">{paymentMethod.name}</h3>
+                {isProtectedCashMethod(paymentMethod) ? <Tag color="gold" className="!mr-0 !rounded-full !px-1.5 !py-0 !text-[10px] !leading-4">System</Tag> : null}
                 {paymentMethod.isDefault ? <Tag color="blue" className="!mr-0 !rounded-full !px-1.5 !py-0 !text-[10px] !leading-4">Default</Tag> : null}
                 <Tag color={paymentMethod.status === "active" ? "green" : "red"} className="!mr-0 !rounded-full !px-1.5 !py-0 !text-[10px] !leading-4">
                   {paymentMethod.status}
@@ -53,13 +58,13 @@ export default function PaymentMethodsList({ onSelect }: PaymentMethodsListProps
             </button>
 
             <ActionDropdown
-              openEditModal={() => onSelect(paymentMethod)}
-              onDelete={() => handleDelete(paymentMethod.id)}
+              openEditModal={isProtectedCashMethod(paymentMethod) ? undefined : () => onSelect(paymentMethod)}
+              onDelete={isProtectedCashMethod(paymentMethod) ? undefined : () => handleDelete(paymentMethod.id)}
               onActivate={() => handleActivate(paymentMethod.id)}
               onDeactivate={() => handleDeactivate(paymentMethod.id)}
               status={paymentMethod.status}
               menu={{
-                items: paymentMethod.isDefault
+                items: paymentMethod.isDefault || isProtectedCashMethod(paymentMethod)
                   ? []
                   : [
                       {

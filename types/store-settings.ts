@@ -4,9 +4,50 @@ export type StoreEnabledModules = Record<StoreModuleKey, boolean>;
 export type PosCustomerMode = "walk_in_default" | "prompt_before_checkout" | "require_customer";
 export type PosFulfillmentDefault = "fulfill_now" | "pending";
 export type PosReceiptPaperSize = "compact" | "full_page";
+export type StoreDocumentTemplateKey = "modern" | "minimal" | "bold" | "classic";
 
 export interface StorePricingSettings {
   enableTradePrice: boolean;
+}
+
+export interface StoreFeatureSettings {
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
+  multiCurrencyEnabled: boolean;
+  paymentTermsEnabled: boolean;
+  expiryEnabled: boolean;
+  stockBundleEnabled: boolean;
+  nonStockBundleEnabled: boolean;
+  salesReturnsEnabled: boolean;
+  purchaseReturnsEnabled: boolean;
+  refundPaymentsEnabled: boolean;
+  writeOffPaymentsEnabled: boolean;
+}
+
+export interface StoreDocumentsSettings {
+  purchaseOrderTemplate: StoreDocumentTemplateKey;
+  salesInvoiceTemplate: StoreDocumentTemplateKey;
+  salesReceiptTemplate: StoreDocumentTemplateKey;
+  posReceiptTemplate: StoreDocumentTemplateKey;
+}
+
+export interface PaystackIntegrationSettings {
+  connected: boolean;
+  publicKey: string;
+  secretKey: string;
+  webhookSecret: string;
+}
+
+export interface StripeIntegrationSettings {
+  connected: boolean;
+  publishableKey: string;
+  secretKey: string;
+  webhookSecret: string;
+}
+
+export interface StoreIntegrationsSettings {
+  paystack: PaystackIntegrationSettings;
+  stripe: StripeIntegrationSettings;
 }
 
 export interface PosSettings {
@@ -14,6 +55,7 @@ export interface PosSettings {
   defaultLocationId?: string;
   customerMode: PosCustomerMode;
   defaultTaxId?: string;
+  defaultTaxByLocationId: Record<string, string | undefined>;
   applyTaxByDefault: boolean;
   fulfillmentDefault: PosFulfillmentDefault;
   allowFulfillmentChoiceAtCheckout: boolean;
@@ -25,6 +67,9 @@ export interface StoreSettings {
   enabledModules: StoreEnabledModules;
   pos: PosSettings;
   pricing: StorePricingSettings;
+  features: StoreFeatureSettings;
+  documents: StoreDocumentsSettings;
+  integrations: StoreIntegrationsSettings;
   businessProfile: StoreBusinessProfile;
   canChangeCurrency: boolean;
 }
@@ -57,6 +102,7 @@ export const DEFAULT_POS_SETTINGS: PosSettings = {
   defaultLocationId: undefined,
   customerMode: "walk_in_default",
   defaultTaxId: undefined,
+  defaultTaxByLocationId: {},
   applyTaxByDefault: false,
   fulfillmentDefault: "fulfill_now",
   allowFulfillmentChoiceAtCheckout: false,
@@ -68,10 +114,49 @@ export const DEFAULT_PRICING_SETTINGS: StorePricingSettings = {
   enableTradePrice: false,
 };
 
+export const DEFAULT_FEATURE_SETTINGS: StoreFeatureSettings = {
+  pickupEnabled: true,
+  deliveryEnabled: true,
+  multiCurrencyEnabled: true,
+  paymentTermsEnabled: true,
+  expiryEnabled: true,
+  stockBundleEnabled: true,
+  nonStockBundleEnabled: true,
+  salesReturnsEnabled: true,
+  purchaseReturnsEnabled: true,
+  refundPaymentsEnabled: true,
+  writeOffPaymentsEnabled: true,
+};
+
+export const DEFAULT_DOCUMENTS_SETTINGS: StoreDocumentsSettings = {
+  purchaseOrderTemplate: "modern",
+  salesInvoiceTemplate: "modern",
+  salesReceiptTemplate: "minimal",
+  posReceiptTemplate: "minimal",
+};
+
+export const DEFAULT_INTEGRATIONS_SETTINGS: StoreIntegrationsSettings = {
+  paystack: {
+    connected: false,
+    publicKey: "",
+    secretKey: "",
+    webhookSecret: "",
+  },
+  stripe: {
+    connected: false,
+    publishableKey: "",
+    secretKey: "",
+    webhookSecret: "",
+  },
+};
+
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   enabledModules: DEFAULT_ENABLED_MODULES,
   pos: DEFAULT_POS_SETTINGS,
   pricing: DEFAULT_PRICING_SETTINGS,
+  features: DEFAULT_FEATURE_SETTINGS,
+  documents: DEFAULT_DOCUMENTS_SETTINGS,
+  integrations: DEFAULT_INTEGRATIONS_SETTINGS,
   businessProfile: {
     logo: "",
     name: "",
@@ -91,5 +176,11 @@ export interface UpdateStoreSettingsInput {
   enabledModules?: Partial<StoreEnabledModules>;
   pos?: Partial<PosSettings>;
   pricing?: Partial<StorePricingSettings>;
+  features?: Partial<StoreFeatureSettings>;
+  documents?: Partial<StoreDocumentsSettings>;
+  integrations?: Partial<{
+    paystack: Partial<PaystackIntegrationSettings>;
+    stripe: Partial<StripeIntegrationSettings>;
+  }>;
   businessProfile?: Partial<StoreBusinessProfile>;
 }

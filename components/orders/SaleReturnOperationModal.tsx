@@ -1,12 +1,8 @@
 "use client";
 
-import React from "react";
-import { message } from "antd";
-import { useReturnSaleMutation } from "@/lib/redux/services";
 import { Sale } from "@/types/index";
 import TransactionReturnModal from "@/components/transactions/TransactionReturnModal";
-import { saleApiError } from "./saleUtils";
-import { getProductRefId, useResolvedProductNameMap } from "@/components/products/ResolvedProductName";
+import { useSaleReturnOperationController } from "./useSaleReturnOperationController";
 
 interface SaleReturnOperationModalProps {
   open: boolean;
@@ -15,47 +11,8 @@ interface SaleReturnOperationModalProps {
   onSaved: () => void;
 }
 
-function productImage(product: Sale["lineItems"][number]["productId"]) {
-  return typeof product === "string" ? undefined : product.media?.[0]?.url;
-}
-
-function productSku(line: Sale["lineItems"][number]) {
-  return line.productSku || (typeof line.productId === "string" ? undefined : line.productId.sku);
-}
-
 export default function SaleReturnOperationModal({ open, toggle, sale, onSaved }: SaleReturnOperationModalProps) {
-  const [returnSale, { isLoading }] = useReturnSaleMutation();
-  const resolvedNames = useResolvedProductNameMap(
-    sale.lineItems.map((line) => ({
-      id: getProductRefId(line.productId),
-      name: line.productName,
-    })),
-  );
-
-  const lines = React.useMemo(
-    () =>
-      sale.lineItems
-        .map((line) => ({
-          id: line.id,
-          name: resolvedNames[getProductRefId(line.productId) || line.productName] || line.productName,
-          sku: productSku(line),
-          imageUrl: line.productUrl || productImage(line.productId),
-          maxQuantity: Math.max(Number(line.fulfilledQuantity || 0) - Number(line.returnedQuantity || 0), 0),
-        }))
-        .filter((line) => line.maxQuantity > 0),
-    [resolvedNames, sale.lineItems],
-  );
-
-  const submit = async (items: { lineItemId: string; quantity: number; reason?: string }[]) => {
-    try {
-      await returnSale({ id: sale.id, items }).unwrap();
-      message.success("Return recorded.");
-      onSaved();
-      toggle();
-    } catch (error) {
-      message.error(saleApiError(error, "Return could not be recorded."));
-    }
-  };
+  const controller = useSaleReturnOperationController({ sale, onSaved, toggle });
 
   return (
     <TransactionReturnModal
@@ -63,10 +20,10 @@ export default function SaleReturnOperationModal({ open, toggle, sale, onSaved }
       toggle={toggle}
       title="Return Items"
       description={`Record returned items from ${sale.locationId?.name || "the sale location"}.`}
-      lines={lines}
-      loading={isLoading}
+      lines={controller.lines}
+      loading={controller.isLoading}
       okText="Save return"
-      onSubmit={submit}
+      onSubmit={controller.submit}
     />
   );
 }

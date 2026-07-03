@@ -7,6 +7,7 @@ import { useDeleteTransactionActionMutation } from "@/lib/redux/services";
 import { ActionDropdown } from "../ui/ActionDropdown";
 import { formatDate } from "@/lib/dateUtils";
 import { Empty } from "antd";
+import { canMutatePayment } from "@/lib/paymentMutationWindow";
 
 export interface PaymentViewItemAction {
   openEditModal: (contact: Payment) => void;
@@ -49,7 +50,7 @@ const PaymentView = ({ payments, canManage = true }: PaymentsViewProps) => {
                 </div>
                 <p className="mt-1 text-sm text-gray-500">{formatDate(payment.date)}{payment.paymentMethod?.name ? ` · ${payment.paymentMethod.name}` : ""}</p>
               </div>
-              {canManage ? <ActionDropdown openEditModal={() => openEditPaymentModal(payment)} onDelete={() => handleDeletePayment(payment.id)} /> : null}
+              {canManage && canMutatePayment(payment) ? <ActionDropdown openEditModal={() => openEditPaymentModal(payment)} onDelete={() => handleDeletePayment(payment.id)} /> : null}
             </div>
           ))}
         </div>

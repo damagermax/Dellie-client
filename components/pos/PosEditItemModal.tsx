@@ -5,7 +5,7 @@ import { PackageSearch, Trash2 } from "lucide-react";
 import Image from "next/image";
 import QuantityControl from "./QuantityControl";
 import type { PosCartItem } from "./types";
-import { POS_MODAL_OVERLAY_STYLE, formatMoney } from "./utils";
+import { POS_MODAL_OVERLAY_STYLE, formatMoney, isTrackedInventory } from "./utils";
 
 type PosEditItemModalProps = {
   editingItem: PosCartItem | null;
@@ -18,6 +18,8 @@ type PosEditItemModalProps = {
 };
 
 export default function PosEditItemModal({ editingItem, open, selectedCurrencyCode, onClose, onDecrease, onIncrease, onRemove }: PosEditItemModalProps) {
+  const tracksInventory = isTrackedInventory(editingItem?.type);
+
   return (
     <Modal
       title={
@@ -66,7 +68,13 @@ export default function PosEditItemModal({ editingItem, open, selectedCurrencyCo
                       <p className="mt-1 text-xs text-stone-500">Tap minus or plus to change the number of items.</p>
                     </div>
                   </div>
-                  <QuantityControl value={editingItem.quantity} onDecrease={onDecrease} onIncrease={onIncrease} decreaseDisabled={editingItem.quantity <= 1} />
+                  <QuantityControl
+                    value={editingItem.quantity}
+                    onDecrease={onDecrease}
+                    onIncrease={onIncrease}
+                    decreaseDisabled={editingItem.quantity <= 1}
+                  />
+                  {tracksInventory && typeof editingItem.availableStock === "number" ? <p className="mt-2 text-xs text-stone-500">Available at this location: {editingItem.availableStock}</p> : null}
                 </div>
 
                 <div className="border-t border-stone-200 pt-4">

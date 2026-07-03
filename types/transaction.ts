@@ -53,6 +53,8 @@ export interface Payment {
   id: string;
   type: TransactionType;
   date: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
   status: string;
   amount: number;
   baseAmount: number;
@@ -76,6 +78,7 @@ export interface UpdateExpenseInput {
   type: TransactionType;
   note?: string;
   date?: Date;
+  dueDate?: Date;
   rate?: number;
   currencyId?: string;
   totalAmount?: number;
@@ -92,6 +95,7 @@ export interface Transaction {
   detailPath?: string;
   note?: string;
   date?: Date;
+  dueDate?: Date;
   status: string;
   statusLabel?: string;
   fulfillmentStatus?: string;
@@ -127,6 +131,7 @@ export interface CreateExpenseInput {
   title: string;
   note?: string;
   date?: string;
+  dueDate?: string;
   amount?: number;
   rate?: string;
   currencyId?: string;
@@ -144,6 +149,8 @@ export interface ExpenseQueryParams {
   status?: string;
   dateFrom?: string;
   dateTo?: string;
+  paymentStatus?: "paid" | "unpaid";
+  overdue?: boolean;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   amount?: number;

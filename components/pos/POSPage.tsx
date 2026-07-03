@@ -45,7 +45,25 @@ import { usePosCartTotals } from "./hooks/usePosCartTotals";
 import { usePosCheckout } from "./hooks/usePosCheckout";
 import { usePosSavedCarts } from "./hooks/usePosSavedCarts";
 import type { PosCartItem, PosPaymentEntry, SavedPosCart, SelectedPosContact } from "./types";
-import { formatMoney, getCartItem, getProductImage, getTodayRange, uid } from "./utils";
+import { buildTaxBreakdown, formatMoney, getCartItem, getProductImage, getTodayRange, isTrackedInventory, uid } from "./utils";
+
+const normalizeEntityId = (value: unknown): string | undefined => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value && typeof value === "object") {
+    const candidate = value as { id?: unknown; _id?: unknown };
+    if (typeof candidate.id === "string") {
+      return candidate.id;
+    }
+    if (typeof candidate._id === "string") {
+      return candidate._id;
+    }
+  }
+
+  return undefined;
+};
 
 export default function POSPage() {
   const [form] = Form.useForm();
@@ -69,9 +87,11 @@ export default function POSPage() {
   const [activeSavedCartId, setActiveSavedCartId] = useState<string | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
+  const [posFulfillmentMode, setPosFulfillmentMode] = useState<"fulfill_now" | "pending" | undefined>(undefined);
   const [pendingCheckoutOpen, setPendingCheckoutOpen] = useState(false);
   const [hasAppliedInitialPosSettings, setHasAppliedInitialPosSettings] = useState(false);
   const currentUser = useSelector((state: RootState) => state.currentUser.user);
+  const currentStore = useSelector((state: RootState) => state.currentUser.store);
   const storeSettings = useSelector((state: RootState) => state.currentUser.storeSettings);
   const posSettings = storeSettings?.pos ? { ...DEFAULT_POS_SETTINGS, ...storeSettings.pos } : DEFAULT_POS_SETTINGS;
 
@@ -91,15 +111,18 @@ export default function POSPage() {
     role: ContactRole.CUSTOMER,
     search: debouncedCustomerSearch || undefined,
   });
-  const { data: paymentMethods } = useGetPaymentMethodsQuery();
+  const { data: paymentMethods } = useGetPaymentMethodsQuery({ status: "active", showInPOS: true });
   const { data: taxes = [] } = useGetTaxesQuery();
   const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery({ type: CategoryType.PRODUCT, status: CategoryStatus.ACTIVE });
   const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId, { skip: !selectedCurrencyId });
-  const { data: allProductsData } = useGetProductsQuery({ inPOS: true, limit: 100 });
+  const currentPosLocationId = selectedLocation?.id || normalizeEntityId(form.getFieldValue("locationId")) || defaultLocation?.id;
+  const activeLocationId = currentPosLocationId;
+  const { data: allProductsData } = useGetProductsQuery({ inPOS: true, locationId: activeLocationId, limit: 100 });
   const { data: filteredProductsData, isLoading: productsLoading } = useGetProductsQuery({
     search: debouncedSearch,
     inPOS: true,
     categoryId,
+    locationId: activeLocationId,
     limit: 100,
   });
   const [createSale, { isLoading: creatingSale }] = useCreateSaleMutation();
@@ -135,7 +158,11 @@ export default function POSPage() {
     return found?.name || selectedContact.name || null;
   }, [contacts, selectedContact]);
 
-  const { savedCarts, writeSavedCarts, removeSavedCart: removeSavedCartFromStorage } = usePosSavedCarts({
+  const {
+    savedCarts,
+    writeSavedCarts,
+    removeSavedCart: removeSavedCartFromStorage,
+  } = usePosSavedCarts({
     currentUserId,
     dayKey: historyRange.dayKey,
   });
@@ -171,10 +198,71 @@ export default function POSPage() {
   }, [allProducts]);
 
   const { totalItems, subtotal, discounts, taxableSubtotal, taxAmount, grandTotal, totalPaid, balance, change } = usePosCartTotals(cart, payments, selectedTax);
+  const taxSummary = useMemo(
+    () => buildTaxBreakdown(taxableSubtotal, selectedTax),
+    [selectedTax, taxableSubtotal],
+  );
   const selectedPaymentMethodName = useMemo(() => {
     const selectedMethodId = payments[0]?.paymentMethodId;
     return availablePaymentMethods.find((method) => method.id === selectedMethodId)?.name || null;
   }, [availablePaymentMethods, payments]);
+  const defaultTaxIdForSelectedLocation = currentPosLocationId ? posSettings.defaultTaxByLocationId?.[currentPosLocationId] : undefined;
+  const fallbackLocationId = currentPosLocationId;
+  const fallbackCurrencyId = normalizeEntityId(form.getFieldValue("currencyId")) || normalizeEntityId(currentStore?.currencyId) || normalizeEntityId(currentUser?.store?.currencyId);
+  const stockByProductId = useMemo(() => {
+    const map = new Map<string, { availableStock?: number; type?: string; name?: string }>();
+
+    for (const product of allProducts) {
+      map.set(product.id, {
+        availableStock: isTrackedInventory(product.type) ? product.availableStock : undefined,
+        type: product.type,
+        name: product.name,
+      });
+
+      for (const variant of product.variants || []) {
+        map.set(variant.id, {
+          availableStock: isTrackedInventory(variant.type) ? variant.availableStock : undefined,
+          type: variant.type,
+          name: variant.name,
+        });
+      }
+    }
+
+    return map;
+  }, [allProducts]);
+  const stockIssues = useMemo(
+    () =>
+      cart.filter((item) => {
+        if (!isTrackedInventory(item.type)) {
+          return false;
+        }
+
+        return item.quantity > Number(item.availableStock || 0);
+      }),
+    [cart],
+  );
+
+  useEffect(() => {
+    if (!cart.length || !stockByProductId.size) {
+      return;
+    }
+
+    setCart((current) =>
+      current.map((item) => {
+        const stockState = stockByProductId.get(item.productId);
+        if (!stockState) {
+          return item;
+        }
+
+        return {
+          ...item,
+          availableStock: stockState.availableStock,
+          type: stockState.type || item.type,
+          name: stockState.name || item.name,
+        };
+      }),
+    );
+  }, [cart.length, stockByProductId]);
 
   useEffect(() => {
     if (hasAppliedInitialPosSettings) {
@@ -199,7 +287,7 @@ export default function POSPage() {
 
   useEffect(() => {
     const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
-    const storeCurrencyId = user?.store?.currencyId;
+    const storeCurrencyId = normalizeEntityId(user?.store?.currencyId);
     if (storeCurrencyId && !form.getFieldValue("currencyId")) {
       form.setFieldsValue({ currencyId: storeCurrencyId, rate: 1 });
     }
@@ -210,24 +298,42 @@ export default function POSPage() {
       return;
     }
 
-    if (posSettings.applyTaxByDefault && posSettings.defaultTaxId) {
-      const configuredTax = taxes.find((tax) => tax.id === posSettings.defaultTaxId);
+    if (posSettings.applyTaxByDefault && defaultTaxIdForSelectedLocation) {
+      const configuredTax = taxes.find((tax) => tax.id === defaultTaxIdForSelectedLocation);
       setSelectedTax(configuredTax);
       return;
     }
 
     setSelectedTax(undefined);
-  }, [posSettings.applyTaxByDefault, posSettings.defaultTaxId, taxes]);
+  }, [defaultTaxIdForSelectedLocation, posSettings.applyTaxByDefault, taxes]);
 
   const setCartQuantity = useCallback((product: ProductListItem, quantity: number) => {
     setCart((current) => {
       const existing = current.find((item) => item.productId === product.id);
-      if (quantity <= 0) {
+      const nextQuantity = Number(quantity || 0);
+      const trackedInventory = isTrackedInventory(product.type);
+      const availableStock = Number(product.availableStock || 0);
+
+      if (nextQuantity <= 0) {
         return current.filter((item) => item.productId !== product.id);
       }
 
+      if (trackedInventory && nextQuantity > availableStock) {
+        message.warning(`Only ${availableStock} in stock at this location.`);
+        return current;
+      }
+
       if (existing) {
-        return current.map((item) => (item.productId === product.id ? { ...item, quantity } : item));
+        return current.map((item) =>
+          item.productId === product.id
+            ? {
+                ...item,
+                quantity: nextQuantity,
+                availableStock: trackedInventory ? product.availableStock : undefined,
+                type: product.type,
+              }
+            : item,
+        );
       }
 
       return [
@@ -238,9 +344,10 @@ export default function POSPage() {
           name: product.name,
           sku: product.sku,
           imageUrl: getProductImage(product),
+          type: product.type,
           unitPrice: getNormalPrice(product),
-          quantity,
-          availableStock: product.availableStock,
+          quantity: nextQuantity,
+          availableStock: trackedInventory ? product.availableStock : undefined,
           discountValue: 0,
           discountType: "fixed",
         },
@@ -259,6 +366,10 @@ export default function POSPage() {
 
         const nextQuantity = item.quantity + delta;
         if (nextQuantity <= 0) return [];
+        if (isTrackedInventory(item.type) && nextQuantity > Number(item.availableStock || 0)) {
+          message.warning(`Only ${Number(item.availableStock || 0)} in stock at this location.`);
+          return [item];
+        }
 
         return [{ ...item, quantity: nextQuantity }];
       }),
@@ -289,8 +400,8 @@ export default function POSPage() {
     setPayments([{ id: uid(), amount: 0 }]);
     setCategoryId(undefined);
     setSearchValue("");
-    if (posSettings.applyTaxByDefault && posSettings.defaultTaxId) {
-      const configuredTax = taxes.find((tax) => tax.id === posSettings.defaultTaxId);
+    if (posSettings.applyTaxByDefault && defaultTaxIdForSelectedLocation) {
+      const configuredTax = taxes.find((tax) => tax.id === defaultTaxIdForSelectedLocation);
       setSelectedTax(configuredTax);
     } else {
       setSelectedTax(undefined);
@@ -298,7 +409,7 @@ export default function POSPage() {
     clearSelectedCustomer();
     setActiveSavedCartId(null);
     message.info("Cart cleared.");
-  }, [clearSelectedCustomer, posSettings.applyTaxByDefault, posSettings.defaultTaxId, taxes]);
+  }, [clearSelectedCustomer, defaultTaxIdForSelectedLocation, posSettings.applyTaxByDefault, taxes]);
 
   const saveCartDraft = useCallback(() => {
     if (!cart.length) {
@@ -408,19 +519,23 @@ export default function POSPage() {
   const createSaleAction = useCallback((payload: Parameters<typeof createSale>[0]) => createSale(payload).unwrap(), [createSale]);
   const createPaymentAction = useCallback((payload: Parameters<typeof createPayment>[0]) => createPayment(payload).unwrap(), [createPayment]);
 
-  const { addPaymentRow, updatePaymentRow, removePaymentRow, openSplitPayment, prepareCheckout, submitCheckout } = usePosCheckout({
+  const { cashPaymentMethodIds, getPaymentAmountLimit, updatePaymentRow, removePaymentRow, openSplitPayment, prepareCheckout, submitCheckout } = usePosCheckout({
     payments,
     setPayments,
     availablePaymentMethods,
     grandTotal,
     form,
     posSettings,
+    setPosFulfillmentMode,
     submitParams: {
       cart,
       payments,
       form,
       grandTotal,
+      posFulfillmentMode,
       posSettings,
+      fallbackLocationId,
+      fallbackCurrencyId,
       selectedTax,
       createSaleAction,
       createPaymentAction,
@@ -441,6 +556,12 @@ export default function POSPage() {
       return;
     }
 
+    if (stockIssues.length) {
+      const firstIssue = stockIssues[0];
+      message.error(`${firstIssue.name} exceeds stock for this location. Reduce quantity before checkout.`);
+      return;
+    }
+
     const customerMode = posSettings.customerMode || "walk_in_default";
     if (customerMode === "require_customer" && !form.getFieldValue("contactId")) {
       setPendingCheckoutOpen(true);
@@ -458,7 +579,7 @@ export default function POSPage() {
     prepareCheckout();
     setShowSplit(false);
     setCheckoutModalOpen(true);
-  }, [cart.length, form, posSettings.customerMode, prepareCheckout]);
+  }, [cart.length, form, posSettings.customerMode, prepareCheckout, stockIssues]);
 
   const handleOpenSplitPayment = useCallback(() => {
     openSplitPayment();
@@ -527,6 +648,7 @@ export default function POSPage() {
           cartActionItems={cartActionItems}
           onCartActionClick={handleCartActionClick}
           cart={cart}
+          stockIssues={stockIssues}
           cartProductNames={cartProductNames}
           selectedCurrencyCode={selectedCurrencyCode}
           subtotal={subtotal}
@@ -592,26 +714,28 @@ export default function POSPage() {
         open={checkoutModalOpen}
         loading={loading}
         showSplit={showSplit}
-        form={form}
+        fulfillmentMode={posFulfillmentMode}
         posSettings={posSettings}
         selectedCurrencyCode={selectedCurrencyCode}
         totalItems={totalItems}
         subtotal={subtotal}
         discounts={discounts}
-        taxableSubtotal={taxableSubtotal}
         taxAmount={taxAmount}
+        taxSummary={taxSummary}
         grandTotal={grandTotal}
         totalPaid={totalPaid}
         balance={balance}
         change={change}
         payments={payments}
         paymentMethods={availablePaymentMethods}
+        cashPaymentMethodIds={cashPaymentMethodIds}
+        getPaymentAmountLimit={getPaymentAmountLimit}
         selectedContactName={selectedContactName}
         selectedPaymentMethodName={selectedPaymentMethodName}
         onCancel={() => setCheckoutModalOpen(false)}
+        onFulfillmentModeChange={setPosFulfillmentMode}
         onSetShowSplit={setShowSplit}
         onOpenSplitPayment={handleOpenSplitPayment}
-        onAddPaymentRow={addPaymentRow}
         onUpdatePaymentRow={updatePaymentRow}
         onRemovePaymentRow={removePaymentRow}
         onSubmitCheckout={submitCheckout}

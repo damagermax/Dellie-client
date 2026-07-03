@@ -1,13 +1,20 @@
 "use client";
 
-import { Form } from "antd";
+import { Alert, Form } from "antd";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 import { InputFormItem } from "../ui/AppFormItems";
 import { BaseButton } from "../ui/AppButtons";
 import { useResetPasswordMutation } from "@/lib/redux/services";
+import AuthPageShell from "./AuthPageShell";
+
+interface ResetPasswordValues {
+  newPassword: string;
+  confirmPassword: string;
+}
 
 export default function ResetPasswordForm() {
   const [resetForm] = Form.useForm();
@@ -18,7 +25,7 @@ export default function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: ResetPasswordValues) => {
     if (values.newPassword !== values.confirmPassword) {
       resetForm.setFields([
         {
@@ -32,33 +39,33 @@ export default function ResetPasswordForm() {
     await resetPassword({ token: token as string, newPassword: values.newPassword });
   };
 
-  if (isSuccess) {
+  useEffect(() => {
+    if (!isSuccess) {
+      return;
+    }
+
     router.push("/auth/signin");
-  }
+  }, [isSuccess, router]);
 
   return (
-    <div className=" w-full bg-white p-6 rounded-3xl">
-      <p className=" text-center w-full pb-2 text-xl font-semibold">Reset Password</p>
-      <div className=" mb-6 text-center flex items-center justify-center">
-        {" "}
-        <p className=" w-[70%]">Please enter a new password for your account. Make sure it’s strong and secure.</p>
-      </div>
-      <Form size="small" disabled={isLoading} form={resetForm} onFinish={handleSubmit} className="auth grid  gap-x-5" layout={"vertical"}>
-        <InputFormItem type="password" variant="underlined" label="New Password" name="newPassword" placeholder="Enter your new password" rules={[{ required: true, message: "Please enter your new password" }]} />
-        <InputFormItem type="password" variant="underlined" label="Confirm New Password" name="confirmPassword" placeholder="Confirm your new password" rules={[{ required: true, message: "Please confirm your new password" }]} />
+    <AuthPageShell eyebrow="Secure your account" title="Choose a new password" description="Set a strong password for this account so you can get back to work without losing momentum.">
+      {!token ? <Alert className="mb-5 rounded-2xl" type="warning" showIcon message="Reset token missing" description="Open the reset link from your email again to continue." /> : null}
+
+      <Form size="small" disabled={isLoading || !token} form={resetForm} onFinish={handleSubmit} className="auth grid gap-x-5" layout="vertical">
+        <InputFormItem type="password" label="New password" name="newPassword" placeholder="Enter your new password" rules={[{ required: true, message: "Please enter your new password." }]} />
+        <InputFormItem type="password" label="Confirm new password" name="confirmPassword" placeholder="Confirm your new password" rules={[{ required: true, message: "Please confirm your new password." }]} />
       </Form>
 
-      <div>
-        <BaseButton onClick={() => resetForm.submit()} disabled={isLoading} label={isLoading ? "Resetting..." : " Reset Password"} classNames=" w-full !py-[1.4rem] mt-3   " />
+      <div className="mt-6">
+        <BaseButton onClick={() => resetForm.submit()} disabled={isLoading || !token} label={isLoading ? "Resetting..." : "Reset password"} classNames="w-full !bg-[#102d2b] !py-[1.35rem] !text-white hover:!bg-[#173d3a]" />
       </div>
 
-      <div className=" my-5 flex  justify-center items-center">
-        <Link href="/auth/signin" className=" text-blue-800">
-          Back To Login
+      <div className="mt-6 text-center text-sm text-gray-600">
+        Return to{" "}
+        <Link href="/auth/signin" className="font-semibold text-[#1f5d58] transition-colors hover:text-[#102d2b]">
+          sign in
         </Link>
       </div>
-
-      <div className=" mt-5 h-[100px] w-full bg-gray-100 rounded-2xl"></div>
-    </div>
+    </AuthPageShell>
   );
 }

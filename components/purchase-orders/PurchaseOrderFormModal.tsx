@@ -1,453 +1,47 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
 import { AppModal, ModalProps } from "../ui/AppModal";
-import { Form, Input, InputNumber, Select, MenuProps, Dropdown, message } from "antd";
-import type { TableProps } from "antd/es/table";
+import { Form, Select } from "antd";
 import { DatePickerFormItem } from "../ui/AppFormItems";
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
-import { useCreatePurchaseMutation, useGetCurrencyQuery, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdatePurchaseMutation } from "@/lib/redux/services";
-import { ProductListItem, Purchase, PurchaseDiscountType, Tax } from "@/types/index";
-import { RiSearchLine } from "react-icons/ri";
-import { Trash2 } from "lucide-react";
+import { Purchase } from "@/types/index";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
 import AppTable from "../ui/AppTable";
-import PreviewImage from "../ui/PreviewImage";
 import { SearchableLocationSelect } from "../location/SearchableLocationSelect";
 import dayjs from "dayjs";
 import { ExchangeRateFormItem } from "../system/ExchangeRateFormItem";
 
 import { TaxSelector } from "../settings/TaxSelector";
-import useToggle from "@/hooks/UseToggle";
-import { buildPaymentTermOptions, getLegacyPaymentTermDays } from "@/lib/payment-terms";
 import { ProductVariantSelectorModal } from "../products/ProductVariantSelectorModal";
-import { ResolvedProductName, useResolvedProductNameMap } from "../products/ResolvedProductName";
+import { buildPurchaseFormColumns, ProductLineItem, PurchaseProductSearchResults, PurchaseSummaryPanel } from "./purchaseFormSections";
+import { usePurchaseOrderFormController } from "./usePurchaseOrderFormController";
 
 interface PurchaseOrderFormModalProps extends ModalProps {
   purchase?: Purchase;
   onSaved?: () => void;
 }
 
-interface ProductLineItem {
-  id: string;
-  productImageUrl?: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  weight?: number;
-  tax?: Tax;
-}
-
-function getErrorMessage(error: any) {
-  return error?.data?.message || "The purchase could not be saved. Please check the details and try again.";
-}
-
 export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: PurchaseOrderFormModalProps) {
-  const [form] = Form.useForm();
-  const [lineItems, setLineItems] = useState<ProductLineItem[]>([]);
-  const [selectedTax, setSelectedTax] = useState<Tax>();
-  const [selectedTaxProductId, setSelectedTaxProductId] = useState<string>();
-  const [searchValue, setSearchValue] = useState("");
-  const [variantParent, setVariantParent] = useState<ProductListItem>();
-  const [openTaxSelector, toggleTaxSelector] = useToggle();
-  const [isDeferentProductTax, setIsDeferentProductTax] = useState(false);
-  const toggleDeferentProductTax = useCallback(() => setIsDeferentProductTax((current) => !current), []);
+  const controller = usePurchaseOrderFormController({ open, toggle, purchase, onSaved });
 
-  const [discount, setDiscount] = useState<{ discountValue: number; discountType: PurchaseDiscountType }>({ discountValue: 0, discountType: "percent" });
-
-  const [createPurchase, { isLoading: creating }] = useCreatePurchaseMutation();
-  const [updatePurchase, { isLoading: updating }] = useUpdatePurchaseMutation();
-  const { data: paymentTerms } = useGetPaymentTermsQuery();
-  const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20, purchasable: true });
-  const { data: taxes } = useGetTaxesQuery();
-
-  const rate = Form.useWatch("rate", form) || 1;
-  const selectedCurrencyId = Form.useWatch("currencyId", form) as string | undefined;
-  const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
-  const storeCurrencyId = user?.store?.currencyId as string | undefined;
-  const fallbackStoreCurrencyCode = user?.store?.currency?.code || user?.store?.currencyCode || "";
-  const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId as string, { skip: !selectedCurrencyId });
-  const { data: storeCurrency } = useGetCurrencyQuery(storeCurrencyId as string, { skip: !storeCurrencyId || Boolean(fallbackStoreCurrencyCode) });
-  const storeCurrencyCode = fallbackStoreCurrencyCode || storeCurrency?.code || "";
-  const currency = useMemo(() => {
-    if (selectedCurrencyId && storeCurrencyId && selectedCurrencyId === storeCurrencyId) {
-      return storeCurrencyCode;
-    }
-
-    return selectedCurrency?.code || storeCurrencyCode;
-  }, [selectedCurrency?.code, selectedCurrencyId, storeCurrencyCode, storeCurrencyId]);
-  const loading = creating || updating;
-  const cannotEdit = Boolean(purchase?.locked || purchase?.receiptStatus === "received");
-  const paymentTermOptions = useMemo(() => buildPaymentTermOptions(paymentTerms || []), [paymentTerms]);
-  const formatMoney = useCallback(
-    (amount: number) =>
-      `${currency ? `${currency} ` : ""}${Number(amount || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`.trim(),
-    [currency],
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    const storeCurrencyId = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}")?.store?.currencyId : undefined;
-
-    if (purchase) {
-      form.setFieldsValue({
-        contactId: purchase.contactId?.id,
-        date: dayjs(purchase.date),
-        deliveryDate: purchase.deliveryDate ? dayjs(purchase.deliveryDate) : undefined,
-        location: purchase.locationId?.id,
-        currencyId: purchase.currencyId?.id,
-        rate: purchase.rate || 1,
-        paymentTerm: purchase.paymentTerms,
-        dueDate: purchase.dueDate ? dayjs(purchase.dueDate) : undefined,
-      });
-      setDiscount({
-        discountValue: Number(purchase.discountValue || 0),
-        discountType: purchase.discountType || "fixed",
-      });
-      setLineItems(
-        purchase.lineItems.map((item) => ({
-          id: typeof item.productId === "string" ? item.productId : item.productId.id,
-          productName: item.productName,
-          productImageUrl: item.productUrl || (typeof item.productId === "string" ? undefined : item.productId.media?.[0]?.url),
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          weight: item.weight,
-        })),
-      );
-      return;
-    }
-
-    form.resetFields();
-    form.setFieldsValue({ date: dayjs(), dueDate: dayjs(), currencyId: storeCurrencyId, rate: 1 });
-    setDiscount({ discountValue: 0, discountType: "percent" });
-    setSelectedTax(undefined);
-    setIsDeferentProductTax(false);
-    setLineItems([]);
-  }, [form, open, purchase]);
-
-  useEffect(() => {
-    if (!open || !purchase || !taxes) return;
-    const selectedDocumentTax = taxes.find((tax) => tax.id === purchase.taxId);
-    const hasLineTax = purchase.lineItems.some((item) => Boolean(item.taxId));
-    setSelectedTax(selectedDocumentTax);
-    setIsDeferentProductTax(!selectedDocumentTax && hasLineTax);
-    setLineItems((current) =>
-      current.map((item) => ({
-        ...item,
-        tax: selectedDocumentTax ? undefined : taxes.find((tax) => tax.id === purchase.lineItems.find((line) => (typeof line.productId === "string" ? line.productId : line.productId.id) === item.id)?.taxId),
-      })),
-    );
-  }, [open, purchase, taxes]);
-
-  useEffect(() => {
-    if (isDeferentProductTax) {
-      setSelectedTax(undefined);
-    } else {
-      setLineItems((prev) =>
-        prev.map((item) => ({
-          ...item,
-          tax: undefined,
-        })),
-      );
-    }
-  }, [isDeferentProductTax]);
-
-  const items: MenuProps["items"] = [
-    { key: "percent", label: "%" },
-    { key: "fixed", label: currency || storeCurrencyCode || "Amount" },
-  ];
-  const availableProductNames = useResolvedProductNameMap(
-    (productsData?.data || []).map((product) => ({
-      id: product.id,
-      name: product.name,
-    })),
-  );
-
-  const updateLineItem = useCallback((id: string, patch: Partial<ProductLineItem>) => {
-    setLineItems((prev) => prev.map((lineItem) => (lineItem.id === id ? { ...lineItem, ...patch } : lineItem)));
-  }, []);
-  const handlePaymentTermChange = useCallback(
-    (value: string) => {
-      const days = paymentTerms?.find((term) => term.code === value)?.days ?? getLegacyPaymentTermDays(value);
-      const dateValue = form.getFieldValue("date");
-      if (dateValue && typeof days === "number") {
-        form.setFieldsValue({ dueDate: dayjs(dateValue).add(days, "day") });
-      }
+  const productColumns = buildPurchaseFormColumns({
+    currency: controller.currency,
+    formatMoney: controller.formatMoney,
+    isDifferentProductTax: controller.isDeferentProductTax,
+    onOpenLineTax: (productId) => {
+      controller.setSelectedTaxProductId(productId);
+      controller.toggleTaxSelector();
     },
-    [form, paymentTerms],
-  );
-
-  const calculateLineTotal = (item: ProductLineItem) => {
-    const subtotal = item.quantity * item.unitPrice;
-
-    // Sum all tax percentages
-    const totalTaxRate = item.tax?.items?.reduce((sum, tax) => sum + tax.value, 0) || 0;
-
-    // Calculate tax amount
-    const tax = subtotal * (totalTaxRate / 100);
-    const total = subtotal + tax;
-
-    const taxItems =
-      item.tax?.items.map((tax) => {
-        const amount = (subtotal * tax.value) / 100;
-
-        return {
-          name: tax.name,
-          rate: tax.value,
-          amount,
-        };
-      }) ?? [];
-
-    return { subtotal, tax, total, baseTotal: total * rate, taxItems };
-  };
-
-  const addLineItem = (product: ProductListItem) => {
-    setLineItems((prev) => {
-      const existingItem = prev.find((item) => item.id === product.id);
-      if (existingItem) {
-        return prev.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
-      }
-
-      return [
-        ...prev,
-        {
-          id: product.id,
-          productName: product.name,
-          productImageUrl: product.imageUrl,
-          quantity: 1,
-          unitPrice: Number(product.costPrice || 0),
-          weight: 0,
-        },
-      ];
-    });
-    setSearchValue("");
-  };
-  const selectProduct = (product: ProductListItem) => {
-    if (product.hasVariants || product.variants?.length) {
-      setVariantParent(product);
-      return;
-    }
-    addLineItem(product);
-  };
-
-  const removeLineItem = (productId: string) => {
-    setLineItems((prev) => prev.filter((item) => item.id !== productId));
-  };
-
-  const handleTaxSelect = (tax: Tax | undefined) => {
-    if (selectedTaxProductId) {
-      updateLineItem(selectedTaxProductId, { tax: tax });
-    } else {
-      setSelectedTax(tax);
-    }
-    toggleTaxSelector();
-  };
-
-  const handleSubmit = async () => {
-    const values = await form.validateFields().catch(() => null);
-    if (!values) return;
-    if (!lineItems.length) {
-      message.error("Add at least one product to this purchase.");
-      return;
-    }
-
-    const payload = {
-      contactId: values.contactId,
-      date: values.date.toISOString(),
-      deliveryDate: values.deliveryDate?.toISOString(),
-      locationId: values.location,
-      currencyId: values.currencyId,
-      rate: Number(values.rate || 1),
-      paymentTerms: values.paymentTerm,
-      dueDate: values.dueDate?.toISOString(),
-      discountValue: discount.discountValue,
-      discountType: discount.discountType,
-      taxId: isDeferentProductTax ? undefined : selectedTax?.id,
-      lineItems: lineItems.map((item) => ({
-        productId: item.id,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        weight: Number(item.weight || 0),
-        taxId: isDeferentProductTax ? item.tax?.id : undefined,
-      })),
-    };
-
-    try {
-      if (purchase) {
-        await updatePurchase({ id: purchase.id, ...payload }).unwrap();
-        message.success("Purchase updated.");
-      } else {
-        await createPurchase(payload).unwrap();
-        message.success("Purchase created.");
-      }
-      onSaved?.();
-      toggle();
-    } catch (error) {
-      message.error(getErrorMessage(error));
-    }
-  };
-
-  const productColumns = useMemo<TableProps<ProductLineItem>["columns"]>(
-    () => [
-      {
-        title: "Product",
-        dataIndex: "productName",
-        key: "productName",
-        className: "!pl-8",
-        width: isDeferentProductTax ? "50%" : "60%",
-        render: (_: any, record: ProductLineItem) => (
-          <div className="flex items-center gap-x-2">
-            <div className=" ">
-              <PreviewImage width={28} height={28} src={record.productImageUrl} />
-            </div>
-            <ResolvedProductName name={record.productName} productId={record.id} className=" line-clamp-1" />
-          </div>
-        ),
-      },
-      {
-        title: "Qty",
-        dataIndex: "quantity",
-        key: "quantity",
-        width: "10%",
-        render: (_: any, record: ProductLineItem) => <InputNumber variant="underlined" controls={false} min={1} value={record.quantity} onChange={(value) => updateLineItem(record.id, { quantity: Number(value || 1) })} />,
-      },
-      {
-        title: "Weight",
-        dataIndex: "weight",
-        key: "weight",
-        width: "12%",
-        render: (_: any, record: ProductLineItem) => <InputNumber variant="underlined" controls={false} min={0} suffix="kg" value={record.weight} onChange={(value) => updateLineItem(record.id, { weight: Number(value || 0) })} />,
-      },
-      {
-        title: "Cost",
-        dataIndex: "unitPrice",
-        key: "unitPrice",
-        width: "10%",
-        render: (_: any, record: ProductLineItem) => <InputNumber prefix={currency || undefined} variant="underlined" controls={false} min={0} value={record.unitPrice} onChange={(value) => updateLineItem(record.id, { unitPrice: Number(value || 0) })} />,
-      },
-
-      ...(isDeferentProductTax
-        ? [
-            {
-              title: "Tax",
-              dataIndex: "tax",
-              key: "tax",
-              width: "10%",
-
-              render: (_: any, record: ProductLineItem) => (
-                <div
-                  onClick={() => {
-                    setSelectedTaxProductId(record.id);
-                    toggleTaxSelector();
-                  }}
-                  className={`cursor-pointer ${record.tax ? "text-gray-800" : "text-blue-600 hover:underline"}`}
-                >
-                  {record?.tax ? (
-                    <p>{formatMoney(calculateLineTotal(record).tax)}</p>
-                  ) : (
-                    <p className=" text-blue-600   hover:block">Add Tax</p>
-                  )}
-                </div>
-              ),
-            },
-          ]
-        : []),
-      {
-        title: "Total ",
-        dataIndex: "__total",
-        key: "__total",
-        align: "end",
-        width: "15%",
-        render: (_: any, record: ProductLineItem) => (
-          <div>
-            <p>{formatMoney(calculateLineTotal(record).total)}</p>
-          </div>
-        ),
-      },
-      {
-        title: "",
-        dataIndex: "id",
-        key: "id",
-        align: "end",
-        render: (id: string) => (
-          <div className="pl-5 text-gray-500 cursor-pointer hover:text-red-400" onClick={() => removeLineItem(id)}>
-            <Trash2 size={15} className="cursor-pointer" />
-          </div>
-        ),
-      },
-    ],
-    [currency, formatMoney, updateLineItem, isDeferentProductTax],
-  );
-
-  const summary = useMemo(() => {
-    const lineTotals = lineItems.map(calculateLineTotal);
-
-    const itemsSubTotal = lineTotals.reduce((sum, line) => sum + line.subtotal, 0);
-
-    const globalDiscount = discount.discountType === "percent" ? (itemsSubTotal * discount.discountValue) / 100 : discount.discountValue;
-
-    const subTotal = Math.max(itemsSubTotal - globalDiscount, 0);
-
-    const taxItems = selectedTax
-      ? selectedTax.items.map((tax) => ({
-          name: `${tax.name} @${tax.value}%`,
-          amount: (subTotal * tax.value) / 100,
-        }))
-      : lineTotals.flatMap((line) => line.taxItems);
-
-    const taxSummary = Object.entries(
-      taxItems.reduce<Record<string, number>>((acc, tax) => {
-        acc[tax.name] = (acc[tax.name] ?? 0) + tax.amount;
-        return acc;
-      }, {}),
-    ).map(([name, amount]) => ({ name, amount }));
-
-    const tax = taxSummary.reduce((sum, item) => sum + item.amount, 0);
-
-    const total = subTotal + tax;
-    const baseTotal = total * rate;
-
-    return {
-      itemsSubTotal,
-      globalDiscount,
-      subTotal,
-      tax,
-      total,
-      baseTotal,
-      taxSummary,
-    };
-  }, [lineItems, discount, rate, selectedTax]);
-
-  const searchProduct = (
-    <div className="px-5 bg-gray-100">
-      <div className="sticky inset-0 z-50 py-4">
-        <Input prefix={<RiSearchLine />} placeholder="Search for product " className="rounded-full!" value={searchValue} onChange={({ target: { value } }) => setSearchValue(value)} />
-      </div>
-      <div className="shadow-xl bg-white">
-        {searchValue &&
-          (productsData?.data || []).map((item) => (
-            <div key={item.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => selectProduct(item)}>
-              <div className="flex gap-x-2 items-center">
-                <PreviewImage width={28} height={28} src={item.imageUrl} />
-                <div>
-                  <ResolvedProductName name={availableProductNames[item.id] || item.name} productId={item.id} />
-                  {item.sku !== "undefined" && <p className="text-gray-500">{item.sku}</p>}
-                </div>
-              </div>
-            </div>
-          ))}
-      </div>
-    </div>
-  );
+    onRemoveLine: controller.removeLineItem,
+    onUpdateLineItem: controller.updateLineItem,
+    calculateLineTotal: controller.calculateLineTotal,
+  });
 
   return (
     <>
-      <AppModal open={open} toggle={toggle} title={purchase ? "Edit Purchase" : "New Purchase"} onOk={handleSubmit} width={1000} loading={loading} okText={"Save"}>
-        <Form form={form} disabled={cannotEdit || loading} layout="vertical" initialValues={{ date: dayjs(), dueDate: dayjs() }}>
-          <div className="grid grid-cols-4 p-5 gap-x-5 pb-12">
+      <AppModal open={open} toggle={toggle} title={purchase ? "Edit Purchase" : "New Purchase"} onOk={controller.handleSubmit} width={1000} loading={controller.loading} okText={"Save"}>
+        <Form form={controller.form} disabled={controller.cannotEdit || controller.loading} layout="vertical" initialValues={{ date: dayjs(), dueDate: dayjs() }}>
+          <div className="grid grid-cols-1 gap-x-5 gap-y-1 p-5 pb-8 sm:grid-cols-2 xl:grid-cols-4">
             <Form.Item name="contactId" label="Contact" rules={[{ required: true, message: "Select contact" }]}>
               <SearchableContactSelect onAddContact={() => {}} />
             </Form.Item>
@@ -456,83 +50,51 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
             <Form.Item name="location" label="Location">
               <SearchableLocationSelect />
             </Form.Item>
-            <Form.Item label="Currency" name="currencyId">
-              <SearchableCurrenciesSelect />
-            </Form.Item>
-            <ExchangeRateFormItem name="rate" className="w-full" />
-            <Form.Item name="paymentTerm" label="Payment Term">
-              <Select options={paymentTermOptions} placeholder="Payment Term" onChange={handlePaymentTermChange} />
-            </Form.Item>
-            <DatePickerFormItem label="Due Date" name="dueDate" placeholder="Due Date" className="" />
+            {controller.multiCurrencyEnabled ? (
+              <>
+                <Form.Item label="Currency" name="currencyId">
+                  <SearchableCurrenciesSelect />
+                </Form.Item>
+                <ExchangeRateFormItem name="rate" className="w-full" />
+              </>
+            ) : null}
+            {controller.paymentTermsEnabled ? (
+              <>
+                <Form.Item name="paymentTerm" label="Payment Term">
+                  <Select options={controller.paymentTermOptions} placeholder="Payment Term" onChange={controller.handlePaymentTermChange} />
+                </Form.Item>
+                <DatePickerFormItem label="Due Date" name="dueDate" placeholder="Due Date" className="" />
+              </>
+            ) : null}
           </div>
 
-          <AppTable columns={productColumns} dataSource={lineItems || []} rowKey={(record: ProductLineItem) => record.id} />
-          {searchProduct}
+          <AppTable columns={productColumns} dataSource={controller.lineItems || []} rowKey={(record: ProductLineItem) => record.id} />
+          <PurchaseProductSearchResults products={controller.products} searchValue={controller.searchValue} onSearchChange={controller.setSearchValue} onSelectProduct={controller.selectProduct} />
 
-          {
-            <div className=" pb-4 px-5  w-full mt-8 grid grid-cols-3">
-              <div></div>
-              <div></div>
-              <div className="text-right bg-gray-50 p-5 space-y-2">
-                <div className="space-y-2">
-                  <div className="flex justify-between gap-6">
-                    <span>Items Total</span>
-                    <span>{formatMoney(summary.itemsSubTotal)}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center gap-6">
-                    <div className="relative inline-flex items-center gap">
-                      <span className="inline-block mr-4">Discount </span>
-                      <InputNumber min={0} controls={false} className="!w-[60px]" variant="underlined" value={discount.discountValue} onChange={(value) => setDiscount((current) => ({ ...current, discountValue: Number(value || 0) }))} />
-                      <Dropdown menu={{ items, onClick: ({ key }) => setDiscount((current) => ({ ...current, discountType: key as PurchaseDiscountType })) }}>
-                        <p className="cursor-pointer">{discount.discountType === "percent" ? "%" : currency || storeCurrencyCode || "Amount"}</p>
-                      </Dropdown>
-                    </div>
-                    <p>{formatMoney(summary.globalDiscount)}</p>
-                  </div>
-
-                  <div className="flex  justify-between gap-6">
-                    <span>Subtotal</span>
-                    <span>{formatMoney(summary.subTotal)}</span>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    {!isDeferentProductTax && (
-                      <div className="flex justify-between gap-6 ">
-                        <span>Tax</span>
-                        <span className="cursor-pointer text-blue-500 hover:underline" onClick={toggleTaxSelector}>
-                          Add Tax
-                        </span>
-                      </div>
-                    )}
-
-                    {summary.taxSummary.map((tax) => (
-                      <div key={tax.name} className="flex justify-between ">
-                        <span>{tax.name}</span>
-
-                        <span>{formatMoney(tax.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-between border-y py-2 border-gray-300 gap-6 font-medium">
-                    <span>Total</span>
-                    <span>{formatMoney(summary.total)}</span>
-                  </div>
-                  {rate !== 1 && (
-                    <div className="flex justify-between gap-6 text-xs text-gray-500">
-                      <span>Base Total</span>
-                      <span>{`${storeCurrencyCode ? `${storeCurrencyCode} ` : ""}${summary.baseTotal.toFixed(2)}`.trim()}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          }
+          <PurchaseSummaryPanel
+            currency={controller.currency}
+            discount={controller.discount}
+            discountOptions={controller.discountOptions}
+            formatMoney={controller.formatMoney}
+            isDifferentProductTax={controller.isDeferentProductTax}
+            onChangeDiscountType={(value) => controller.setDiscount((current) => ({ ...current, discountType: value }))}
+            onChangeDiscountValue={(value) => controller.setDiscount((current) => ({ ...current, discountValue: value }))}
+            onOpenTaxSelector={controller.toggleTaxSelector}
+            rate={controller.rate}
+            storeCurrencyCode={controller.storeCurrencyCode}
+            summary={controller.summary}
+          />
         </Form>
       </AppModal>
-      <ProductVariantSelectorModal parent={variantParent} onClose={() => setVariantParent(undefined)} onSelect={(variant) => (addLineItem(variant), setVariantParent(undefined))} />
+      <ProductVariantSelectorModal parent={controller.variantParent} onClose={controller.closeVariantSelector} onSelect={(variant) => (controller.addLineItem(variant), controller.closeVariantSelector())} />
 
-      <TaxSelector handleTaxSelect={handleTaxSelect} isDeferentProductTax={isDeferentProductTax} toggleDeferentProductTax={toggleDeferentProductTax} open={openTaxSelector} toggle={() => (toggleTaxSelector(), setSelectedTaxProductId(undefined))} />
+      <TaxSelector
+        handleTaxSelect={controller.handleTaxSelect}
+        isDeferentProductTax={controller.isDeferentProductTax}
+        toggleDeferentProductTax={controller.toggleDeferentProductTax}
+        open={controller.openTaxSelector}
+        toggle={() => (controller.toggleTaxSelector(), controller.clearSelectedTaxProduct())}
+      />
     </>
   );
 }

@@ -64,8 +64,8 @@ export interface CreatePurchaseInput {
   date: string;
   deliveryDate?: string;
   locationId: string;
-  currencyId: string;
-  rate: number;
+  currencyId?: string;
+  rate?: number;
   paymentTerms?: string;
   dueDate?: string;
   note?: string;

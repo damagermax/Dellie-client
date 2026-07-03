@@ -24,7 +24,7 @@ export default function ProductCard({ name, imageUrl, price, quantity, available
           onIncrease();
         }
       }}
-      className={`group flex h-full cursor-pointer flex-col overflow-hidden  bg-white rounded-md  transition-all duration-200 ${available ? "border-gray-200/80  hover:-translate-y-0.5 hover:border-[#2d837d]/25 " : "border-gray-200 bg-gray-50/70 opacity-70"}`}
+      className={`group border  flex h-full cursor-pointer flex-col overflow-hidden  bg-white md:rounded-md  transition-all duration-200 ${available ? "border-gray-200/80  hover:-translate-y-0.5 hover:border-[#2d837d]/25 " : "border-gray-200 bg-gray-50/70 opacity-70"}`}
     >
       <div className="relative aspect-[4/2.8] w-full overflow-hidden ">
         <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
@@ -33,7 +33,7 @@ export default function ProductCard({ name, imageUrl, price, quantity, available
         </div>
 
         {showPlaceholder ? (
-          <div className="h-full w-full p-4">
+          <div className="h-full w-full p-1 md:p-4">
             <ProductImagePlaceholder label="Product image" />
           </div>
         ) : (
@@ -48,10 +48,11 @@ export default function ProductCard({ name, imageUrl, price, quantity, available
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-3">
-        <div>
-          <h3 className="line-clamp-1  text-sm font-medium leading-5 text-stone-900">{name}</h3>
-          <p className="mt-1 text-base font-semibold tracking-[-0.02em] text-stone-950">{price}</p>
+      <div className="flex flex-1 flex-col p-1 pb-2 md:p-3">
+        <div className=" md:flex  flex-col-reverse">
+          <p className="text-xs md:text-sm md:font-semibold tracking-[-0.02em] text-stone-950">{price}</p>
+
+          <h3 className="line-clamp-1  text-xs md:text-sm  md:font-medium mt-1  text-stone-900">{name}</h3>
         </div>
       </div>
     </article>

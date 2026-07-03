@@ -5,7 +5,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     <>
       <div className="flex h-screen">
         <Sidebar />
-        <main className="flex-1  border-l border-gray-200 overflow-auto">
+        <main className="flex-1 overflow-auto lg:border-l lg:border-gray-200">
           <div className="bg-white h-full ">{children}</div>
         </main>
       </div>

@@ -1,21 +1,58 @@
 "use client";
 
-import { Button, Form, Input, Select, Skeleton, Switch, message } from "antd";
+import { Button, Form, Select, Skeleton, Switch, message } from "antd";
 import { useEffect } from "react";
-import { LuMapPin, LuReceipt, LuSave, LuShieldCheck, LuUsers } from "react-icons/lu";
+import { LuMapPin, LuPlus, LuReceipt, LuSave, LuShieldCheck, LuTrash2, LuUsers, LuWalletCards } from "react-icons/lu";
 import { useDispatch } from "react-redux";
 
 import { setStoreSettings } from "@/lib/redux/features/userSlice";
 import { useGetLocationsQuery, useGetTaxesQuery } from "@/lib/redux/services";
 import { useGetStoreSettingsQuery, useUpdateStoreSettingsMutation } from "@/lib/redux/services/storeSettingsApi";
+import { Location, LocationStatus } from "@/types/location";
 import { DEFAULT_POS_SETTINGS, PosCustomerMode, PosFulfillmentDefault, PosReceiptPaperSize, PosSettings as PosSettingsType } from "@/types/store-settings";
 
 type PosSettingsFormValues = PosSettingsType;
+type TaxRuleFormValue = {
+  locationId?: string;
+  taxId?: string;
+};
+
+type PosSettingsFormState = PosSettingsFormValues & {
+  taxRules?: TaxRuleFormValue[];
+};
 
 type ChoiceCardOption<T extends string> = {
   value: T;
   label: string;
   description: string;
+};
+
+type SettingsPanelProps = {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  title: string;
+  children: React.ReactNode;
+};
+
+type ToggleRowProps = {
+  title: string;
+  description: string;
+  name: keyof PosSettingsFormValues;
+};
+
+const buildTaxRules = (locations: Location[], defaultTaxByLocationId?: Record<string, string | undefined>): TaxRuleFormValue[] => {
+  const configuredRules = Object.entries(defaultTaxByLocationId || {})
+    .filter(([, taxId]) => Boolean(taxId))
+    .map(([locationId, taxId]) => ({
+      locationId,
+      taxId,
+    }));
+
+  if (configuredRules.length) {
+    return configuredRules;
+  }
+
+  const defaultLocation = locations.find((location) => location.isDefault) || locations[0];
+  return defaultLocation ? [{ locationId: defaultLocation.id, taxId: undefined }] : [{ locationId: undefined, taxId: undefined }];
 };
 
 const CUSTOMER_MODE_OPTIONS: ChoiceCardOption<PosCustomerMode>[] = [
@@ -34,37 +71,28 @@ const RECEIPT_SIZE_OPTIONS: ChoiceCardOption<PosReceiptPaperSize>[] = [
   { value: "full_page", label: "Full page", description: "Larger document layout with more whitespace." },
 ];
 
-function SectionHeader({ icon: Icon, title, description, tone }: { icon: React.ComponentType<{ size?: number; className?: string }>; title: string; description: string; tone: string }) {
+function SettingsPanel({ icon: Icon, title, children }: SettingsPanelProps) {
   return (
-    <div className="border-b border-gray-100 px-4 py-4">
-      <div className="flex items-start gap-3">
-        <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone}`}>
-          <Icon size={20} />
+    <section className="rounded-xl border border-gray-200">
+      <div className="flex items-center gap-3 border-b border-gray-200 px-4 py-4">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
+          <Icon size={21} />
         </span>
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-gray-950">{title}</h2>
-          <p className="mt-1 text-sm leading-5 text-gray-500">{description}</p>
-        </div>
+        <h2 className="text-base font-semibold text-gray-950">{title}</h2>
       </div>
-    </div>
+      <div className="space-y-4 px-4 py-4">{children}</div>
+    </section>
   );
 }
 
 function ChoiceCards<T extends string>({ value, options, onChange }: { value?: T; options: ChoiceCardOption<T>[]; onChange: (value: T) => void }) {
   return (
-    <div className="grid grid-cols-1 gap-3">
-      {options.map((option) => {
+    <div>
+      {options.map((option, index) => {
         const active = value === option.value;
 
         return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            className={`rounded-2xl border px-4 py-4 text-left transition-all ${
-              active ? "border-[#2d837d] bg-[#2d837d]/5" : "border-gray-200 bg-white active:bg-gray-50"
-            }`}
-          >
+          <button key={option.value} type="button" onClick={() => onChange(option.value)} className={`w-full px-4 py-4 text-left transition-all ${index !== 0 ? "border-t border-gray-200" : ""} ${active ? "bg-[#2d837d]/[0.04]" : "bg-white"}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className={`text-sm font-semibold ${active ? "text-[#1f5d59]" : "text-gray-900"}`}>{option.label}</p>
@@ -79,25 +107,62 @@ function ChoiceCards<T extends string>({ value, options, onChange }: { value?: T
   );
 }
 
+function ToggleRow({ title, description, name }: ToggleRowProps) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-t border-gray-200 px-4 py-4">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-950">{title}</p>
+        <p className="mt-1 text-sm leading-5 text-gray-500">{description}</p>
+      </div>
+      <Form.Item name={name} valuePropName="checked" className="!mb-0">
+        <Switch />
+      </Form.Item>
+    </div>
+  );
+}
+
 export default function POSSettings() {
   const dispatch = useDispatch();
-  const [form] = Form.useForm<PosSettingsFormValues>();
+  const [form] = Form.useForm<PosSettingsFormState>();
   const { data, isLoading, isError } = useGetStoreSettingsQuery();
-  const { data: locations = [] } = useGetLocationsQuery({});
+  const { data: locations = [] } = useGetLocationsQuery({ status: LocationStatus.ACTIVE, parentsOnly: false });
   const { data: taxes = [] } = useGetTaxesQuery();
   const [updateStoreSettings, { isLoading: isSaving }] = useUpdateStoreSettingsMutation();
+  const applyTaxByDefault = Form.useWatch("applyTaxByDefault", form);
 
   useEffect(() => {
     if (data?.pos) {
-      form.setFieldsValue({ ...DEFAULT_POS_SETTINGS, ...data.pos });
+      form.setFieldsValue({
+        ...DEFAULT_POS_SETTINGS,
+        ...data.pos,
+        defaultTaxByLocationId: data.pos.defaultTaxByLocationId || {},
+        taxRules: buildTaxRules(locations, data.pos.defaultTaxByLocationId),
+      });
     }
-  }, [data, form]);
+  }, [data, form, locations]);
 
-  const handleSubmit = async (values: PosSettingsFormValues) => {
+  const handleSubmit = async (values: PosSettingsFormState) => {
+    const { taxRules = [], ...rest } = values;
+    const defaultTaxByLocationId = taxRules.reduce<Record<string, string | undefined>>((rules, rule) => {
+      if (rule.locationId && rule.taxId) {
+        rules[rule.locationId] = rule.taxId;
+      }
+
+      return rules;
+    }, {});
+
+    const payload: PosSettingsFormValues = {
+      ...rest,
+      defaultTaxByLocationId,
+    };
+
     try {
-      const updatedSettings = await updateStoreSettings({ pos: values }).unwrap();
+      const updatedSettings = await updateStoreSettings({ pos: payload }).unwrap();
       dispatch(setStoreSettings(updatedSettings));
-      form.setFieldsValue(updatedSettings.pos);
+      form.setFieldsValue({
+        ...updatedSettings.pos,
+        taxRules: buildTaxRules(locations, updatedSettings.pos.defaultTaxByLocationId),
+      });
       message.success("POS settings updated.");
     } catch {
       message.error("POS settings could not be updated.");
@@ -121,121 +186,118 @@ export default function POSSettings() {
   }
 
   return (
-    <Form form={form} layout="vertical" requiredMark={false} onFinish={handleSubmit} className="px-4 py-4 sm:px-6">
-      <div className="space-y-4">
-        <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <SectionHeader icon={LuMapPin} title="Counter Profile" description="Choose how POS starts at the counter and how customer selection behaves." tone="bg-sky-50 text-sky-700" />
-
-          <div className="space-y-4 px-4 py-4">
-            <Form.Item label="Counter Name" name="counterName" className="!mb-0">
-              <Input placeholder="Main Counter" className="!h-11" maxLength={120} />
-            </Form.Item>
-
-            <Form.Item label="Default Location" name="defaultLocationId" className="!mb-0">
-              <Select
-                allowClear
-                showSearch
-                placeholder="Choose POS location"
-                className="!h-11"
-                optionFilterProp="label"
-                options={locations.map((location) => ({
-                  value: location.id,
-                  label: location.name,
-                }))}
-              />
-            </Form.Item>
-
-            <Form.Item noStyle shouldUpdate>
-              {() => (
-                <Form.Item label="Customer Flow" name="customerMode" className="!mb-0">
-                  <ChoiceCards value={form.getFieldValue("customerMode")} options={CUSTOMER_MODE_OPTIONS} onChange={(value) => form.setFieldValue("customerMode", value)} />
-                </Form.Item>
-              )}
-            </Form.Item>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <SectionHeader icon={LuShieldCheck} title="Tax" description="Set the POS tax default and whether it should start active automatically." tone="bg-emerald-50 text-emerald-700" />
-
-          <div className="space-y-4 px-4 py-4">
-            <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 px-4 py-4">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-950">Apply Tax By Default</p>
-                <p className="mt-1 text-sm leading-5 text-gray-500">Turn this on to preload the selected tax whenever POS opens.</p>
-              </div>
-              <Form.Item name="applyTaxByDefault" valuePropName="checked" className="!mb-0">
-                <Switch />
+    <Form form={form} layout="vertical" requiredMark={false} onFinish={handleSubmit} className="px-4 py-6 mt-5! sm:px-6">
+      <div className="space-y-8">
+        <SettingsPanel icon={LuUsers} title="Customer Flow">
+          <Form.Item noStyle shouldUpdate>
+            {() => (
+              <Form.Item label="Checkout customer behavior" name="customerMode" className="!mb-0">
+                <ChoiceCards value={form.getFieldValue("customerMode")} options={CUSTOMER_MODE_OPTIONS} onChange={(value) => form.setFieldValue("customerMode", value)} />
               </Form.Item>
+            )}
+          </Form.Item>
+        </SettingsPanel>
+
+        <SettingsPanel icon={LuShieldCheck} title="Tax Defaults">
+          <ToggleRow title="Apply tax automatically" description="When enabled, POS preloads the default tax configured for the active location." name="applyTaxByDefault" />
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600">
+                <LuMapPin size={18} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-950">Location tax rules</p>
+                <p className="mt-1 text-sm leading-5 text-gray-500">Each active location can use a different tax. Leave a location blank when no tax should be applied by default.</p>
+              </div>
             </div>
 
-            <Form.Item label="Default Tax" name="defaultTaxId" className="!mb-0">
-              <Select
-                allowClear
-                showSearch
-                placeholder="Choose default tax"
-                className="!h-11"
-                optionFilterProp="label"
-                options={taxes.map((tax) => ({
-                  value: tax.id,
-                  label: tax.description,
-                }))}
-              />
-            </Form.Item>
-          </div>
-        </section>
+            {locations.length ? (
+              <Form.List name="taxRules">
+                {(fields, { add, remove }) => (
+                  <div className="space-y-3">
+                    {fields.map((field, index) => (
+                      <div key={field.key} className={`grid grid-cols-1 gap-3 py-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] ${index !== fields.length - 1 ? "border-b border-gray-200" : ""}`}>
+                        <Form.Item {...field} label="Location" name={[field.name, "locationId"]} className="!mb-0" rules={[{ required: true, message: "Select location" }]}>
+                          <Select
+                            allowClear
+                            showSearch
+                            disabled={!applyTaxByDefault}
+                            placeholder={applyTaxByDefault ? "Select location" : "Enable automatic tax first"}
+                            className="!h-11"
+                            optionFilterProp="label"
+                            options={locations.map((location) => ({
+                              value: location.id,
+                              label: location.name,
+                            }))}
+                          />
+                        </Form.Item>
 
-        <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <SectionHeader icon={LuUsers} title="Fulfillment" description="Control whether POS sales reduce stock immediately or stay pending for later processing." tone="bg-amber-50 text-amber-700" />
+                        <Form.Item {...field} label="Tax" name={[field.name, "taxId"]} className="!mb-0">
+                          <Select
+                            allowClear
+                            showSearch
+                            disabled={!applyTaxByDefault}
+                            placeholder={applyTaxByDefault ? "Select tax" : "Enable automatic tax first"}
+                            className="!h-11"
+                            optionFilterProp="label"
+                            options={taxes.map((tax) => ({
+                              value: tax.id,
+                              label: tax.description,
+                            }))}
+                          />
+                        </Form.Item>
 
-          <div className="space-y-4 px-4 py-4">
-            <Form.Item noStyle shouldUpdate>
-              {() => (
-                <Form.Item label="Default Fulfillment" name="fulfillmentDefault" className="!mb-0">
-                  <ChoiceCards value={form.getFieldValue("fulfillmentDefault")} options={FULFILLMENT_OPTIONS} onChange={(value) => form.setFieldValue("fulfillmentDefault", value)} />
-                </Form.Item>
-              )}
-            </Form.Item>
+                        <div className="flex items-end">
+                          <Button type="text" aria-label="Remove tax rule" icon={<LuTrash2 size={16} />} disabled={!applyTaxByDefault || fields.length === 1} onClick={() => remove(field.name)} className="!h-11 !px-3 !text-gray-500" />
+                        </div>
+                      </div>
+                    ))}
 
-            <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 px-4 py-4">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-950">Allow Choice At Checkout</p>
-                <p className="mt-1 text-sm leading-5 text-gray-500">Let the cashier choose between Fulfill now and Leave pending at checkout.</p>
+                    <Button type="default" icon={<LuPlus size={16} />} disabled={!applyTaxByDefault} onClick={() => add({ locationId: undefined, taxId: undefined })} className="!h-10 !rounded-lg !border-dashed !px-4">
+                      Add Rule
+                    </Button>
+                  </div>
+                )}
+              </Form.List>
+            ) : (
+              <div className="rounded-xl border border-dashed border-gray-300 px-4 py-6 text-center">
+                <p className="text-sm font-semibold text-gray-900">No active locations found</p>
+                <p className="mt-1 text-sm text-gray-500">Create or activate a location before assigning POS tax defaults.</p>
               </div>
-              <Form.Item name="allowFulfillmentChoiceAtCheckout" valuePropName="checked" className="!mb-0">
-                <Switch />
-              </Form.Item>
-            </div>
+            )}
           </div>
-        </section>
+        </SettingsPanel>
 
-        <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <SectionHeader icon={LuReceipt} title="Receipt" description="Decide whether the receipt opens automatically and which print layout POS uses." tone="bg-violet-50 text-violet-700" />
-
-          <div className="space-y-4 px-4 py-4">
-            <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 px-4 py-4">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-gray-950">Open Receipt Automatically</p>
-                <p className="mt-1 text-sm leading-5 text-gray-500">Show the receipt modal immediately after a successful sale.</p>
-              </div>
-              <Form.Item name="receiptAutoOpen" valuePropName="checked" className="!mb-0">
-                <Switch />
+        <SettingsPanel icon={LuWalletCards} title="Fulfillment">
+          <Form.Item noStyle shouldUpdate>
+            {() => (
+              <Form.Item label="Default stock handling" name="fulfillmentDefault" className="!mb-0">
+                <ChoiceCards value={form.getFieldValue("fulfillmentDefault")} options={FULFILLMENT_OPTIONS} onChange={(value) => form.setFieldValue("fulfillmentDefault", value)} />
               </Form.Item>
-            </div>
+            )}
+          </Form.Item>
 
-            <Form.Item noStyle shouldUpdate>
-              {() => (
-                <Form.Item label="Paper Size" name="receiptPaperSize" className="!mb-0">
-                  <ChoiceCards value={form.getFieldValue("receiptPaperSize")} options={RECEIPT_SIZE_OPTIONS} onChange={(value) => form.setFieldValue("receiptPaperSize", value)} />
-                </Form.Item>
-              )}
-            </Form.Item>
-          </div>
-        </section>
+          <ToggleRow title="Allow choice at checkout" description="Let cashiers override the default fulfillment behavior before completing a sale." name="allowFulfillmentChoiceAtCheckout" />
+        </SettingsPanel>
 
-        <Button type="primary" htmlType="submit" size="large" icon={<LuSave size={18} />} className="!h-12 !w-full !rounded-full !font-semibold" loading={isSaving}>
-          Save Changes
-        </Button>
+        <SettingsPanel icon={LuReceipt} title="Receipt Experience">
+          <ToggleRow title="Open receipt after checkout" description="Show the receipt modal immediately after a successful POS sale." name="receiptAutoOpen" />
+
+          <Form.Item noStyle shouldUpdate>
+            {() => (
+              <Form.Item label="Receipt paper size" name="receiptPaperSize" className="!mb-0">
+                <ChoiceCards value={form.getFieldValue("receiptPaperSize")} options={RECEIPT_SIZE_OPTIONS} onChange={(value) => form.setFieldValue("receiptPaperSize", value)} />
+              </Form.Item>
+            )}
+          </Form.Item>
+        </SettingsPanel>
+
+        <div className="sticky bottom-4 z-10 bg-white pt-2">
+          <Button type="primary" htmlType="submit" size="large" icon={<LuSave size={18} />} className="!h-12 !w-full !rounded-full !font-semibold" loading={isSaving}>
+            Save POS Settings
+          </Button>
+        </div>
       </div>
     </Form>
   );

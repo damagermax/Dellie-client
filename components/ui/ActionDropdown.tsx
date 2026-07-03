@@ -14,6 +14,7 @@ export interface ActionDropdownProps {
   onActivate?: () => void;
   onDeactivate?: () => void;
   status?: "active" | "inactive";
+  isTransparent?: boolean;
 }
 
 interface DropdownItemLabelProps {
@@ -31,7 +32,7 @@ export function DropdownItemLabel({ icon, text, danger = false }: DropdownItemLa
   );
 }
 
-export function ActionDropdown({ menu, openEditModal, onDelete, onActivate, onDeactivate, status }: ActionDropdownProps) {
+export function ActionDropdown({ menu, openEditModal, onDelete, onActivate, onDeactivate, status, isTransparent }: ActionDropdownProps) {
   const items = [
     ...(openEditModal
       ? [
@@ -79,8 +80,8 @@ export function ActionDropdown({ menu, openEditModal, onDelete, onActivate, onDe
   const handleClick: MenuProps["onClick"] = ({ key }) => {
     const selectedItem = items.find((item): item is ActionMenuItem => Boolean(item && "key" in item && item.key === key));
 
-    if (key === "edit") {
-      openEditModal?.();
+    if (key === "edit" && openEditModal) {
+      openEditModal();
       return;
     }
     if (key === "delete") {
@@ -105,5 +106,5 @@ export function ActionDropdown({ menu, openEditModal, onDelete, onActivate, onDe
     selectedItem?.onClick?.();
   };
 
-  return <ResponsiveActionMenu items={items} onClick={handleClick} />;
+  return <ResponsiveActionMenu items={items} onClick={handleClick} isTransparent={isTransparent} />;
 }

@@ -5,8 +5,6 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import { ProductListItem } from "@/types/product";
 import type { TableProps } from "antd/es/table";
 import Link from "next/link";
-import { CiLink } from "react-icons/ci";
-import { RiMoreLine } from "react-icons/ri";
 import { ITEM_TYPE } from "../ProductFormModal";
 import { getProductPriceLabel } from "@/lib/products/pricing";
 import { getProductTypeLabel } from "@/lib/products/type-label";
@@ -64,7 +62,7 @@ export default function ProductsTable({ products, pagination }: ProductTableProp
       dataIndex: "availableStock",
       key: "availableStock",
       render: (stock: number, product: ProductListItem) => {
-        if (product?.type && [ITEM_TYPE.STOCK, ITEM_TYPE.PACKAGING]?.includes(product?.type)) {
+        if (product?.type && [ITEM_TYPE.STOCK]?.includes(product?.type)) {
           const isOutOfStock = stock === 0;
 
           return (
@@ -72,7 +70,6 @@ export default function ProductsTable({ products, pagination }: ProductTableProp
               <span className={`border px-2  font-medium border-solid   rounded-full inline-block ${isOutOfStock ? "text-red-600 border-red-600 bg-red-50" : "text-green-700 border-green-200 bg-green-50"}`}>
                 {isOutOfStock ? "Sold out" : `${stock || 0} Available`}
               </span>
-              {product.type === "PACKAGING" && product.conversionRule && <p className="text-xs mt-1 w-fit text-gray-700"> {product.conversionRule}</p>}
             </>
           );
         } else {
@@ -81,24 +78,6 @@ export default function ProductsTable({ products, pagination }: ProductTableProp
       },
     },
 
-    {
-      title: "",
-      dataIndex: "key",
-      key: "actions",
-      render: () => (
-        <div className="flex gap-x-3 items-center justify-end">
-          <div className="p-[2px] rounded-full bg-gray-100 text-gray-600 cursor-pointer w-[2rem] flex items-center justify-center h-[2rem]">
-            <CiLink size={17} />
-          </div>
-
-          <div className="p-[2px] rounded-full bg-gray-100 text-gray-600 cursor-pointer w-[2rem] flex items-center justify-center h-[2rem]">
-            <RiMoreLine size={15} />
-          </div>
-        </div>
-      ),
-      align: "center",
-      className: "!pr-8",
-    },
   ];
 
   return (

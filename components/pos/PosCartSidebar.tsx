@@ -13,6 +13,7 @@ type PosCartSidebarProps = {
   cartActionItems: NonNullable<MenuProps["items"]>;
   onCartActionClick: Required<MenuProps>["onClick"];
   cart: PosCartItem[];
+  stockIssues: PosCartItem[];
   cartProductNames: Record<string, string>;
   selectedCurrencyCode: string;
   subtotal: number;
@@ -30,6 +31,7 @@ export default function PosCartSidebar({
   cartActionItems,
   onCartActionClick,
   cart,
+  stockIssues,
   cartProductNames,
   selectedCurrencyCode,
   subtotal,
@@ -66,10 +68,11 @@ export default function PosCartSidebar({
           </div>
         </div>
         <div className="">
+          {stockIssues.length ? <div className="mx-3 mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">Some cart items exceed stock for this location. Reduce them before checkout.</div> : null}
           <div className=" max-h-[70vh] overflow-y-scroll">
             {cart.length ? (
               cart.map((item) => (
-                <div key={item.id} className=" cursor-pointer border-b border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f9fafb_100%)] p-2 px-3 " onClick={() => onEditCartItem(item.id)}>
+                <div key={item.id} className={`cursor-pointer border-b p-2 px-3 ${stockIssues.some((issue) => issue.id === item.id) ? "border-red-200 bg-red-50/60" : "border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f9fafb_100%)]"}`} onClick={() => onEditCartItem(item.id)}>
                   <div className="flex gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-3">
@@ -87,6 +90,7 @@ export default function PosCartSidebar({
 
                         <p className="text-green-900 font-semibold"> GHS {item.quantity * item.unitPrice || "-"}</p>
                       </div>
+                      {stockIssues.some((issue) => issue.id === item.id) ? <p className="mt-1 text-xs font-medium text-red-600">Only {Number(item.availableStock || 0)} available at this location.</p> : null}
                     </div>
                   </div>
                 </div>
@@ -116,7 +120,7 @@ export default function PosCartSidebar({
         </div>
 
         <div className=" flex border-2 rounded-lg overflow-clip border-[#2d837d]">
-          <button onClick={onOpenCheckout} className="flex w-full items-center justify-between gap-3 bg-[#2d837d] px-4 py-3 text-white cursor-pointer font-medium text-base">
+          <button onClick={onOpenCheckout} disabled={stockIssues.length > 0} className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-white font-medium text-base ${stockIssues.length ? "cursor-not-allowed bg-gray-400" : "cursor-pointer bg-[#2d837d]"}`}>
             <span>Checkout</span>
             <span>{formatMoney(selectedCurrencyCode, grandTotal)}</span>
           </button>

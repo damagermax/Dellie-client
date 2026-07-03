@@ -51,7 +51,7 @@ export default function PosProductGrid({
       <div className="px-3  md:px-4 ">
         <AppViewLoader loading={productsLoading || categoriesLoading} />
 
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 ">
+        <div className="grid gap-1.5 md:gap-3 grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 ">
           {visibleProducts.map((product) => {
             const quantity = getCartQuantity(product.id);
             const trackedInventory = isTrackedInventory(product.type);

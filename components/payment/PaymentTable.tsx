@@ -5,6 +5,7 @@ import { ActionDropdown } from "../ui/ActionDropdown";
 import { formatDate } from "@/lib/dateUtils";
 import AppTable from "../ui/AppTable";
 import { PaymentViewItemAction } from "./PaymentView";
+import { canMutatePayment } from "@/lib/paymentMutationWindow";
 
 interface Props extends PaymentViewItemAction {
   payments: Payment[];
@@ -12,6 +13,8 @@ interface Props extends PaymentViewItemAction {
 }
 
 const PaymentTable = ({ payments, openEditModal, onDelete, canManage = true }: Props) => {
+  const showActionColumn = canManage && payments.some((payment) => canMutatePayment(payment));
+
   const columns: TableProps<Payment>["columns"] = [
     {
       title: "Date",
@@ -33,6 +36,13 @@ const PaymentTable = ({ payments, openEditModal, onDelete, canManage = true }: P
       width: 180,
       render: (_, record) => <p className="capitalize">{record.type?.replace(/_/g, " ")}</p>,
     },
+    {
+      title: "Method",
+      dataIndex: "paymentMethod",
+      key: "paymentMethod",
+      width: 180,
+      render: (paymentMethod: Payment["paymentMethod"]) => paymentMethod?.name || "-",
+    },
 
     {
       title: "Amount",
@@ -46,15 +56,19 @@ const PaymentTable = ({ payments, openEditModal, onDelete, canManage = true }: P
       ),
     },
 
-    {
-      title: "",
-      key: "actions",
-      dataIndex: "id",
-      align: "right",
-      className: "!pr-8",
-      width: 140,
-      render: (id, record) => (canManage ? <ActionDropdown openEditModal={() => openEditModal(record)} onDelete={() => onDelete(id)} /> : null),
-    },
+    ...(showActionColumn
+      ? [
+          {
+            title: "",
+            key: "actions",
+            dataIndex: "id",
+            align: "right" as const,
+            className: "!pr-8",
+            width: 140,
+            render: (id: string, record: Payment) => (canMutatePayment(record) ? <ActionDropdown openEditModal={() => openEditModal(record)} onDelete={() => onDelete(id)} /> : null),
+          },
+        ]
+      : []),
   ];
   return (
     <div>

@@ -20,9 +20,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (currentUser && isSuccess) {
+      const storeSettingsFromCurrentUser = currentUser.store?.settings || {};
       const enabledModules = {
         ...DEFAULT_ENABLED_MODULES,
-        ...(currentUser.store?.settings?.enabledModules || {}),
+        ...(storeSettingsFromCurrentUser.enabledModules || {}),
       };
 
       dispatch(
@@ -37,7 +38,36 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       dispatch(
         setStoreSettings({
           ...DEFAULT_STORE_SETTINGS,
+          ...storeSettingsFromCurrentUser,
           enabledModules,
+          pos: {
+            ...DEFAULT_STORE_SETTINGS.pos,
+            ...(storeSettingsFromCurrentUser.pos || {}),
+          },
+          pricing: {
+            ...DEFAULT_STORE_SETTINGS.pricing,
+            ...(storeSettingsFromCurrentUser.pricing || {}),
+          },
+          features: {
+            ...DEFAULT_STORE_SETTINGS.features,
+            ...(storeSettingsFromCurrentUser.features || {}),
+          },
+          documents: {
+            ...DEFAULT_STORE_SETTINGS.documents,
+            ...(storeSettingsFromCurrentUser.documents || {}),
+          },
+          integrations: {
+            ...DEFAULT_STORE_SETTINGS.integrations,
+            ...(storeSettingsFromCurrentUser.integrations || {}),
+            paystack: {
+              ...DEFAULT_STORE_SETTINGS.integrations.paystack,
+              ...(storeSettingsFromCurrentUser.integrations?.paystack || {}),
+            },
+            stripe: {
+              ...DEFAULT_STORE_SETTINGS.integrations.stripe,
+              ...(storeSettingsFromCurrentUser.integrations?.stripe || {}),
+            },
+          },
         }),
       );
     }

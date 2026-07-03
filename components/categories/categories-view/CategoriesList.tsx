@@ -1,29 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useDeleteCategoryMutation, useGetCategoriesQuery, useUpdateCategoryMutation } from "@/lib/redux/services";
+import { useGetCategoriesQuery } from "@/lib/redux/services";
 import { AppNotFoundView } from "@/components/ui/AppNotFoundView";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
-import { ActionDropdown } from "@/components/ui/ActionDropdown";
 import CategoriesFormModal from "../CategoriesFormModal";
-import { Category, CategoriesQueryParams, CategoryStatus, CategoryType } from "@/types/category";
+import { Category, CategoriesQueryParams, CategoryType } from "@/types/category";
 import { Tag } from "antd";
-
-export interface CategoriesListItemAction {
-  openEditModal: (category: Category) => void;
-  onDelete: (id: string) => void;
-  onDeactivate: (id: string) => void;
-  onActivate: (id: string) => void;
-}
 
 interface CategoriesListProps {
   query: CategoriesQueryParams;
 }
 
 export default function CategoriesList({ query }: CategoriesListProps) {
-  const [updateCategory, { isLoading: isUpdating }] = useUpdateCategoryMutation();
-  const [deleteCategory, { isLoading: isDeleting }] = useDeleteCategoryMutation();
-
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>();
 
@@ -32,18 +21,6 @@ export default function CategoriesList({ query }: CategoriesListProps) {
   const openEditModal = (category: Category) => {
     setSelectedCategory(category);
     setIsEditModalOpen(true);
-  };
-
-  const handleActivateCategory = async (categoryId: string) => {
-    if (!isUpdating) await updateCategory({ id: categoryId, status: CategoryStatus.ACTIVE });
-  };
-
-  const handleDeactivateCategory = async (categoryId: string) => {
-    if (!isUpdating) await updateCategory({ id: categoryId, status: CategoryStatus.INACTIVE });
-  };
-
-  const handleDeleteCategory = async (categoryId: string) => {
-    if (!isDeleting) await deleteCategory(categoryId);
   };
 
   return (
@@ -89,13 +66,6 @@ export default function CategoriesList({ query }: CategoriesListProps) {
                 </div>
               </button>
 
-              <ActionDropdown
-                openEditModal={() => openEditModal(category)}
-                onDelete={() => handleDeleteCategory(category.id)}
-                onActivate={() => handleActivateCategory(category.id)}
-                onDeactivate={() => handleDeactivateCategory(category.id)}
-                status={category.status}
-              />
             </div>
           );
         })}

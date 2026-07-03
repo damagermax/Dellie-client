@@ -9,6 +9,7 @@ import ExpenseFormModal from "@/components/expenses/ExpenseFormModel";
 import PaymentFormModal from "@/components/payment/PaymentFormModel";
 import PaymentView from "@/components/payment/PaymentView";
 import PreviewImage from "@/components/ui/PreviewImage";
+import EntityAuditTimeline from "@/components/audit/EntityAuditTimeline";
 import { GoBack } from "@/components/ui/GoBack";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
@@ -18,6 +19,8 @@ import { formatDate } from "@/lib/dateUtils";
 import { Expense, Payment, TransactionType } from "@/types/transaction";
 import { usePermissions } from "@/hooks/usePermissions";
 import { StorePermission } from "@/types/store-access";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
 dayjs.extend(relativeTime);
 
 export default function ExpenseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +32,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const canViewExpense = hasAnyPermission([StorePermission.PAYMENTS_VIEW, StorePermission.PAYMENTS_MANAGE, StorePermission.EXPENSES_VIEW, StorePermission.EXPENSES_MANAGE]);
   const canManageExpense = hasAnyPermission([StorePermission.PAYMENTS_MANAGE, StorePermission.EXPENSES_MANAGE]);
+  const featureSettings = useSelector((state: RootState) => state.currentUser.storeSettings.features);
 
   const { data, isLoading, isError } = useGetTransactionQuery(id, { skip: !id || !ready || !canViewExpense, refetchOnMountOrArgChange: true });
   const [addAttachments, { isLoading: isUploading }] = useAddExpenseAttachmentsMutation();
@@ -60,6 +64,8 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   const isOverPayment = balance < 0;
   const showWriteOff = balance > 0;
   const showRefund = balance <= 0;
+  const canUseRefunds = featureSettings?.refundPaymentsEnabled !== false;
+  const canUseWriteOffs = featureSettings?.writeOffPaymentsEnabled !== false;
   const paymentStatus = useMemo(() => {
     if (balance <= 0) return "paid";
     if (totalPaidAmount > 0) return "partial";
@@ -116,10 +122,6 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
                       {paymentStatus}
                     </Tag>
                   </div>
-                  <p className="mt-2 max-w-2xl text-sm text-gray-500">
-                    Created {formatDate(expense.createdAt)} by {expense.createdBy?.name || "-"}
-                    {expense.updatedAt ? ` · Updated ${formatDate(expense.updatedAt)}` : ""}
-                  </p>
                 </div>
               </div>
 
@@ -137,7 +139,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
                     Issue Credit
                   </Button>
                 )} */}
-                {canManageExpense && showWriteOff && (
+                {canManageExpense && showWriteOff && canUseWriteOffs && (
                   <Button
                     type="default"
                     size="middle"
@@ -163,7 +165,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
                     Record Payment
                   </Button>
                 )}
-                {canManageExpense && (isOverPayment || showRefund) && (
+                {canManageExpense && (isOverPayment || showRefund) && canUseRefunds && (
                   <Button
                     size="middle"
                     type="primary"
@@ -216,6 +218,9 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
         </section>
 
         <aside id="expense-attachments" className="flex w-full scroll-mt-14 flex-col gap-4 border-t border-gray-200 bg-[#f7f8fd] px-4 pb-4 pt-5 lg:w-[30%] lg:border-l lg:border-t-0 lg:px-6 xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto">
+          <div className="border-b border-gray-200 pb-5">
+            <EntityAuditTimeline entityType="expense" entityId={expense.id || id} />
+          </div>
           <div className="border-b border-gray-200">
             <div className="mb-5 flex items-center justify-between gap-3">
               <h2 className="text-base font-medium text-gray-900">Expense Summary</h2>

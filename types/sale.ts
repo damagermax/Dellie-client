@@ -1,5 +1,6 @@
 import { PaginatedResponse } from "./shared";
 import { PurchaseDiscountType, PurchaseLineItem, PurchaseReceiptStatus, PurchaseReturnEvent, PurchaseStockEvent } from "./purchase";
+import type { Address } from "./contact";
 
 export interface SaleLineItemInput {
   productId: string;
@@ -11,12 +12,14 @@ export interface SaleLineItemInput {
 }
 
 export interface CreateSaleInput {
-  contactId: string;
+  contactId?: string;
   date: string;
+  fulfillmentMethod?: "delivery" | "pickup";
   deliveryDate?: string;
+  deliveryAddress?: Address;
   locationId: string;
-  currencyId: string;
-  rate: number;
+  currencyId?: string;
+  rate?: number;
   status?: "open" | "draft";
   paymentTerms?: string;
   dueDate?: string;
@@ -26,6 +29,7 @@ export interface CreateSaleInput {
   discountValue?: number;
   discountType?: PurchaseDiscountType;
   taxId?: string;
+  deliveryFee?: number;
   lineItems: SaleLineItemInput[];
 }
 
@@ -70,10 +74,12 @@ export interface SaleQueryParams {
   status?: "open" | "closed" | "draft";
   fulfillmentStatus?: PurchaseReceiptStatus;
   paymentStatus?: "paid" | "partial" | "unpaid";
+  overdue?: boolean;
   customerId?: string;
   locationId?: string;
   createdBy?: string;
   source?: string;
+  fulfillmentMethod?: "delivery" | "pickup";
   dateFrom?: string;
   dateTo?: string;
   sortBy?: string;

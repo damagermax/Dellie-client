@@ -43,6 +43,8 @@ export interface Contact {
   currencyId?: string | { id: string; code: string; name?: string };
   createdBy?: { id: string; name: string; email?: string };
   createdAt?: string;
+  lastTransactionAt?: string;
+  lastTransactionAtFormatted?: string;
   updatedAt?: string;
   status: ContactStatus;
 }
@@ -52,9 +54,12 @@ export interface CreateContactInput {
   displayName?: string;
   email?: string;
   phone?: string;
+  mobile?: string;
+  addresses?: Address[];
   roles?: ContactRole[];
   status: ContactStatus;
   currencyId: string;
+  note?: string;
 }
 
 export interface UpdateContactInput extends Partial<CreateContactInput> {

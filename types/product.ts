@@ -54,11 +54,13 @@ export interface ProductQueryParams {
   search?: string | "";
   inPOS?: boolean;
   inStorefront?: boolean;
+  locationId?: string;
   type?: "STOCK" | "NON_STOCK" | "SERVICE" | "BUNDLE" | "PACKAGING";
   categoryId?: string;
   purchasable?: boolean;
   stockStatus?: "in_stock" | "out_of_stock";
   status?: "active" | "archived";
+  expiryStatus?: "expiring_soon";
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   page?: number;

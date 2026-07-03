@@ -1,51 +1,56 @@
 "use client";
 
-import { Form } from "antd";
+import { Alert, Form } from "antd";
 import Link from "next/link";
 
 import { InputFormItem } from "../ui/AppFormItems";
 import { BaseButton } from "../ui/AppButtons";
 import { useForgotPasswordMutation } from "@/lib/redux/services";
 import { ForgotPasswordInput } from "@/types";
+import AuthPageShell from "./AuthPageShell";
 
 export default function ForgotPasswordForm() {
   const [signinForm] = Form.useForm();
 
-  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
+  const [forgotPassword, { isLoading, isSuccess }] = useForgotPasswordMutation();
 
   const handleSubmit = async (values: ForgotPasswordInput) => {
     await forgotPassword(values);
   };
 
   return (
-    <div className=" w-full bg-white p-6 rounded-3xl">
-      <p className=" text-center w-full pb-2 text-xl font-semibold">Forgot Password</p>
-      <div className=" mb-6 text-center flex items-center justify-center">
-        <p className=" w-[70%]">Enter your 8-character username to reset an employee account password. Owner accounts can still use their email here.</p>
-      </div>
-      <Form size="small" disabled={isLoading} form={signinForm} onFinish={handleSubmit} className="auth grid  gap-x-5" layout={"vertical"}>
+    <AuthPageShell eyebrow="Password help" title="Reset your access" description="Enter your username or email to recover access.">
+      <Form size="small" disabled={isLoading} form={signinForm} onFinish={handleSubmit} className="auth grid gap-x-5" layout="vertical">
         <InputFormItem
-          variant="underlined"
-          label="Username or Email"
+          label="Username or email"
           name="username"
           placeholder="maxwell1"
           rules={[
-            { required: true, message: "Please enter your username or email" },
+            { required: true, message: "Please enter your username or email." },
           ]}
         />
       </Form>
 
-      <div>
-        <BaseButton onClick={() => signinForm.submit()} disabled={isLoading} label={isLoading ? "Requesting..." : "Request Reset Link"} classNames=" w-full !py-[1.4rem] mt-3   " />
+      {isSuccess ? (
+        <Alert
+          className="mt-4 rounded-2xl"
+          type="success"
+          showIcon
+          message="Reset instructions sent"
+          description="If the account exists, the next recovery step has been sent."
+        />
+      ) : null}
+
+      <div className="mt-6">
+        <BaseButton onClick={() => signinForm.submit()} disabled={isLoading} label={isLoading ? "Requesting..." : "Request reset link"} classNames="w-full !bg-[#102d2b] !py-[1.35rem] !text-white hover:!bg-[#173d3a]" />
       </div>
 
-      <div className=" my-5 flex  justify-center items-center">
-        <Link href="/auth/signin" className=" text-blue-800">
-          Back To Login
+      <div className="mt-6 text-center text-sm text-gray-600">
+        Remembered your password?{" "}
+        <Link href="/auth/signin" className="font-semibold text-[#1f5d58] transition-colors hover:text-[#102d2b]">
+          Back to sign in
         </Link>
       </div>
-
-      <div className=" mt-5 h-[100px] w-full bg-gray-100 rounded-2xl"></div>
-    </div>
+    </AuthPageShell>
   );
 }
