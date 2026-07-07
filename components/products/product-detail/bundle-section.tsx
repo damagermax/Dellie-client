@@ -58,7 +58,7 @@ export function BundleSection({ product }: { product: ProductDetail }) {
     {
       title: "Available Qty",
       key: "availableQuantity",
-      render: (_, row) => (row.type === ITEM_TYPE.NON_STOCK || row.type === ITEM_TYPE.SERVICE ? <span className="text-sm text-gray-500">Not tracked</span> : formatQuantity(row.availableQuantity)),
+      render: (_, row) => (row.type === ITEM_TYPE.NON_STOCK ? <span className="text-sm text-gray-500">Not tracked</span> : formatQuantity(row.availableQuantity)),
     },
   ];
 
@@ -78,7 +78,7 @@ export function BundleSection({ product }: { product: ProductDetail }) {
             </div>
             <div className="mt-3 flex justify-between text-sm">
               <span className="text-gray-500">Required {formatQuantity(row.quantityRequired)}</span>
-              <span className="font-medium text-gray-900">Available {row.type === ITEM_TYPE.NON_STOCK || row.type === ITEM_TYPE.SERVICE ? "Not tracked" : formatQuantity(row.availableQuantity)}</span>
+              <span className="font-medium text-gray-900">Available {row.type === ITEM_TYPE.NON_STOCK ? "Not tracked" : formatQuantity(row.availableQuantity)}</span>
             </div>
           </div>
         ))}

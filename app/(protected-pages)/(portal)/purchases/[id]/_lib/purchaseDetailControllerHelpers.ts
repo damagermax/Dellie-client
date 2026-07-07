@@ -1,5 +1,6 @@
 "use client";
 
+import { getRemainingRefundablePaidAmount } from "@/components/payment/purchaseRefundMath";
 import { Purchase } from "@/types/index";
 import { PurchaseReturnEvent, PurchaseStockEvent } from "@/types/purchase";
 
@@ -24,14 +25,14 @@ export function derivePurchaseDetailState({
   const canEdit = !purchase.locked && purchase.receiptStatus !== "received" && !isCancelled;
   const fulfillableLines = purchase.lineItems.filter((line) => {
     const productType = typeof line.productId === "string" ? line.productType : line.productId.type || line.productType;
-    return !["BUNDLE", "PACKAGING"].includes(productType || "");
+    return productType !== "BUNDLE";
   });
   const canReceive = !purchase.locked && !isCancelled && fulfillableLines.some((line) => Number(line.quantity) > Number(line.fulfilledQuantity || 0));
   const canReturn = !purchase.locked && !isCancelled && fulfillableLines.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
   const isFullyReceived = !purchase.locked && !isCancelled && fulfillableLines.length > 0 && fulfillableLines.every((line) => Number(line.fulfilledQuantity || 0) >= Number(line.quantity || 0));
   const canRecordPayment = !purchase.locked && !isCancelled && Number(purchase.balance || 0) > 0;
-  const netPaid = Number(purchase.amount || 0) - Number(purchase.balance || 0);
-  const canRefundPayment = netPaid > 0 && Number(purchase.balance || 0) <= 0;
+  const remainingRefundablePaidAmount = getRemainingRefundablePaidAmount(purchase.payments || []);
+  const canRefundPayment = !purchase.locked && !isCancelled && remainingRefundablePaidAmount > 0;
   const canUseReturns = featureSettings?.purchaseReturnsEnabled !== false;
   const canUseRefunds = featureSettings?.refundPaymentsEnabled !== false;
   const canUseWriteOffs = featureSettings?.writeOffPaymentsEnabled !== false;
@@ -49,6 +50,7 @@ export function derivePurchaseDetailState({
     isFullyReceived,
     canRecordPayment,
     canRefundPayment,
+    remainingRefundablePaidAmount,
     canUseReturns,
     canUseRefunds,
     canUseWriteOffs,

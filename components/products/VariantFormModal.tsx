@@ -1,8 +1,8 @@
 import React from "react";
 import { AppModal, ModalProps } from "../ui/AppModal";
 
-import { useState } from "react";
-import { Button, Input, Tag, message } from "antd";
+import { useEffect, useState } from "react";
+import { Input, Tag, message } from "antd";
 
 import { RiDeleteBin3Line } from "react-icons/ri";
 
@@ -21,20 +21,22 @@ export interface VariantAttribute {
   input?: string;
 }
 
-export const VariantFormModal = ({ toggle, open, updateVariantCombinations }: Props) => {
-  const [attributes, setAttributes] = useState<VariantAttribute[]>([]);
+const createAttribute = (): VariantAttribute => ({
+  id: crypto.randomUUID(),
+  name: "",
+  options: [],
+  input: "",
+});
 
-  const addAttribute = () => {
-    setAttributes((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: "",
-        options: [],
-        input: "",
-      },
-    ]);
-  };
+export const VariantFormModal = ({ toggle, open, updateVariantCombinations }: Props) => {
+  const [attributes, setAttributes] = useState<VariantAttribute[]>([createAttribute(), createAttribute()]);
+  const maxAttributes = 2;
+
+  useEffect(() => {
+    if (open && attributes.length === 0) {
+      setAttributes([createAttribute(), createAttribute()]);
+    }
+  }, [attributes.length, open]);
 
   const updateAttributeName = (id: string, value: string) => {
     setAttributes((prev) =>
@@ -50,7 +52,6 @@ export const VariantFormModal = ({ toggle, open, updateVariantCombinations }: Pr
   };
 
   const handleOptionChange = (id: string, value: string) => {
-    // detect comma
     if (value.includes(",")) {
       const values = value
         .split(",")
@@ -114,6 +115,10 @@ export const VariantFormModal = ({ toggle, open, updateVariantCombinations }: Pr
       message.error("Add a name and at least one value for every variant option.");
       return;
     }
+    if (attributes.length > maxAttributes) {
+      message.error("A product can have at most 2 variant attributes.");
+      return;
+    }
     const formatted = attributes.map((item) => ({
       name: item.name,
       options: item.options,
@@ -128,7 +133,6 @@ export const VariantFormModal = ({ toggle, open, updateVariantCombinations }: Pr
 
     toggle();
   };
-
   const handleOptionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, id: string) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
@@ -141,7 +145,6 @@ export const VariantFormModal = ({ toggle, open, updateVariantCombinations }: Pr
         prev.map((attr) => {
           if (attr.id !== id) return attr;
 
-          // prevent duplicates
           if (attr.options.includes(value)) {
             return {
               ...attr,
@@ -187,9 +190,6 @@ export const VariantFormModal = ({ toggle, open, updateVariantCombinations }: Pr
           </div>
         ))}
 
-        <Button block onClick={addAttribute}>
-          Add Attribute
-        </Button>
       </div>
     </AppModal>
   );

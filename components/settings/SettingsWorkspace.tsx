@@ -5,23 +5,7 @@ import { Button } from "antd";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { IconType } from "react-icons";
-import {
-  LuAppWindow,
-  LuBadgePercent,
-  LuCalendarClock,
-  LuChevronLeft,
-  LuChevronRight,
-  LuCircleDollarSign,
-  LuCreditCard,
-  LuFileStack,
-  LuFolderTree,
-  LuMapPin,
-  LuPlus,
-  LuReceipt,
-  LuScanLine,
-  LuSettings,
-  LuStore,
-} from "react-icons/lu";
+import { LuAppWindow, LuBadgePercent, LuCalendarClock, LuChevronLeft, LuChevronRight, LuCircleDollarSign, LuCreditCard, LuFileStack, LuFolderTree, LuMapPin, LuPlus, LuReceipt, LuScanLine, LuSettings, LuStore } from "react-icons/lu";
 import CategoriesFormModal from "../categories/CategoriesFormModal";
 import CategoriesList from "../categories/categories-view/CategoriesList";
 import DiscountsList from "../discounts/discount-view/DiscountsList";
@@ -174,8 +158,8 @@ export const SETTING_OPTIONS: SettingOption[] = [
 
 const SETTINGS_GROUPS: SettingGroup[] = [
   {
-    title: "More",
-    description: "Product structure, discounts, taxes, payments, and expense labels.",
+    title: "",
+    description: "",
     items: [
       { type: "section", key: "product_categories" },
       { type: "section", key: "Discount" },
@@ -384,10 +368,12 @@ export default function SettingsWorkspace() {
                   <div className="hidden md:grid md:grid-cols-1 md:gap-4">
                     {SETTINGS_GROUPS.map((group) => (
                       <section key={group.title} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                        <div className="border-b border-gray-100 px-4 py-4">
-                          <h2 className="text-base font-semibold text-gray-900">{group.title}</h2>
-                          <p className="mt-1 text-sm leading-5 text-gray-500">{group.description}</p>
-                        </div>
+                        {group.title && (
+                          <div className="border-b border-gray-100 px-4 py-4">
+                            <h2 className="text-base font-semibold text-gray-900">{group.title}</h2>
+                            <p className="mt-1 text-sm leading-5 text-gray-500">{group.description}</p>
+                          </div>
+                        )}
                         <div className="grid grid-cols-2">
                           {group.items.map((item) => {
                             if (item.type === "link") {

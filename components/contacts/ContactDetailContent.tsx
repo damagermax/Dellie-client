@@ -4,7 +4,7 @@ import Link from "next/link";
 import React from "react";
 import type { TableProps } from "antd/es/table";
 import { Button, Divider, Dropdown, Empty, MenuProps, Segmented, Tag } from "antd";
-import { Building2, FileText, Mail, MapPinned, MoreHorizontal, PackageCheck, Pencil, Phone, ShieldCheck, Smartphone, Trash2, UserRound, Users, WalletCards } from "lucide-react";
+import { Building2, FileText, Mail, MapPinned, MoreHorizontal, PackageCheck, Pencil, Phone, ShieldCheck, Smartphone, Trash2, UserRound, Users } from "lucide-react";
 import { GoBack } from "@/components/ui/GoBack";
 import { PhoneDisplay } from "@/components/ui/DisplayPhoneNumber";
 import { formatDate } from "@/lib/dateUtils";
@@ -70,7 +70,7 @@ export default function ContactDetailContent({
   const displayName = contact.displayName || contact.name;
   const legalName = contact.name && contact.name !== title ? contact.name : "Same as display name";
   const primaryAddress = formatContactAddress(contact.addresses?.[0]) || "No address provided";
-  const currency = typeof contact.currencyId === "string" ? "-" : contact.currencyId?.code || "-";
+  const currencyCode = typeof contact.currencyId === "string" ? undefined : contact.currencyId?.code;
   const statusTone = contact.status === ContactStatus.ACTIVE ? "green" : "default";
   const canManageContacts = hasPermission(StorePermission.CONTACTS_MANAGE);
   const roles = contact.roles || [];
@@ -184,7 +184,7 @@ export default function ContactDetailContent({
     () => visibleTransactions.reduce((sum, transaction) => sum + Number(transaction.balance || 0), 0),
     [visibleTransactions],
   );
-  const formattedOutstandingTotal = formatContactMoney(outstandingTotal, currency);
+  const formattedOutstandingTotal = formatContactMoney(outstandingTotal, currencyCode);
 
   return (
     <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
@@ -205,9 +205,6 @@ export default function ContactDetailContent({
                     </Tag>
                   ))}
                 </div>
-                <p className="mt-2 max-w-xl text-sm text-gray-500">
-                  Created {formatDate(contact.createdAt)} by {contact.createdBy?.name || "-"}
-                </p>
               </div>
             </div>
           </div>
@@ -229,11 +226,10 @@ export default function ContactDetailContent({
           </div>
 
           <Divider className="!mt-6" />
-          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
-            <Detail className="border-b border-r border-gray-200 pb-5 pr-5 sm:border-b-0 sm:pb-0" icon={<Phone size={17} />} label="Work Phone" value={contact.phone ? <PhoneDisplay phone={contact.phone} /> : "-"} />
-            <Detail className="border-b border-gray-200 pb-5 pl-5 sm:border-b-0 sm:border-r sm:pr-5 sm:pb-0" icon={<Smartphone size={17} />} label="Mobile" value={contact.mobile ? <PhoneDisplay phone={contact.mobile} /> : "-"} />
-            <Detail className="border-r border-gray-200 pr-5 pt-5 sm:pl-5 sm:pt-0" icon={<Mail size={17} />} label="Email" value={contact.email || "-"} />
-            <Detail className="pl-5 pt-5 sm:pt-0" icon={<WalletCards size={17} />} label="Currency" value={currency} />
+          <div className="mt-5 grid grid-cols-1 gap-y-5 sm:grid-cols-3 sm:gap-y-0">
+            <Detail className="border-b border-gray-200 pb-5 sm:border-b-0 sm:border-r sm:pr-5 sm:pb-0" icon={<Phone size={17} />} label="Work Phone" value={contact.phone ? <PhoneDisplay phone={contact.phone} /> : "-"} />
+            <Detail className="border-b border-gray-200 pb-5 sm:border-b-0 sm:border-r sm:px-5 sm:pb-0" icon={<Smartphone size={17} />} label="Mobile" value={contact.mobile ? <PhoneDisplay phone={contact.mobile} /> : "-"} />
+            <Detail className="sm:pl-5" icon={<Mail size={17} />} label="Email" value={contact.email || "-"} />
           </div>
           <Divider className="!my-5" />
         </div>

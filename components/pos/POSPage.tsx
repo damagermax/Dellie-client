@@ -45,7 +45,7 @@ import { usePosCartTotals } from "./hooks/usePosCartTotals";
 import { usePosCheckout } from "./hooks/usePosCheckout";
 import { usePosSavedCarts } from "./hooks/usePosSavedCarts";
 import type { PosCartItem, PosPaymentEntry, SavedPosCart, SelectedPosContact } from "./types";
-import { buildTaxBreakdown, formatMoney, getCartItem, getProductImage, getTodayRange, isTrackedInventory, uid } from "./utils";
+import { buildTaxBreakdown, formatMoney, getCartItem, getProductImage, getTodayRange, isTrackedInventory, roundMoney, uid } from "./utils";
 
 const normalizeEntityId = (value: unknown): string | undefined => {
   if (typeof value === "string") {
@@ -376,6 +376,11 @@ export default function POSPage() {
     );
   }, []);
 
+  const updateCartItemUnitPrice = useCallback((cartItemId: string, unitPrice: number) => {
+    const nextUnitPrice = roundMoney(Math.max(Number(unitPrice || 0), 0));
+    setCart((current) => current.map((item) => (item.id === cartItemId ? { ...item, unitPrice: nextUnitPrice } : item)));
+  }, []);
+
   const getCartQuantity = useCallback((productId: string) => getCartItem(cart, productId)?.quantity || 0, [cart]);
 
   const addQuantity = useCallback(
@@ -519,7 +524,7 @@ export default function POSPage() {
   const createSaleAction = useCallback((payload: Parameters<typeof createSale>[0]) => createSale(payload).unwrap(), [createSale]);
   const createPaymentAction = useCallback((payload: Parameters<typeof createPayment>[0]) => createPayment(payload).unwrap(), [createPayment]);
 
-  const { cashPaymentMethodIds, getPaymentAmountLimit, updatePaymentRow, removePaymentRow, openSplitPayment, prepareCheckout, submitCheckout } = usePosCheckout({
+  const { cashPaymentMethodIds, getPaymentAmountLimit, remainingAmount, updatePaymentRow, removePaymentRow, openSplitPayment, prepareCheckout, submitCheckout } = usePosCheckout({
     payments,
     setPayments,
     availablePaymentMethods,
@@ -726,6 +731,7 @@ export default function POSPage() {
         totalPaid={totalPaid}
         balance={balance}
         change={change}
+        remainingAmount={remainingAmount}
         payments={payments}
         paymentMethods={availablePaymentMethods}
         cashPaymentMethodIds={cashPaymentMethodIds}
@@ -776,6 +782,7 @@ export default function POSPage() {
         editingItem={editingItem}
         open={!!editingCartItemId}
         selectedCurrencyCode={selectedCurrencyCode}
+        canEditUnitPrice={Boolean(posSettings.allowEditCartItemPrice)}
         onClose={() => setEditingCartItemId(null)}
         onDecrease={() => {
           if (!editingItem) return;
@@ -784,6 +791,10 @@ export default function POSPage() {
         onIncrease={() => {
           if (!editingItem) return;
           changeCartItemQuantity(editingItem.id, 1);
+        }}
+        onUnitPriceChange={(value) => {
+          if (!editingItem || !posSettings.allowEditCartItemPrice) return;
+          updateCartItemUnitPrice(editingItem.id, value);
         }}
         onRemove={() => {
           if (!editingItem) return;

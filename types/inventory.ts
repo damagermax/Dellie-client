@@ -40,7 +40,11 @@ export interface RestockProductInput {
   productId: string;
   locationId: string;
   quantity: number;
-  unitCost: number;
+  unitCost?: number;
   receivedDate: string;
   expiryDate?: string;
+  components?: Array<{
+    productId: string;
+    quantity: number;
+  }>;
 }

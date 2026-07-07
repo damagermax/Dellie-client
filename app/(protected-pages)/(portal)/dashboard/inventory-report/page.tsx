@@ -26,6 +26,7 @@ export default function InventoryReportPage() {
   const [locationId, setLocationId] = useState("all");
   const { ready, hasPermission } = usePermissions();
   const canViewReport = hasPermission(StorePermission.REPORTS_VIEW);
+  const trackQuantityEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.trackQuantityEnabled !== false);
   const activeStoreId = useSelector((state: RootState) => state.currentUser.activeStoreId || state.currentUser.store?.id || undefined);
   const { data: locations = [] } = useGetLocationsQuery({ status: LocationStatus.ACTIVE, parentsOnly: false });
 
@@ -44,7 +45,7 @@ export default function InventoryReportPage() {
     isFetching,
     isError,
     refetch,
-  } = useGetInventoryReportQuery(query, { skip: !ready || !canViewReport });
+  } = useGetInventoryReportQuery(query, { skip: !ready || !canViewReport || !trackQuantityEnabled });
 
   const locationOptions = useMemo(() => {
     const options = [{ label: "All locations", value: "all" }];
@@ -59,6 +60,14 @@ export default function InventoryReportPage() {
     return (
       <DashboardPageContainer>
         <DashboardStateCard title="You do not have permission to view reports." description="Ask a store administrator to grant report access." />
+      </DashboardPageContainer>
+    );
+  }
+
+  if (ready && !trackQuantityEnabled) {
+    return (
+      <DashboardPageContainer>
+        <DashboardStateCard title="Quantity tracking is turned off" description="Turn quantity tracking back on to view the inventory report." />
       </DashboardPageContainer>
     );
   }
@@ -102,9 +111,10 @@ export default function InventoryReportPage() {
 function hasReportData(report: InventoryReportResponse) {
   return (
     report.summary.inventoryValue !== 0 ||
+    report.summary.stockQuantity !== 0 ||
     report.summary.lowStockSkus !== 0 ||
     report.summary.outOfStockSkus !== 0 ||
-    report.summary.expiringSoonBatches !== 0 ||
+    (report.expiryEnabled && report.summary.expiringSoonBatches !== 0) ||
     report.movementTrend.some((item) => item.stockIn !== 0 || item.stockOut !== 0) ||
     report.returns.length > 0
   );
@@ -117,10 +127,14 @@ function downloadReport(report: InventoryReportResponse) {
 
   rows.push(
     ["Summary", "Inventory Value", money(report.summary.inventoryValue), "", ""],
+    ["Summary", "Stock Quantity", report.summary.stockQuantity, "units", ""],
     ["Summary", "Low Stock SKUs", report.summary.lowStockSkus, "", ""],
     ["Summary", "Out of Stock", report.summary.outOfStockSkus, "", ""],
-    ["Summary", "Expiring Soon", report.summary.expiringSoonBatches, "batches", ""],
   );
+
+  if (report.expiryEnabled) {
+    rows.push(["Summary", "Expiring Soon", report.summary.expiringSoonBatches, "batches", ""]);
+  }
   report.movementTrend.forEach((item) => rows.push(["Stock Movement", item.label, item.stockIn, item.stockOut, "stock in / stock out"]));
   report.criticalStock.forEach((item) => rows.push(["Critical Stock", item.name, item.availableQuantity, item.status, item.locationName || "All locations"]));
   report.returns.forEach((item) => rows.push(["Returns", item.productName, item.quantity, item.type, item.reference]));

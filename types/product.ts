@@ -55,7 +55,7 @@ export interface ProductQueryParams {
   inPOS?: boolean;
   inStorefront?: boolean;
   locationId?: string;
-  type?: "STOCK" | "NON_STOCK" | "SERVICE" | "BUNDLE" | "PACKAGING";
+  type?: "STOCK" | "NON_STOCK" | "BUNDLE";
   categoryId?: string;
   purchasable?: boolean;
   stockStatus?: "in_stock" | "out_of_stock";
@@ -93,6 +93,7 @@ export interface ProductListItem {
   }>;
   productId?: string;
   hasVariants?: boolean;
+  status?: "active" | "archived";
   isAvailable?: boolean;
   variants?: ProductListItem[];
   availableStock?: number;

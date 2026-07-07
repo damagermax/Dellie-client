@@ -15,7 +15,15 @@ import { ITEM_TYPE } from "./ProductFormModal";
 import { CategoryType } from "@/types/category";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
-import { NORMAL_PRICE_TIER_NAME, ProductPriceTier, TRADE_PRICE_TIER_NAME, defaultPriceTiers, getNormalPrice, normalPriceTier } from "@/lib/products/pricing";
+import {
+  NORMAL_PRICE_TIER_NAME,
+  ProductPriceTier,
+  TRADE_PRICE_TIER_NAME,
+  getDefaultEditablePriceTiers,
+  getEditablePriceTiers,
+  getNormalPrice,
+  normalizePriceTierValues,
+} from "@/lib/products/pricing";
 import { getProductTypeLabel } from "@/lib/products/type-label";
 import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 
@@ -26,6 +34,11 @@ type BundleItemInput = {
   imageUrl?: string;
   normalPrice: number;
   quantity: number;
+};
+
+const getProductListItemId = (product: Partial<ProductListItem> & { _id?: string }) => {
+  const rawId = product.id || product.productId || product._id;
+  return typeof rawId === "string" ? rawId : "";
 };
 
 type ProductEditModalProduct = {
@@ -151,18 +164,24 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
   }, [bundleFeatureEnabled, form]);
 
   const addBundleItem = useCallback((selected: ProductListItem) => {
+    const productId = getProductListItemId(selected);
+    if (!productId) {
+      message.error("The selected bundle item is missing a product ID.");
+      return;
+    }
+
     setBundleItemsError("");
     setBundleItems((prev) => {
-      const existing = prev.find((item) => item.productId === selected.id);
+      const existing = prev.find((item) => item.productId === productId);
 
       if (existing) {
-        return prev.map((item) => (item.productId === selected.id ? { ...item, quantity: item.quantity + 1 } : item));
+        return prev.map((item) => (item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item));
       }
 
       return [
         ...prev,
         {
-          productId: selected.id,
+          productId,
           name: selected.name,
           sku: selected.sku,
           imageUrl: selected.imageUrl,
@@ -273,12 +292,6 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
       payload.bundleItems = [];
     }
 
-    if (!isVariantParent && itemType === ITEM_TYPE.SERVICE) {
-      delete payload.weight;
-      delete payload.lowStockThreshold;
-      delete payload.allowOversell;
-    }
-
     try {
       await updateProduct({ id: product.id, ...cleanPayload(payload) }).unwrap();
       message.success("Product updated successfully.");
@@ -296,17 +309,20 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
       </div>
       <div className="shadow-xl bg-white">
         {productSearch &&
-          products?.data?.map((item: ProductListItem) => (
-            <div key={item.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addBundleItem(item)}>
-              <div className="flex gap-x-2 items-center">
-                <PreviewImage width={28} height={28} src={item.imageUrl} />
-                <div>
-                  <p>{item.name}</p>
-                  {item.sku && item.sku !== "undefined" && <p className="text-gray-500">{item.sku}</p>}
+          products?.data?.map((item: ProductListItem) => {
+            const productId = getProductListItemId(item);
+            return (
+              <div key={productId || item.name} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addBundleItem(item)}>
+                <div className="flex gap-x-2 items-center">
+                  <PreviewImage width={28} height={28} src={item.imageUrl} />
+                  <div>
+                    <p>{item.name}</p>
+                    {item.sku && item.sku !== "undefined" && <p className="text-gray-500">{item.sku}</p>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
       </div>
     </div>
   );
@@ -421,7 +437,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
               </>
             )}
 
-            {itemType != ITEM_TYPE.SERVICE && (enabledModules.storefront || enabledModules.pos) && (
+            {(enabledModules.storefront || enabledModules.pos) && (
               <>
                 <Divider />
                 <div className="grid px-5  gap-y-2 items-center">
@@ -448,40 +464,6 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
 
 function cleanPayload(values: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined && value !== null));
-}
-
-function getDefaultEditablePriceTiers(price = 0, enableTradePrice = true) {
-  return enableTradePrice ? defaultPriceTiers(price) : [normalPriceTier(price)];
-}
-
-function getEditablePriceTiers(product: { priceTiers?: ProductPriceTier[]; sellingPrice?: number }, enableTradePrice: boolean) {
-  const source = product.priceTiers?.length ? product.priceTiers : getDefaultEditablePriceTiers(product.sellingPrice || 0, enableTradePrice);
-  return ensureDefaultPriceTiers(source, enableTradePrice);
-}
-
-function normalizePriceTierValues(values?: ProductPriceTier[], fallbackPrice = 0, enableTradePrice = true) {
-  const tiers = ensureDefaultPriceTiers(values?.length ? values : getDefaultEditablePriceTiers(fallbackPrice, enableTradePrice), enableTradePrice);
-  return tiers.map((tier, index) => ({
-    name: index === 0 ? NORMAL_PRICE_TIER_NAME : index === 1 ? TRADE_PRICE_TIER_NAME : String(tier?.name || "").trim(),
-    price: Number(tier?.price || 0),
-    moq: Math.max(Number(tier?.moq || 1), 1),
-    discountPercent: Math.max(Number(tier?.discountPercent || 0), 0),
-  }));
-}
-
-function ensureDefaultPriceTiers(tiers: ProductPriceTier[], enableTradePrice = true) {
-  const normal = tiers[0] || normalPriceTier(0);
-  if (!enableTradePrice) {
-    return [{ ...normal, name: NORMAL_PRICE_TIER_NAME }, ...tiers.slice(1)];
-  }
-  const trade = tiers.find((tier) => tier.name === TRADE_PRICE_TIER_NAME) || {
-    name: TRADE_PRICE_TIER_NAME,
-    price: Number(normal.price || 0),
-    moq: 1,
-    discountPercent: 0,
-  };
-
-  return [{ ...normal, name: NORMAL_PRICE_TIER_NAME }, { ...trade, name: TRADE_PRICE_TIER_NAME }, ...tiers.slice(1).filter((tier) => tier.name !== TRADE_PRICE_TIER_NAME)];
 }
 
 function PriceTiersEditor({ enableTradePrice, currencyCode }: { enableTradePrice: boolean; currencyCode: string }) {

@@ -30,6 +30,7 @@ type PosCheckoutModalProps = {
   totalPaid: number;
   balance: number;
   change: number;
+  remainingAmount: number;
   payments: PosPaymentEntry[];
   paymentMethods: PaymentMethod[];
   cashPaymentMethodIds: ReadonlySet<string>;
@@ -61,6 +62,7 @@ export default function sPosCheckoutModal({
   totalPaid,
   balance,
   change,
+  remainingAmount,
   payments,
   paymentMethods,
   cashPaymentMethodIds,
@@ -82,7 +84,7 @@ export default function sPosCheckoutModal({
       title={
         <div className="pr-8">
           <p className="text-xl font-semibold text-stone-950">Checkout</p>
-          <p className="mt-1 text-sm text-stone-500">Take payment and finish the sale.</p>
+          <p className="mt-1 text-sm text-stone-500">Take full payment and finish the sale.</p>
         </div>
       }
       open={open}
@@ -183,7 +185,7 @@ export default function sPosCheckoutModal({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-stone-950">Split across multiple payments</p>
-                      <p className="mt-1 text-xs text-stone-500">Add each payment line. Only cash can exceed the amount due for change.</p>
+                      <p className="mt-1 text-xs text-stone-500">Add each payment line until the full amount is covered. Only cash can exceed the amount due for change.</p>
                     </div>
                     <button type="button" onClick={() => onSetShowSplit(false)} className="rounded-lg bg-stone-100 px-3 py-1 cursor-pointer text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200">
                       Single payment
@@ -254,7 +256,7 @@ export default function sPosCheckoutModal({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-stone-900">Amount received</p>
-                        <p className="mt-1 text-xs text-stone-500">Use the shortcuts for faster cash entry, or type a custom amount.</p>
+                        <p className="mt-1 text-xs text-stone-500">Enter the full amount due. Only cash can exceed it for change.</p>
                       </div>
                       <div className={`rounded-lg px-3 py-1 text-xs font-semibold ${change > 0 ? "bg-emerald-100 text-emerald-700" : balance > 0 ? "bg-amber-100 text-amber-700" : "bg-stone-200 text-stone-700"}`}>
                         {change > 0 ? `Change ${formatMoney(selectedCurrencyCode, change)}` : `Remaining ${formatMoney(selectedCurrencyCode, balance)}`}
@@ -283,13 +285,24 @@ export default function sPosCheckoutModal({
               )}
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3 pt-2">
+            <div className="mt-6 space-y-3 pt-2">
+              {remainingAmount > 0 ? <p className="text-sm text-amber-700">Remaining payment required: {formatMoney(selectedCurrencyCode, remainingAmount)}</p> : null}
+              <div className="grid grid-cols-2 gap-3">
               <Button size="large" className="!h-12 !rounded-lg !border-0 !bg-stone-100 !text-stone-700 !shadow-none hover:!bg-stone-200" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button type="primary" size="large" className="!h-12 !rounded-lg !border-0 !shadow-none" style={{ backgroundColor: "#2d837d" }} loading={loading} onClick={onSubmitCheckout}>
+              <Button
+                type="primary"
+                size="large"
+                className="!h-12 !rounded-lg !border-0 !shadow-none"
+                style={{ backgroundColor: "#2d837d" }}
+                loading={loading}
+                disabled={remainingAmount > 0.005}
+                onClick={onSubmitCheckout}
+              >
                 Complete Sale
               </Button>
+              </div>
             </div>
           </section>
         </div>

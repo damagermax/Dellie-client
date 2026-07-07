@@ -128,7 +128,7 @@ export function paymentStatus(total: number, paid: number) {
 }
 
 export function isTrackedInventory(type?: string) {
-  return ["STOCK", "PACKAGING", "BUNDLE"].includes(String(type || ""));
+  return ["STOCK", "BUNDLE"].includes(String(type || ""));
 }
 
 export function getProductImage(product: { imageUrl?: string | null; images?: string[] | null; media?: { url?: string | null }[] | null; productUrl?: string | null }) {

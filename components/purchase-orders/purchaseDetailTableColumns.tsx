@@ -65,9 +65,9 @@ export function buildPurchaseTables({
     { title: "Fulfilled", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
     ...(hasReturnedItems ? [{ title: "Returned", key: "returned", render: (_: unknown, line: PurchaseLineItem) => Number(line.returnedQuantity || 0).toLocaleString() }] : []),
     { title: "Remaining", key: "remaining", render: (_, line) => Math.max(Number(line.quantity || 0) - Number(line.fulfilledQuantity || 0), 0).toLocaleString() },
-    { title: "Unit Cost", key: "unitPrice", render: (_, line) => Number(line.unitPrice).toFixed(2) },
+    { title: "Unit Cost", key: "unitPrice", render: (_, line) => money(currency, Number(line.unitPrice || 0)) },
     ...(hasTaxedItems ? [{ title: "Tax", key: "tax", render: (_: unknown, line: PurchaseLineItem) => (line.taxDescription ? `${line.taxDescription} (${line.taxRate || 0}%)` : "-") }] : []),
-    { title: "Total", key: "total", className: "!pr-8", render: (_, line) => Number(line.total).toFixed(2) },
+    { title: "Total", key: "total", className: "!pr-8", align: "end", render: (_, line) => money(currency, Number(line.total || 0)) },
   ];
 
   const fulfillmentColumns: TableProps<PurchaseStockEvent>["columns"] = [

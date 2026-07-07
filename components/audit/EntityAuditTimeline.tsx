@@ -19,7 +19,7 @@ export default function EntityAuditTimeline({ entityType, entityId, className = 
   const [selectedEntry, setSelectedEntry] = useState<(typeof data)[number] | null>(null);
 
   return (
-    <div className={className}>
+    <div className={className + " max-h-[96vh] overflow-y-auto"}>
       <h2 className="text-base font-medium text-gray-900">Activity</h2>
       <p className="mt-2 text-sm text-gray-500">Track the recorded actions for this {entityType}.</p>
 

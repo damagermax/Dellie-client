@@ -2,7 +2,7 @@
 
 import { useGetCurrentUserQuery } from "@/lib/redux/services/userApi";
 import { useDispatch } from "react-redux";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearAccessToken } from "@/lib/redux/features/authSlice";
 import { setCurrentUser, setStoreSettings } from "@/lib/redux/features/userSlice";
@@ -13,10 +13,18 @@ import { StorePermission } from "@/types/store-access";
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
   const router = useRouter();
-  const { data: currentUser, error, isError, isSuccess } = useGetCurrentUserQuery();
+  const [authBootstrapReady, setAuthBootstrapReady] = useState(false);
+  const [hasStoredToken, setHasStoredToken] = useState(false);
+  const { data: currentUser, error, isError, isSuccess } = useGetCurrentUserQuery(undefined, { skip: !authBootstrapReady || !hasStoredToken });
   const canReadStoreSettings = Boolean(currentUser?.permissions?.some((permission) => permission === StorePermission.SETTINGS_VIEW || permission === StorePermission.SETTINGS_MANAGE));
   const { data: storeSettings } = useGetStoreSettingsQuery(undefined, { skip: !canReadStoreSettings });
-  const authenticationRequired = isError && typeof error === "object" && error !== null && "status" in error && (error as { status?: number }).status === 401;
+  const authenticationRequired = authBootstrapReady && hasStoredToken && isError && typeof error === "object" && error !== null && "status" in error && (error as { status?: number }).status === 401;
+
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    setHasStoredToken(Boolean(token));
+    setAuthBootstrapReady(true);
+  }, []);
 
   useEffect(() => {
     if (currentUser && isSuccess) {
@@ -88,7 +96,13 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     }
   }, [authenticationRequired, dispatch, router]);
 
-  if (authenticationRequired) return null;
+  useEffect(() => {
+    if (authBootstrapReady && !hasStoredToken) {
+      router.replace("/auth/signin");
+    }
+  }, [authBootstrapReady, hasStoredToken, router]);
+
+  if (!authBootstrapReady || authenticationRequired || !hasStoredToken) return null;
 
   return <div>{children}</div>;
 }

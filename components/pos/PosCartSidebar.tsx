@@ -106,26 +106,28 @@ export default function PosCartSidebar({
         </div>
       </div>
 
-      <div className="mx-4 mb-3 space-y-3">
-        <div className="rounded-xl bg-gray-50 px-4 py-4">
-          <div className="space-y-3">
-            <PosSummaryRow label="Items Total" value={formatMoney(selectedCurrencyCode, subtotal)} />
-            {discounts > 0 ? <PosSummaryRow label="Discount" value={`- ${formatMoney(selectedCurrencyCode, discounts)}`} /> : null}
-            <PosSummaryRow label="Subtotal" value={formatMoney(selectedCurrencyCode, taxableSubtotal)} />
-            {taxAmount > 0 ? <PosSummaryRow label="Tax" value={formatMoney(selectedCurrencyCode, taxAmount)} /> : null}
-            <div className="border-t border-gray-200 pt-3">
-              <PosSummaryRow label="Total" value={formatMoney(selectedCurrencyCode, grandTotal)} strong />
+      {cart.length > 0 ? (
+        <div className="mx-4 mb-3 space-y-3">
+          <div className="rounded-xl bg-gray-50 px-4 py-4">
+            <div className="space-y-3">
+              <PosSummaryRow label="Items Total" value={formatMoney(selectedCurrencyCode, subtotal)} />
+              {discounts > 0 ? <PosSummaryRow label="Discount" value={`- ${formatMoney(selectedCurrencyCode, discounts)}`} /> : null}
+              <PosSummaryRow label="Subtotal" value={formatMoney(selectedCurrencyCode, taxableSubtotal)} />
+              {taxAmount > 0 ? <PosSummaryRow label="Tax" value={formatMoney(selectedCurrencyCode, taxAmount)} /> : null}
+              <div className="border-t border-gray-200 pt-3">
+                <PosSummaryRow label="Total" value={formatMoney(selectedCurrencyCode, grandTotal)} strong />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className=" flex border-2 rounded-lg overflow-clip border-[#2d837d]">
-          <button onClick={onOpenCheckout} disabled={stockIssues.length > 0} className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-white font-medium text-base ${stockIssues.length ? "cursor-not-allowed bg-gray-400" : "cursor-pointer bg-[#2d837d]"}`}>
-            <span>Checkout</span>
-            <span>{formatMoney(selectedCurrencyCode, grandTotal)}</span>
-          </button>
+          <div className=" flex border-2 rounded-lg overflow-clip border-[#2d837d]">
+            <button onClick={onOpenCheckout} disabled={stockIssues.length > 0} className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-white font-medium text-base ${stockIssues.length ? "cursor-not-allowed bg-gray-400" : "cursor-pointer bg-[#2d837d]"}`}>
+              <span>Checkout</span>
+              <span>{formatMoney(selectedCurrencyCode, grandTotal)}</span>
+            </button>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

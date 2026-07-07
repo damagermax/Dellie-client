@@ -71,7 +71,7 @@ export function buildSaleDetailHeaderMoreItems(context: SaleDetailHeaderMenuCont
       ? [
           { key: "edit", disabled: !context.canEdit, icon: <Pencil size={15} />, label: "Edit Sale" },
           ...(context.refundPaymentsEnabled ? [{ key: "refund", icon: <RotateCcw size={15} />, label: "Refund Payment", disabled: !context.canRefundPayment }] : []),
-          ...(context.returnsEnabled ? [{ key: "return", icon: <Undo2 size={15} />, label: "Return Items", disabled: !context.canReturn }] : []),
+          ...(context.returnsEnabled && context.canReturn ? [{ key: "return", icon: <Undo2 size={15} />, label: "Return Items" }] : []),
           ...(context.writeOffPaymentsEnabled ? [{ key: "write_off", icon: <Receipt size={15} />, label: "Write Off Balance", disabled: !context.canWriteOffPayment }] : []),
           { key: "close", icon: <Lock size={15} />, label: "Close Sale" },
         ]
@@ -172,18 +172,19 @@ export function SaleDetailHeaderActions(context: SaleDetailHeaderMenuContext) {
                   <Button type="primary" className="!border-2 !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<PackageCheck size={15} />} disabled={!context.canFulfill} onClick={context.onFulfill}>
                     {isPickup ? "Mark as Picked Up" : "Fulfill"}
                   </Button>
-                ) : context.returnsEnabled ? (
-                  <Button type="primary" className="!border-2  !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<Undo2 size={15} />} disabled={!context.canReturn} onClick={context.onReturn}>
+                ) : context.returnsEnabled && context.canReturn ? (
+                  <Button type="primary" className="!border-2  !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<Undo2 size={15} />} onClick={context.onReturn}>
                     Return
                   </Button>
                 ) : null}
-                {context.canRefundPayment && context.refundPaymentsEnabled ? (
-                  <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={context.canRefundPayment ? <RotateCcw size={15} /> : <CreditCard size={15} />} disabled={Boolean(context.sale.locked)} onClick={context.canRefundPayment ? context.onRefund : context.onRecordPayment}>
-                    {context.canRefundPayment ? "Refund Payment" : "Record Payment"}
-                  </Button>
-                ) : context.canRecordPayment ? (
+                {context.canRecordPayment ? (
                   <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<CreditCard size={15} />} disabled={Boolean(context.sale.locked)} onClick={context.onRecordPayment}>
                     Record Payment
+                  </Button>
+                ) : null}
+                {context.canRefundPayment && context.refundPaymentsEnabled ? (
+                  <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<RotateCcw size={15} />} disabled={Boolean(context.sale.locked)} onClick={context.onRefund}>
+                    Refund Payment
                   </Button>
                 ) : null}
               </>

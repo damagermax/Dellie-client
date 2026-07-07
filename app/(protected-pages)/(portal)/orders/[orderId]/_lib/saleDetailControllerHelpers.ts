@@ -2,6 +2,7 @@
 
 import { PurchaseReturnEvent, PurchaseStockEvent } from "@/types/purchase";
 import { Sale } from "@/types/sale";
+import { getRemainingRefundablePaidAmount } from "@/components/payment/saleRefundMath";
 
 type EditableItem = { kind: "fulfillment"; item: PurchaseStockEvent } | { kind: "return"; item: PurchaseReturnEvent };
 
@@ -27,8 +28,8 @@ export function deriveSaleDetailState({
   const canReturn = !sale.locked && !isCancelled && !isQuote && sale.lineItems.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
   const isFullyFulfilled = !sale.locked && !isCancelled && !isQuote && sale.lineItems.length > 0 && sale.lineItems.every((line) => Number(line.fulfilledQuantity || 0) >= Number(line.quantity || 0));
   const canRecordPayment = !sale.locked && !isCancelled && !isQuote && Number(sale.balance || 0) > 0;
-  const netPaid = Number(sale.amount || 0) - Number(sale.balance || 0);
-  const canRefundPayment = netPaid > 0 && Number(sale.balance || 0) <= 0;
+  const remainingRefundablePaidAmount = getRemainingRefundablePaidAmount(sale.payments || []);
+  const canRefundPayment = !sale.locked && !isCancelled && !isQuote && remainingRefundablePaidAmount > 0;
   const canUseReturns = featureSettings?.salesReturnsEnabled !== false;
   const canUseRefunds = featureSettings?.refundPaymentsEnabled !== false;
   const canUseWriteOffs = featureSettings?.writeOffPaymentsEnabled !== false;
@@ -46,6 +47,7 @@ export function deriveSaleDetailState({
     isFullyFulfilled,
     canRecordPayment,
     canRefundPayment,
+    remainingRefundablePaidAmount,
     canUseReturns,
     canUseRefunds,
     canUseWriteOffs,

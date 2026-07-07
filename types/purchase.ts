@@ -1,5 +1,6 @@
 import { PaginatedResponse } from "./shared";
 import { TransactionAttachment } from "./transaction";
+import type { Payment } from "./transaction";
 
 export type PurchaseDiscountType = "fixed" | "percent";
 export type PurchaseReceiptStatus = "pending" | "partially_received" | "received";
@@ -100,7 +101,7 @@ export interface Purchase extends Omit<CreatePurchaseInput, "contactId" | "locat
   amount: number;
   balance: number;
   paymentStatus: "unpaid" | "partial" | "paid";
-  payments?: unknown[];
+  payments?: Payment[];
   attachments?: TransactionAttachment[];
   createdAt: string;
   updatedAt: string;

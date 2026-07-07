@@ -64,6 +64,7 @@ const FEATURE_GROUPS: FeatureGroup[] = [
     title: "Sales",
     description: "Fulfillment and return options for customer sales.",
     items: [
+      { key: "quotesEnabled", label: "Allow quotes", description: "Show quote-saving actions and quote filters for sales." },
       { key: "pickupEnabled", label: "Allow pickup", description: "Show pickup fulfillment in manual sales when enabled." },
       { key: "deliveryEnabled", label: "Allow delivery", description: "Keep delivery-based sales flows available." },
       { key: "salesReturnsEnabled", label: "Allow sales returns", description: "Enable sale return actions and return records." },
@@ -78,6 +79,7 @@ const FEATURE_GROUPS: FeatureGroup[] = [
     title: "Inventory",
     description: "Product and stock handling rules.",
     items: [
+      { key: "trackQuantityEnabled", label: "Track quantity", description: "Keep stock-tracked products and inventory reporting available." },
       { key: "expiryEnabled", label: "Track expiry", description: "Show and accept expiry inputs for stock batches." },
       { key: "stockBundleEnabled", label: "Allow stock bundles", description: "Let stock-tracked products contain component products." },
       { key: "nonStockBundleEnabled", label: "Allow non-stock bundles", description: "Let non-stock products contain component products." },

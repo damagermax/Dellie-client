@@ -3,11 +3,13 @@
 import { Divider, Form, message } from "antd";
 import { CalendarDays, ChevronDown, Clock3, Package, Truck, WalletCards } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 
 import { Detail, IdentityPanel } from "@/components/shared/DetailPrimitives";
 import { useUpdateSaleMutation } from "@/lib/redux/services";
 import { formatDate } from "@/lib/dateUtils";
 import { getPaymentTermLabel } from "@/lib/payment-terms";
+import { RootState } from "@/lib/redux/store";
 import type { Sale } from "@/types/index";
 import type { PaymentTerm } from "@/types/payment-term";
 import { AppModal } from "@/components/ui/AppModal";
@@ -22,7 +24,6 @@ type SaleOverviewSectionProps = {
   isCancelled: boolean;
   isClosed: boolean;
   paymentTerms: PaymentTerm[] | undefined;
-  showFulfillmentLocation: boolean;
 };
 
 type DeliveryAddressFormValues = {
@@ -33,10 +34,11 @@ type DeliveryAddressFormValues = {
   postalCode?: string;
 };
 
-export function SaleOverviewSection({ sale, canEdit, isCancelled, isClosed, paymentTerms, showFulfillmentLocation }: SaleOverviewSectionProps) {
+export function SaleOverviewSection({ sale, canEdit, isCancelled, isClosed, paymentTerms }: SaleOverviewSectionProps) {
   const [form] = Form.useForm<DeliveryAddressFormValues>();
   const [deliveryAddressOpen, setDeliveryAddressOpen] = useState(false);
   const [updateSale, { isLoading: isSavingAddress }] = useUpdateSaleMutation();
+  const paymentTermsEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.paymentTermsEnabled !== false);
   const isPickup = sale.fulfillmentMethod === "pickup";
   const customerName = sale.contactId?.name || sale.contactId?.displayName || "Walk-in Customer";
   const customerMeta = [sale.contactId?.email, sale.contactId?.phone].filter(Boolean).join(" · ") || "No contact details provided";
@@ -46,7 +48,7 @@ export function SaleOverviewSection({ sale, canEdit, isCancelled, isClosed, paym
   const fulfillmentMeta = [locationName, locationMeta !== "No address provided" ? locationMeta : undefined].filter(Boolean).join(" · ");
   const locationLabel = isPickup ? "Pickup Location" : "Delivery Address";
   const locationTitle = isPickup ? locationName : deliveryAddress || "No delivery address provided";
-  const locationDescription = isPickup ? locationMeta : showFulfillmentLocation ? locationMeta : `Fulfillment Location: ${fulfillmentMeta || "Location not set"}`;
+  const locationDescription = isPickup ? locationMeta : "";
   const canEditDeliveryAddress = useMemo(() => !isPickup && canEdit && !isCancelled && !isClosed, [canEdit, isCancelled, isClosed, isPickup]);
 
   useEffect(() => {
@@ -90,14 +92,10 @@ export function SaleOverviewSection({ sale, canEdit, isCancelled, isClosed, paym
       <div className="md:px-8">
         {isCancelled ? <div className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">This sale has been cancelled and is currently view-only. Reopen it to make changes.</div> : null}
         {isClosed ? <div className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">This sale is closed and read-only. Reopen it to make changes.</div> : null}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 items-start sm:grid-cols-2">
           <IdentityPanel label="Customer" title={customerName} description={customerMeta} contentClassName="px-3 md:px-0" />
           {canEditDeliveryAddress ? (
-            <button
-              type="button"
-              className="w-full rounded-xl text-left transition hover:bg-gray-50"
-              onClick={openDeliveryAddressModal}
-            >
+            <button type="button" className="w-full rounded-xl text-left transition " onClick={openDeliveryAddressModal}>
               <div className="flex items-start justify-between gap-3 px-3 md:px-0">
                 <div className="min-w-0">
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">{locationLabel}</p>
@@ -113,14 +111,26 @@ export function SaleOverviewSection({ sale, canEdit, isCancelled, isClosed, paym
             <IdentityPanel label={locationLabel} title={locationTitle} description={locationDescription} contentClassName="px-3 md:px-0" />
           )}
         </div>
-        <Divider className="!md:mt-6" />
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
-          <Detail className="border-b border-r border-gray-200 pl-3 pb-3 md:pb-0 md:pl-0 md:pr-5 sm:border-b-0 " icon={<CalendarDays size={17} />} label="Sold" value={formatDate(sale.date)} />
-          <Detail className="border-b border-gray-200 pl-3 md:pb-0 md:pl-5 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-5" icon={isPickup ? <Package size={17} /> : <Truck size={17} />} label={isPickup ? "Pickup on" : "Deliver by"} value={formatDate(sale.deliveryDate)} />
-          <Detail className="border-r border-gray-200 pl-3 pt-3 md:pr-5 md:pt-0 sm:pl-5" icon={<WalletCards size={17} />} label="Terms" value={getPaymentTermLabel(sale.paymentTerms, paymentTerms || [])} />
-          <Detail className="pl-3 pt-3 md:pl-5 md:pt-0" icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(sale.dueDate)} />
-        </div>
-        <Divider className="!my-5" />
+
+        {paymentTermsEnabled ? (
+          <>
+            <Divider className="!md:mt-6" />
+            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
+              <Detail className="border-b border-r border-gray-200 pl-3 pb-3 md:pb-0 md:pl-0 md:pr-5 sm:border-b-0 " icon={<CalendarDays size={17} />} label="Sold" value={formatDate(sale.date)} />
+              <Detail
+                className="border-b border-gray-200 pl-3 md:pb-0 md:pl-5 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-5"
+                icon={isPickup ? <Package size={17} /> : <Truck size={17} />}
+                label={isPickup ? "Pickup on" : "Deliver by"}
+                value={formatDate(sale.deliveryDate)}
+              />
+              <Detail className="border-r border-gray-200 pl-3 pt-3 md:pr-5 md:pt-0 sm:pl-5" icon={<WalletCards size={17} />} label="Terms" value={getPaymentTermLabel(sale.paymentTerms, paymentTerms || [])} />
+              <Detail className="pl-3 pt-3 md:pl-5 md:pt-0" icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(sale.dueDate)} />
+            </div>
+            <Divider className="!my-5" />
+          </>
+        ) : (
+          <div className="my-6 border-t border-gray-100" />
+        )}
       </div>
       {sale.note ? (
         <div className="mx-4 mb-8 sm:mx-8">
@@ -128,15 +138,7 @@ export function SaleOverviewSection({ sale, canEdit, isCancelled, isClosed, paym
           <p className="text-sm leading-6 text-gray-700">{sale.note}</p>
         </div>
       ) : null}
-      <AppModal
-        open={deliveryAddressOpen}
-        toggle={closeDeliveryAddressModal}
-        onOk={saveDeliveryAddress}
-        loading={isSavingAddress}
-        title="Delivery Address"
-        okText="Save Address"
-        width={640}
-      >
+      <AppModal open={deliveryAddressOpen} toggle={closeDeliveryAddressModal} onOk={saveDeliveryAddress} loading={isSavingAddress} title="Delivery Address" okText="Save Address" width={640}>
         <Form form={form} layout="vertical" className="grid grid-cols-1 gap-x-5 gap-y-1 p-5 sm:grid-cols-2">
           <InputFormItem className="sm:col-span-2" label="Street Address" name="street" placeholder="Enter street address" />
           <InputFormItem label="City" name="city" placeholder="Enter city" />

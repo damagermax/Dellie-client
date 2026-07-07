@@ -16,6 +16,24 @@ export enum TransactionType {
   PURCHASE_LANDED_COST = "purchase_landed_cost",
 }
 
+export type RefundMode = "manual" | "items";
+
+export interface RefundItemInput {
+  lineItemId: string;
+  quantity: number;
+}
+
+export interface RefundItemSnapshot extends RefundItemInput {
+  productId?: string;
+  productName?: string;
+  productSku?: string;
+  computedFullItemValue?: number;
+  computedRefundAmount?: number;
+  computedSubtotal?: number;
+  computedDiscountAmount?: number;
+  computedTaxAmount?: number;
+}
+
 export interface ExpenseCategory {
   id: string;
   name: string;
@@ -31,6 +49,8 @@ export interface ApplyPaymentInput {
   rate?: number;
   amount: number;
   paymentMethodId?: string;
+  refundMode?: RefundMode;
+  refundItems?: RefundItemInput[];
 }
 
 export interface UpdateAppliedPaymentInput extends Partial<ApplyPaymentInput> {
@@ -63,6 +83,10 @@ export interface Payment {
   paymentMethod?: { name: string; id: string };
   note?: string;
   createdBy: { name: string; id: string };
+  linkedTransactionId?: string;
+  linkedDocumentSnapshot?: { id?: string; type: string; number: string; status?: string };
+  refundMode?: RefundMode;
+  refundItems?: RefundItemSnapshot[];
 }
 
 export type UpdatePaymentInput = UpdateAppliedPaymentInput;

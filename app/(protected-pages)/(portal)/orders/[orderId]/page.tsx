@@ -71,7 +71,16 @@ export default function SaleDetailPage() {
       {controller.fulfillOpen && <SaleStockOperationModal open={controller.fulfillOpen} toggle={controller.toggleFulfill} sale={sale} onSaved={controller.refetch} />}
       {controller.returnOpen && state.canReturn && state.canUseReturns && <SaleReturnOperationModal open={controller.returnOpen} toggle={controller.toggleReturn} sale={sale} onSaved={controller.refetch} />}
       {controller.shareDocumentType && <SaleShareDocumentModal open={Boolean(controller.shareDocumentType)} toggle={() => controller.setShareDocumentType(undefined)} sale={sale} type={controller.shareDocumentType} />}
-      {controller.paymentOpen && <PaymentFormModal type={controller.paymentType} open={controller.paymentOpen} toggle={controller.closePaymentModal} linkTransaction={{ id: sale.id, rate: sale.rate || 1, currencyId: sale.currencyId?.id || "" }} initialValues={controller.selectedPayment} />}
+      {controller.paymentOpen && (
+        <PaymentFormModal
+          type={controller.paymentType}
+          open={controller.paymentOpen}
+          toggle={controller.closePaymentModal}
+          linkTransaction={{ id: sale.id, rate: sale.rate || 1, currencyId: sale.currencyId?.id || "", type: TransactionType.SALE }}
+          initialValues={controller.selectedPayment}
+          sale={sale}
+        />
+      )}
       {controller.editingItem && (
         <TransactionItemEditModal
           open={Boolean(controller.editingItem)}

@@ -63,7 +63,7 @@ export default function PaymentMethodsForm({ open, toggle, initialValues, onSave
             placeholder="Cash"
             rules={[{ required: true, message: "Enter a payment method name" }]}
             disable={isProtectedMethod}
-            help={isProtectedMethod ? "Cash is a protected system payment method. Its name cannot be changed, but you can still update where it shows." : "Use labels like Cash, Card, Bank Transfer, or Mobile Money."}
+            help={isProtectedMethod ? "Cash is a protected system payment method. Its name cannot be changed, but you can still update where it shows." : undefined}
           />
           <Form.Item name="showInPOS" valuePropName="checked" className="!mb-0">
             <Checkbox>Show in POS</Checkbox>

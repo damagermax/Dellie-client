@@ -4,7 +4,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { cn } from "@/lib/utils";
 import type { PurchaseReportResponse } from "@/types/purchase-report";
-import { formatChange, formatDashboardMoney, getTrendTone } from "../dashboard-utils";
+import { formatDashboardMoney } from "../dashboard-utils";
 
 export function PurchasingTrendCard({ report }: { report: PurchaseReportResponse }) {
   const metrics = [
@@ -12,26 +12,21 @@ export function PurchasingTrendCard({ report }: { report: PurchaseReportResponse
       title: "Purchase Spend",
       value: formatDashboardMoney(report.currencyCode, report.summary.purchaseSpend.value),
       hint: "Committed supplier spend after discounts and tax",
-      changePercent: report.summary.purchaseSpend.changePercent,
     },
     {
       title: "Stock Received",
       value: `${report.summary.stockReceived.value.toLocaleString()} units`,
       hint: "Stock and packaging units received in the selected period",
-      changePercent: report.summary.stockReceived.changePercent,
     },
     {
       title: "Total Purchases",
       value: report.summary.totalPurchases.value.toLocaleString(),
       hint: "All open and closed purchases in the selected period",
-      changePercent: report.summary.totalPurchases.changePercent,
     },
     {
       title: "Canceled Purchase Orders",
       value: report.summary.canceledPurchaseOrders.value.toLocaleString(),
       hint: "Purchase orders canceled in the selected period",
-      changePercent: report.summary.canceledPurchaseOrders.changePercent,
-      inverseChange: true,
     },
   ];
   const normalizeTooltipValue = (value: number | string | ReadonlyArray<number | string> | undefined) => {
@@ -43,9 +38,6 @@ export function PurchasingTrendCard({ report }: { report: PurchaseReportResponse
     <DashboardCard className="mb-12" contentClassName="px-6 py-6">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4 xl:gap-0">
         {metrics.map((metric, index) => {
-          const change = formatChange(metric.changePercent);
-          const tone = getTrendTone(metric.changePercent, metric.inverseChange);
-
           return (
             <div
               key={metric.title}
@@ -55,23 +47,9 @@ export function PurchasingTrendCard({ report }: { report: PurchaseReportResponse
                 index >= 2 && "sm:pl-5",
               )}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium text-gray-500">{metric.title}</p>
-                  <p className="mt-1 text-xl font-semibold text-gray-950">{metric.value}</p>
-                </div>
-                {change ? (
-                  <span
-                    className={cn(
-                      "inline-flex rounded-full border px-1.5 py-0.5 text-xs leading-none",
-                      tone === "positive"
-                        ? "border-green-300 bg-green-50 text-green-600"
-                        : "border-red-300 bg-red-50 text-red-500",
-                    )}
-                  >
-                    {change}
-                  </span>
-                ) : null}
+              <div>
+                <p className="text-xs font-medium text-gray-500">{metric.title}</p>
+                <p className="mt-1 text-xl font-semibold text-gray-950">{metric.value}</p>
               </div>
               <p className="mt-1 text-[11px] leading-5 text-gray-500">{metric.hint}</p>
             </div>

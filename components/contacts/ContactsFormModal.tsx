@@ -8,8 +8,7 @@ import { useCreateContactMutation, useDisableEmployeeAccessMutation, useEnableEm
 import { Contact, ContactRole, ContactStatus, CreateContactInput, EmployeeAccessInput, EmployeeAccessResponse, UpdateContactInput } from "@/types/contact";
 import { StorePermission } from "@/types/store-access";
 import { AppModal, ModalProps } from "../ui/AppModal";
-import { InputFormItem, PhoneInputFormItem, TextAreaFormItem } from "../ui/AppFormItems";
-import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
+import { InputFormItem, PhoneInputFormItem } from "../ui/AppFormItems";
 
 interface ContactsFormModalProps extends ModalProps {
   initialValues?: Contact;
@@ -179,12 +178,11 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
           <div className="grid grid-cols-2 gap-x-5 gap-y-4">
             <InputFormItem label="Name" name="name" placeholder="Enter name" rules={[{ required: true, message: "Please enter name" }]} />
             <InputFormItem label="Display Name" name="displayName" placeholder="Enter display name" />
-            <Form.Item label="Currency" name="currencyId" rules={[{ required: true, message: "Select contact currency" }]}>
-              <SearchableCurrenciesSelect />
-            </Form.Item>
-            <InputFormItem label="Email" name="email" placeholder="Enter email" />
-            <PhoneInputFormItem label="Work Phone" name="phone" placeholder="Work Phone" rules={[{ required: true, message: "Enter work phone" }]} />
-            <PhoneInputFormItem label="Mobile" name="mobile" placeholder="Mobile" />
+            <div className="col-span-2 grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-3">
+              <PhoneInputFormItem label="Work Phone" name="phone" placeholder="Work Phone" rules={[{ required: true, message: "Enter work phone" }]} />
+              <PhoneInputFormItem label="Mobile" name="mobile" placeholder="Mobile" />
+              <InputFormItem label="Email" name="email" placeholder="Enter email" />
+            </div>
 
             <Divider className="!my-0 col-span-2" />
 
@@ -241,10 +239,6 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
           </div>
 
           <Divider className="!my-6" />
-
-          <Divider className="!my-0" />
-
-          <TextAreaFormItem label="Note" name="note" />
         </div>
       </Form>
     </AppModal>

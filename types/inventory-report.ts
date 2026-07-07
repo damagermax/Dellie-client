@@ -7,6 +7,7 @@ export interface InventoryReportQuery {
 
 export interface InventoryReportResponse {
   currencyCode: string;
+  expiryEnabled: boolean;
   period: {
     dateFrom: string;
     dateTo: string;
@@ -14,6 +15,7 @@ export interface InventoryReportResponse {
   };
   summary: {
     inventoryValue: number;
+    stockQuantity: number;
     lowStockSkus: number;
     outOfStockSkus: number;
     expiringSoonBatches: number;

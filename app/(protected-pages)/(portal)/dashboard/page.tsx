@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardAttentionCountsSection } from "@/components/dashboard/DashboardAttentionCountsSection";
 import { DashboardOverviewMetricsSection } from "@/components/dashboard/DashboardOverviewMetricsSection";
 import { DashboardPageContainer } from "@/components/dashboard/DashboardPageContainer";
 import { DashboardCriticalStockWatchlistCard } from "@/components/dashboard/DashboardCriticalStockWatchlistCard";
@@ -10,15 +9,18 @@ import { DashboardOverviewShimmer } from "@/components/dashboard/DashboardOvervi
 import { DashboardToolbar } from "@/components/dashboard/DashboardToolbar";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useGetDashboardOverviewQuery, useGetLocationsQuery } from "@/lib/redux/services";
+import { RootState } from "@/lib/store";
 import { LocationStatus } from "@/types/index";
 import { StorePermission } from "@/types/store-access";
 import { Select } from "antd";
 import { useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 
 export default function DashboardPage() {
   const [locationId, setLocationId] = useState("all");
   const { ready, hasPermission } = usePermissions();
   const canViewReport = hasPermission(StorePermission.REPORTS_VIEW);
+  const trackQuantityEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.trackQuantityEnabled !== false);
   const { data: locations = [] } = useGetLocationsQuery({ status: LocationStatus.ACTIVE, parentsOnly: false });
   const query = useMemo(
     () => ({
@@ -63,7 +65,7 @@ export default function DashboardPage() {
 
   const showingRecent = data.salesToday.length === 0;
   const sales = showingRecent ? data.recentSales : data.salesToday;
-  const hasWatchlist = data.criticalStockWatchlist.length > 0;
+  const hasWatchlist = trackQuantityEnabled && data.criticalStockWatchlist.length > 0;
 
   return (
     <DashboardPageContainer>
@@ -81,7 +83,6 @@ export default function DashboardPage() {
           totalProducts={data.summary.totalProducts}
           totalCustomers={data.summary.totalCustomers}
         />
-        <DashboardAttentionCountsSection counts={data.attentionCounts} />
         {hasWatchlist ? (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="min-w-0">

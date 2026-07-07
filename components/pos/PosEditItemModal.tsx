@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Modal } from "antd";
+import { Button, InputNumber, Modal } from "antd";
 import { PackageSearch, Trash2 } from "lucide-react";
 import Image from "next/image";
 import QuantityControl from "./QuantityControl";
@@ -11,13 +11,15 @@ type PosEditItemModalProps = {
   editingItem: PosCartItem | null;
   open: boolean;
   selectedCurrencyCode: string;
+  canEditUnitPrice: boolean;
   onClose: () => void;
   onDecrease: () => void;
   onIncrease: () => void;
+  onUnitPriceChange: (value: number) => void;
   onRemove: () => void;
 };
 
-export default function PosEditItemModal({ editingItem, open, selectedCurrencyCode, onClose, onDecrease, onIncrease, onRemove }: PosEditItemModalProps) {
+export default function PosEditItemModal({ editingItem, open, selectedCurrencyCode, canEditUnitPrice, onClose, onDecrease, onIncrease, onUnitPriceChange, onRemove }: PosEditItemModalProps) {
   const tracksInventory = isTrackedInventory(editingItem?.type);
 
   return (
@@ -55,7 +57,21 @@ export default function PosEditItemModal({ editingItem, open, selectedCurrencyCo
                   <div className="min-w-0">
                     <p className="text-lg font-semibold leading-tight text-stone-950">{editingItem.name}</p>
                     {editingItem.sku ? <p className=" text-xs text-stone-500">SKU: {editingItem.sku}</p> : null}
-                    <div className="mt-2 text-sm font-medium text-stone-900">Unit Price: {formatMoney(selectedCurrencyCode, editingItem.unitPrice)}</div>
+                    {canEditUnitPrice ? (
+                      <div className="mt-3 max-w-[220px]">
+                        <p className="text-xs font-medium uppercase tracking-[0.12em] text-stone-500">Unit Price</p>
+                        <InputNumber
+                          min={0}
+                          controls={false}
+                          className="mt-2 !w-full"
+                          prefix={selectedCurrencyCode || undefined}
+                          value={editingItem.unitPrice}
+                          onChange={(value) => onUnitPriceChange(Number(value || 0))}
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-sm font-medium text-stone-900">Unit Price: {formatMoney(selectedCurrencyCode, editingItem.unitPrice)}</div>
+                    )}
                   </div>
                 </div>
               </div>

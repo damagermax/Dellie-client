@@ -281,6 +281,10 @@ export default function POSSettings() {
           <ToggleRow title="Allow choice at checkout" description="Let cashiers override the default fulfillment behavior before completing a sale." name="allowFulfillmentChoiceAtCheckout" />
         </SettingsPanel>
 
+        <SettingsPanel icon={LuWalletCards} title="Cart Controls">
+          <ToggleRow title="Allow item price edits" description="Let cashiers change a cart item's unit price from the POS item editor." name="allowEditCartItemPrice" />
+        </SettingsPanel>
+
         <SettingsPanel icon={LuReceipt} title="Receipt Experience">
           <ToggleRow title="Open receipt after checkout" description="Show the receipt modal immediately after a successful POS sale." name="receiptAutoOpen" />
 

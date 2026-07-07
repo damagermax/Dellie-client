@@ -87,7 +87,7 @@ export function MobileEvent({ title, detail, date, value, action }: { title: Rea
 export function money(currency: string, value: number | undefined) {
   const amount = Number(value || 0);
   const prefix = amount < 0 ? "-" : "";
-  return `${prefix}${currency} ${Math.abs(amount).toFixed(2)}`;
+  return `${prefix}${currency ? `${currency} ` : ""}${Math.abs(amount).toFixed(2)}`.trim();
 }
 
 function SegmentLabel({ icon, text }: { icon: React.ReactNode; text: string }) {

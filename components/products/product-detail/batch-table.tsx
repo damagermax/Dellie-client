@@ -16,11 +16,11 @@ import { hasBundleComponents } from "@/lib/products/type-label";
 import { Panel } from "./shared";
 import type { InventoryBatch, ProductDetail } from "./types";
 import { formatBatchSource, formatDate, formatMoney, formatQuantity, isExpiredBatch, isExpiringSoonBatch, sortBatchesByPriority } from "./utils";
-import { BatchAdjustmentModal, BatchDisassembleModal, BatchTransferModal } from "./inventory-modals";
+import { BatchAdjustmentModal, BatchDisassembleModal, BatchTransferModal, ProductionBatchDetailModal } from "./inventory-modals";
 
 export function BatchTable({ product, batches, canManageInventory, onBatchChanged }: { product: ProductDetail; batches: InventoryBatch[]; canManageInventory: boolean; onBatchChanged: () => void }) {
   const [selectedBatch, setSelectedBatch] = useState<InventoryBatch | null>(null);
-  const [activeBatchModal, setActiveBatchModal] = useState<"adjust" | "transfer" | "disassemble" | null>(null);
+  const [activeBatchModal, setActiveBatchModal] = useState<"adjust" | "transfer" | "disassemble" | "production" | null>(null);
   const [locationFilter, setLocationFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [stockStateFilter, setStockStateFilter] = useState<string>("all");
@@ -28,6 +28,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
   const [queryFilter, setQueryFilter] = useState("");
   const [filtersOpen, toggleFiltersOpen] = useToggle();
   const canDisassemble = product.type === ITEM_TYPE.STOCK && hasBundleComponents(product);
+  const canMutateBatches = canManageInventory && product.status !== "archived";
   const expiryEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.expiryEnabled !== false);
 
   const locationOptions = useMemo(
@@ -152,7 +153,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
     setQueryFilter("");
   };
 
-  const openBatchModal = (batch: InventoryBatch, type: "adjust" | "transfer" | "disassemble") => {
+  const openBatchModal = (batch: InventoryBatch, type: "adjust" | "transfer" | "disassemble" | "production") => {
     setSelectedBatch(batch);
     setActiveBatchModal(type);
   };
@@ -163,6 +164,15 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
   };
 
   const actionItemsForBatch = (batch: InventoryBatch) => [
+    ...(batch.source === "production"
+      ? [
+          {
+            key: "production",
+            label: <DropdownItemLabel icon={<PackageOpen size={15} />} text="View production" />,
+            onClick: () => openBatchModal(batch, "production"),
+          },
+        ]
+      : []),
     {
       key: "adjust",
       label: <DropdownItemLabel icon={<SlidersHorizontal size={15} />} text="Inventory adjustment" />,
@@ -201,7 +211,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
     { title: "Source", key: "source", render: (_, batch) => formatBatchSource(batch.source) },
     { title: "Unit Cost", key: "unitCost", render: (_, batch) => formatMoney(batch.unitCost) },
     ...(expiryEnabled ? [{ title: "Expiry", key: "expiryDate", render: (_: unknown, batch: InventoryBatch) => formatDate(batch.expiryDate) }] : []),
-    ...(canManageInventory
+    ...(canMutateBatches
       ? [
           {
             title: "Actions",
@@ -209,7 +219,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
             align: "right" as const,
             className: "!pr-4",
             render: (_: unknown, batch: InventoryBatch) => (
-              <div className="flex justify-end">
+              <div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
                 <ActionDropdown menu={{ items: actionItemsForBatch(batch) }} />
               </div>
             ),
@@ -250,7 +260,11 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
       <div className="divide-y divide-gray-200 border-t border-gray-200 md:hidden">
         {filteredBatches.length ? (
           filteredBatches.map((batch) => (
-            <div key={batch.id || batch.batchNumber || `${batch.locationId}-${batch.sourceDate}`} className="px-4 py-4">
+            <div
+              key={batch.id || batch.batchNumber || `${batch.locationId}-${batch.sourceDate}`}
+              className={`px-4 py-4 ${batch.source === "production" ? "cursor-pointer" : ""}`}
+              onClick={batch.source === "production" ? () => openBatchModal(batch, "production") : undefined}
+            >
               <div className="flex items-center justify-between">
                 <p className="font-medium text-gray-950">{batch.batchNumber || "Unnamed batch"}</p>
                 <div className="flex gap-1">
@@ -275,7 +289,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
                     </>
                   ) : null}
                 </p>
-                <div className="shrink-0 text-right">{canManageInventory ? <ActionDropdown isTransparent menu={{ items: actionItemsForBatch(batch) }} /> : null}</div>
+                <div className="shrink-0 text-right" onClick={(event) => event.stopPropagation()}>{canMutateBatches ? <ActionDropdown isTransparent menu={{ items: actionItemsForBatch(batch) }} /> : null}</div>
               </div>
             </div>
           ))
@@ -296,6 +310,10 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
           ]}
           dataSource={filteredBatches}
           rowKey={(batch) => batch.id || batch.batchNumber || `${batch.locationId}-${batch.sourceDate}`}
+          onRow={(batch) => ({
+            onClick: batch.source === "production" ? () => openBatchModal(batch, "production") : undefined,
+            className: batch.source === "production" ? "cursor-pointer" : "",
+          })}
           pagination={false}
           locale={{ emptyText: <Empty className="py-10" description="No batches match the selected filters." /> }}
         />
@@ -368,6 +386,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
 
       {selectedBatch ? (
         <>
+          <ProductionBatchDetailModal batch={selectedBatch} open={activeBatchModal === "production"} toggle={closeBatchModal} />
           <BatchAdjustmentModal batch={selectedBatch} open={activeBatchModal === "adjust"} toggle={closeBatchModal} onSaved={onBatchChanged} />
           <BatchTransferModal batch={selectedBatch} open={activeBatchModal === "transfer"} toggle={closeBatchModal} onSaved={onBatchChanged} />
           <BatchDisassembleModal batch={selectedBatch} product={product} open={activeBatchModal === "disassemble"} toggle={closeBatchModal} onSaved={onBatchChanged} />

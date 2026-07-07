@@ -1,6 +1,7 @@
 "use client";
 
 import { GoBack } from "@/components/ui/GoBack";
+import { formatDate } from "@/lib/dateUtils";
 import type { Sale } from "@/types/index";
 
 import { SaleDetailHeaderStatus } from "./SaleDetailHeaderStatus";
@@ -9,7 +10,7 @@ import { saleDocumentNumber } from "./saleUtils";
 
 type SaleDetailHeaderProps = {
   sale: Sale;
-  showFulfillmentLocation: boolean;
+
   canManage: boolean;
   canEdit: boolean;
   canFulfill: boolean;
@@ -41,7 +42,6 @@ type SaleDetailHeaderProps = {
 
 export function SaleDetailHeader({
   sale,
-  showFulfillmentLocation,
   canManage,
   canEdit,
   canFulfill,
@@ -104,14 +104,16 @@ export function SaleDetailHeader({
   return (
     <div className="border-b border-gray-200 bg-gradient-to-b from-white to-gray-50/70 px-3 pb-5 pt-5 md:px-8">
       <div className="flex flex-wrap items-start gap-5 md:justify-between">
-        <div className="ju flex w-full items-start justify-between gap-x-4 md:w-fit md:justify-start">
+        <div className="ju flex w-full items-start justify-between gap-x-2 md:gap-x-4 md:w-fit md:justify-start">
           <GoBack />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center justify-center gap-2 md:justify-start">
-              <h1 className="text-xl font-semibold tracking-normal text-gray-950 md:text-2xl">{saleDocumentNumber(sale)}</h1>
+              <h1 className=" text-lg sm:text-xl font-semibold tracking-normal text-gray-950 md:text-2xl">{saleDocumentNumber(sale)}</h1>
               <SaleDetailHeaderStatus sale={sale} isCancelled={isCancelled} isQuote={isQuote} />
             </div>
-            {showFulfillmentLocation ? <p className="mt-1 text-sm text-gray-500">{sale.locationId?.name}</p> : null}
+            <p className="mt-1 text-sm text-gray-500">
+              <span className="font-semibold">{sale.locationId?.name || "Location not set"}</span> on <span className="font-semibold">{formatDate(sale.date)}</span>
+            </p>
           </div>
           <div className="md:hidden">{dropdownButton}</div>
         </div>

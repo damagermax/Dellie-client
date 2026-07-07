@@ -11,6 +11,8 @@ export interface StorePricingSettings {
 }
 
 export interface StoreFeatureSettings {
+  trackQuantityEnabled: boolean;
+  quotesEnabled: boolean;
   pickupEnabled: boolean;
   deliveryEnabled: boolean;
   multiCurrencyEnabled: boolean;
@@ -57,6 +59,7 @@ export interface PosSettings {
   defaultTaxId?: string;
   defaultTaxByLocationId: Record<string, string | undefined>;
   applyTaxByDefault: boolean;
+  allowEditCartItemPrice: boolean;
   fulfillmentDefault: PosFulfillmentDefault;
   allowFulfillmentChoiceAtCheckout: boolean;
   receiptAutoOpen: boolean;
@@ -104,6 +107,7 @@ export const DEFAULT_POS_SETTINGS: PosSettings = {
   defaultTaxId: undefined,
   defaultTaxByLocationId: {},
   applyTaxByDefault: false,
+  allowEditCartItemPrice: false,
   fulfillmentDefault: "fulfill_now",
   allowFulfillmentChoiceAtCheckout: false,
   receiptAutoOpen: true,
@@ -115,6 +119,8 @@ export const DEFAULT_PRICING_SETTINGS: StorePricingSettings = {
 };
 
 export const DEFAULT_FEATURE_SETTINGS: StoreFeatureSettings = {
+  trackQuantityEnabled: true,
+  quotesEnabled: true,
   pickupEnabled: true,
   deliveryEnabled: true,
   multiCurrencyEnabled: true,

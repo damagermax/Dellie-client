@@ -40,6 +40,11 @@ interface LocationQuantityInput {
   quantity: number;
 }
 
+const getProductListItemId = (product: Partial<ProductListItem> & { _id?: string }) => {
+  const rawId = product.id || product.productId || product._id;
+  return typeof rawId === "string" ? rawId : "";
+};
+
 const getLocationId = (location: Partial<Location> & { _id?: string; value?: string }) => {
   const rawId = location.id || location._id || location.value;
   return typeof rawId === "string" ? rawId : "";
@@ -83,9 +88,7 @@ interface ProductFormModalProps extends ModalProps {
 export enum ITEM_TYPE {
   STOCK = "STOCK",
   NON_STOCK = "NON_STOCK",
-  SERVICE = "SERVICE",
   BUNDLE = "BUNDLE",
-  PACKAGING = "PACKAGING",
 }
 
 const ItemType = [
@@ -96,7 +99,7 @@ const ItemType = [
   },
   {
     title: "Non-Stock Product ",
-    description: "Products or services without inventory tracking(e.g. Prepared Food,  Haircut, Consultation)",
+    description: "Products sold without inventory tracking (e.g. Prepared Food, Digital Download)",
     examples: "",
 
     key: ITEM_TYPE.NON_STOCK,
@@ -104,10 +107,14 @@ const ItemType = [
 ];
 
 export default function ProductFormModal({ open, toggle }: ProductFormModalProps) {
+  const enabledModules = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules);
+  const featureSettings = useSelector((state: RootState) => state.currentUser.storeSettings.features);
+  const currencyCode = useStoreCurrencyCode();
+  const trackQuantityEnabled = featureSettings?.trackQuantityEnabled !== false;
   const [openLocationModal, toggleLocationModal] = useToggle();
   const [openVariantModal, toggleVariantModal] = useToggle();
   const [media, setMedia] = useState<File[]>([]);
-  const [itemType, setItemType] = useState<ITEM_TYPE | null>(null);
+  const [itemType, setItemType] = useState<ITEM_TYPE | null>(() => (trackQuantityEnabled ? null : ITEM_TYPE.NON_STOCK));
   const [productSearch, setProductSearch] = useState("");
   const [bundleItems, setBundleItems] = useState<BundleItemInput[]>([]);
   const [bundleItemsError, setBundleItemsError] = useState("");
@@ -117,13 +124,14 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
 
   const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([]);
   const [locationQuantities, setLocationQuantities] = useState<LocationQuantityInput[]>([]);
-  const enabledModules = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules);
-  const featureSettings = useSelector((state: RootState) => state.currentUser.storeSettings.features);
-  const currencyCode = useStoreCurrencyCode();
   const expiryEnabled = featureSettings?.expiryEnabled !== false;
   const stockBundleEnabled = featureSettings?.stockBundleEnabled !== false;
   const nonStockBundleEnabled = featureSettings?.nonStockBundleEnabled !== false;
   const bundleFeatureEnabled = itemType === ITEM_TYPE.STOCK ? stockBundleEnabled : itemType === ITEM_TYPE.NON_STOCK ? nonStockBundleEnabled : false;
+  const itemTypeOptions = useMemo(
+    () => (trackQuantityEnabled ? ItemType : ItemType.filter((type) => type.key !== ITEM_TYPE.STOCK)),
+    [trackQuantityEnabled],
+  );
 
   const { data: defaultLocation } = useGetDefaultLocationQuery();
   const debouncedProductSearch = useDebouncedValue(productSearch);
@@ -245,18 +253,24 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   };
 
   const addBundleItem = useCallback((product: ProductListItem) => {
+    const productId = getProductListItemId(product);
+    if (!productId) {
+      message.error("The selected bundle item is missing a product ID.");
+      return;
+    }
+
     setBundleItemsError("");
     setBundleItems((prev) => {
-      const existing = prev.find((item) => item.productId === product.id);
+      const existing = prev.find((item) => item.productId === productId);
 
       if (existing) {
-        return prev.map((item) => (item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item));
+        return prev.map((item) => (item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item));
       }
 
       return [
         ...prev,
         {
-          productId: product.id,
+          productId,
           name: product.name,
           sku: product.sku,
           imageUrl: product.imageUrl,
@@ -353,15 +367,16 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   useEffect(() => {
     if (isSuccess) {
       productForm.resetFields();
-      toggle();
       setMedia([]);
       setVariantCombinations([]);
       setLocationQuantities([]);
       setBundleItems([]);
       setBundleItemsError("");
       setProductSearch("");
+      setItemType(trackQuantityEnabled ? null : ITEM_TYPE.NON_STOCK);
+      toggle();
     }
-  }, [isSuccess, productForm, toggle]);
+  }, [isSuccess, productForm, toggle, trackQuantityEnabled]);
 
   useEffect(() => {
     if (containsOtherProducts && variantCombinations.length) {
@@ -384,6 +399,32 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     setBundleItemsError("");
     setProductSearch("");
   }, [bundleFeatureEnabled, productForm]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (!trackQuantityEnabled) {
+      if (defaultLocation) {
+        ensureLocationSelected(defaultLocation);
+      }
+      setItemType(ITEM_TYPE.NON_STOCK);
+      return;
+    }
+
+    setItemType(null);
+  }, [defaultLocation, ensureLocationSelected, open, trackQuantityEnabled]);
+
+  useEffect(() => {
+    if (trackQuantityEnabled || itemType !== ITEM_TYPE.STOCK) return;
+
+    setVariantCombinations([]);
+    productForm.setFieldsValue({
+      barcode: undefined,
+      lowStockThreshold: undefined,
+      expiryDate: undefined,
+    });
+    setItemType(ITEM_TYPE.NON_STOCK);
+  }, [itemType, productForm, trackQuantityEnabled]);
 
   // Table columns for variant combinations
   const variantColumns: TableProps<VariantCombination>["columns"] = [
@@ -449,13 +490,17 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
               <InputNumber className="!w-[110px]" controls={false} min={0} value={record.lowStockThreshold} onChange={(value) => handleCombinationChange(record.key, "lowStockThreshold", Number(value || 0))} size="middle" />
             ),
           },
-          {
-            title: "Expiry Date",
-            dataIndex: "expiryDate",
-            key: "expiryDate",
-            width: 150,
-            render: (_: unknown, record: VariantCombination) => <Input type="date" size="middle" value={record.expiryDate || ""} onChange={(event) => handleCombinationChange(record.key, "expiryDate", event.target.value || null)} />,
-          },
+          ...(expiryEnabled
+            ? [
+                {
+                  title: "Expiry Date",
+                  dataIndex: "expiryDate",
+                  key: "expiryDate",
+                  width: 150,
+                  render: (_: unknown, record: VariantCombination) => <Input type="date" size="middle" value={record.expiryDate || ""} onChange={(event) => handleCombinationChange(record.key, "expiryDate", event.target.value || null)} />,
+                },
+              ]
+            : []),
         ]
       : []),
 
@@ -515,17 +560,20 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       </div>
       <div className="shadow-xl bg-white">
         {productSearch &&
-          products?.data?.map((product: ProductListItem) => (
-            <div key={product.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addBundleItem(product)}>
-              <div className="flex gap-x-2 items-center">
-                <PreviewImage width={28} height={28} src={product.imageUrl} />
-                <div>
-                  <p>{product.name}</p>
-                  {product.sku && product.sku !== "undefined" && <p className="text-gray-500">{product.sku}</p>}
+          products?.data?.map((product: ProductListItem) => {
+            const productId = getProductListItemId(product);
+            return (
+              <div key={productId || product.name} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addBundleItem(product)}>
+                <div className="flex gap-x-2 items-center">
+                  <PreviewImage width={28} height={28} src={product.imageUrl} />
+                  <div>
+                    <p>{product.name}</p>
+                    {product.sku && product.sku !== "undefined" && <p className="text-gray-500">{product.sku}</p>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
       </div>
     </div>
   );
@@ -538,8 +586,8 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       height={"70vh"}
       title={
         itemType ? (
-          <p className=" capitalize flex items-center cursor-pointer" onClick={() => setItemType(null)}>
-            <MdOutlineArrowBackIos className="mr-2" /> {itemType?.replace("_", " ")?.toLowerCase()}
+          <p className={`capitalize flex items-center ${trackQuantityEnabled ? "cursor-pointer" : ""}`} onClick={() => trackQuantityEnabled && setItemType(null)}>
+            {trackQuantityEnabled ? <MdOutlineArrowBackIos className="mr-2" /> : null} {itemType?.replace("_", " ")?.toLowerCase()}
           </p>
         ) : (
           ""
@@ -550,13 +598,13 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       onOk={handleOk}
       okText={isLoading ? "Saving.." : "Save"}
     >
-      {!itemType && (
+      {!itemType && trackQuantityEnabled && (
         <div className="px-5">
           <h2 className="text-lg font-semibold text-gray-800">Choose Item Type</h2>
           <p className="text-sm text-gray-500 mb-5  ">Select how this item will be managed in your system.</p>
 
           <div className=" grid  gap-4 mb-8 mt-5">
-            {ItemType?.map((type) => (
+            {itemTypeOptions.map((type) => (
               <div
                 key={type.key}
                 className="  cursor-pointer hover:border-gray-500 border-gray-200 rounded-md border p-5 border-solid"
@@ -745,7 +793,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
               </>
             )}
 
-            {itemType != ITEM_TYPE.SERVICE && (enabledModules.storefront || enabledModules.pos) && (
+            {(enabledModules.storefront || enabledModules.pos) && (
               <>
                 <Divider className="" />
 

@@ -52,16 +52,20 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [restoreProduct, { isLoading: restoring }] = useRestoreProductMutation();
   const product = rawProduct as ProductDetail | undefined;
   const imageUrl = product?.media?.[0]?.url || product?.imageUrl;
+  const isArchived = product?.status === "archived";
+  const canEditProduct = canManageProduct && !isArchived;
+  const canMutateInventory = canManageInventory && !isArchived;
+  const canManageMedia = canManageProduct && !isArchived;
 
   const tabs = useMemo(
     () =>
       buildProductDetailTabs(product, {
-        canManageProduct,
+        canManageProduct: canEditProduct,
         onEditProduct: toggleEdit,
         enableTradePrice,
-        renderBatchTable: (currentProduct) => <BatchTable product={currentProduct} batches={currentProduct.inventory?.batches || []} canManageInventory={canManageInventory} onBatchChanged={refetch} />,
+        renderBatchTable: (currentProduct) => <BatchTable product={currentProduct} batches={currentProduct.inventory?.batches || []} canManageInventory={canMutateInventory} onBatchChanged={refetch} />,
       }),
-    [canManageInventory, canManageProduct, enableTradePrice, product, refetch, toggleEdit],
+    [canEditProduct, canMutateInventory, enableTradePrice, product, refetch, toggleEdit],
   );
   const currentTab = tabs.find((tab) => tab.key === activeSection) || tabs[0];
 
@@ -77,20 +81,25 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   const handleToggleProductStatus = async () => {
     if (!product) return;
+    const entityLabel = product.productId ? "Variant" : "Product";
 
     try {
       if (product.status === "archived") {
         await restoreProduct(product.id).unwrap();
         await refetch();
-        message.success("Product restored.");
+        message.success(`${entityLabel} restored.`);
         return;
       }
 
       await archiveProduct(product.id).unwrap();
-      message.success("Product archived.");
-      router.push("/products");
+      message.success(`${entityLabel} archived.`);
+      if (!product.productId) {
+        router.push("/products");
+      } else {
+        await refetch();
+      }
     } catch {
-      message.error("The product status could not be changed.");
+      message.error(`The ${entityLabel.toLowerCase()} status could not be changed.`);
     }
   };
 
@@ -141,7 +150,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <ActionDropdown
                   menu={{
                     items: [
-                      ...(canManageProduct
+                      ...(canEditProduct
                         ? [
                             {
                               key: "Edit",
@@ -150,22 +159,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                             },
                           ]
                         : []),
-                      ...(product.type === ITEM_TYPE.STOCK && !product.hasVariants && canManageInventory
+                      ...(product.type === ITEM_TYPE.STOCK && !product.hasVariants && canMutateInventory
                         ? [
                             {
                               key: "Restock",
-                              label: <DropdownItemLabel icon={<ArrowRightLeft size={15} />} text={hasBundleComponents(product) ? "Assemble" : "Restock"} />,
+                              label: <DropdownItemLabel icon={<ArrowRightLeft size={15} />} text={hasBundleComponents(product) ? "Production" : "Restock"} />,
                               onClick: toggleRestock,
                             },
                           ]
                         : []),
-                      ...(canManageProduct && !product.productId
+                      ...(canManageProduct
                         ? [
                             {
                               key: "ToggleStatus",
                               label: <DropdownItemLabel icon={product.status === "archived" ? <PackageOpen size={15} /> : <ImBoxRemove size={15} />} text={product.status === "archived" ? "Restore" : "Archive"} />,
                               onClick: async () => {
-                                const confirmed = window.confirm(product.status === "archived" ? "Restore this product?" : "Archive this product?");
+                                const confirmed = window.confirm(product.status === "archived" ? `Restore this ${product.productId ? "variant" : "product"}?` : `Archive this ${product.productId ? "variant" : "product"}?`);
                                 if (!confirmed) return;
                                 await handleToggleProductStatus();
                               },
@@ -180,10 +189,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
               </div>
 
               <div className="md:flex w-full hidden justify-end gap-2 md:w-auto">
-                {canManageProduct && !product.productId && (
+                {canManageProduct && (
                   <Popconfirm
-                    title={product.status === "archived" ? "Restore product?" : "Archive product?"}
-                    description={product.status === "archived" ? "The product will become available again." : "The product and its variants will be hidden from new transactions."}
+                    title={product.status === "archived" ? `Restore ${product.productId ? "variant" : "product"}?` : `Archive ${product.productId ? "variant" : "product"}?`}
+                    description={
+                      product.status === "archived"
+                        ? `The ${product.productId ? "variant" : "product"} will become available again.`
+                        : product.productId
+                          ? "The variant will be hidden from new transactions."
+                          : "The product and its variants will be hidden from new transactions."
+                    }
                     onConfirm={handleToggleProductStatus}
                   >
                     <Button danger loading={archiving || restoring}>
@@ -192,12 +207,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   </Popconfirm>
                 )}
 
-                {product.type === ITEM_TYPE.STOCK && !product.hasVariants && canManageInventory && (
+                {product.type === ITEM_TYPE.STOCK && !product.hasVariants && canMutateInventory && (
                   <Button type="default" onClick={toggleRestock}>
-                    {hasBundleComponents(product) ? "Assemble" : "Restock"}
+                    {hasBundleComponents(product) ? "Production" : "Restock"}
                   </Button>
                 )}
-                {canManageProduct && (
+                {canEditProduct && (
                   <Button type="default" onClick={toggleEdit}>
                     Edit
                   </Button>
@@ -211,7 +226,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 imageUrl={imageUrl}
                 displayName={displayName}
                 showPlaceholder={showImagePlaceholder}
-                canManage={canManageProduct}
+                canManage={canManageMedia}
                 onOpenMedia={toggleMedia}
                 onImageError={() => setHeroImageFailed(true)}
               />
@@ -219,12 +234,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
             <button
               type="button"
-              onClick={canManageProduct ? toggleMedia : undefined}
-              disabled={!canManageProduct}
+              onClick={canManageMedia ? toggleMedia : undefined}
+              disabled={!canManageMedia}
               className="group relative hidden aspect-square w-full cursor-pointer overflow-hidden border-[#2d837d] text-left outline-none transition disabled:cursor-default disabled:opacity-100 md:block md:rounded-sm md:border"
             >
               {showImagePlaceholder ? <ProductImagePlaceholder label="Product image" /> : <img className="h-full  w-full hover:p-0 transition  object-cover" src={imageUrl} alt={product.name || "Product"} onError={() => setHeroImageFailed(true)} />}
-              {canManageProduct && <span className="absolute inset-x-0 bottom-0 bg-[#2d837d] px-3 py-2 text-center text-xs font-medium text-white  transition  ">Manage media</span>}
+              {canManageMedia && <span className="absolute inset-x-0 bottom-0 bg-[#2d837d] px-3 py-2 text-center text-xs font-medium text-white  transition  ">Manage media</span>}
             </button>
 
             <div className="p-3 md:hidden">

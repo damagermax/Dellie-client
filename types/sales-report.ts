@@ -7,7 +7,6 @@ export interface SalesReportQuery {
 
 export interface SalesReportMetric {
   value: number;
-  changePercent: number | null;
 }
 
 export interface SalesReportResponse {

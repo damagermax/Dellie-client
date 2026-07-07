@@ -2,10 +2,12 @@
 
 import { Divider } from "antd";
 import { CalendarDays, Clock3, Truck, WalletCards } from "lucide-react";
+import { useSelector } from "react-redux";
 
 import { Detail, IdentityPanel } from "@/components/shared/DetailPrimitives";
 import { formatDate } from "@/lib/dateUtils";
 import { getPaymentTermLabel } from "@/lib/payment-terms";
+import { RootState } from "@/lib/redux/store";
 import type { Purchase } from "@/types/index";
 import type { PaymentTerm } from "@/types/payment-term";
 
@@ -17,6 +19,7 @@ type PurchaseOverviewSectionProps = {
 };
 
 export function PurchaseOverviewSection({ purchase, isCancelled, isClosed, paymentTerms }: PurchaseOverviewSectionProps) {
+  const paymentTermsEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.paymentTermsEnabled !== false);
   const supplierName = purchase.contactId?.name || purchase.contactId?.displayName || "Supplier not set";
   const supplierMeta = [purchase.contactId?.email, purchase.contactId?.phone].filter(Boolean).join(" · ") || "No contact details provided";
   const locationName = purchase.locationId?.name || "Location not set";
@@ -31,14 +34,18 @@ export function PurchaseOverviewSection({ purchase, isCancelled, isClosed, payme
           <IdentityPanel label="Supplier" title={supplierName} description={supplierMeta} />
           <IdentityPanel label="Destination" title={locationName} description={locationMeta} />
         </div>
-        <Divider className="!mt-6 " />
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
-          <Detail className="border-r border-b border-gray-200 pl-3 pb-5 pr-5 md:pl-0 sm:border-b-0 sm:pb-0" icon={<CalendarDays size={17} />} label="Ordered" value={formatDate(purchase.date)} />
-          <Detail className="border-b border-gray-200 pl-5 pb-5 sm:border-r sm:border-b-0 sm:pb-0 sm:pr-5" icon={<Truck size={17} />} label="Deliver by" value={formatDate(purchase.deliveryDate)} />
-          <Detail className="border-r border-gray-200 pl-3 pr-5 pt-5 sm:pl-5 sm:pt-0 md:pl-0" icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(purchase.dueDate)} />
-          <Detail className="pl-5 pt-5 sm:pt-0" icon={<WalletCards size={17} />} label="Terms" value={getPaymentTermLabel(purchase.paymentTerms, paymentTerms || [])} />
-        </div>
-        <Divider className="!my-5 " />
+        {paymentTermsEnabled ? (
+          <>
+            <Divider className="!mt-6 " />
+            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4">
+              <Detail className="border-r border-b border-gray-200 pl-3 pb-5 pr-5 md:pl-0 sm:border-b-0 sm:pb-0" icon={<CalendarDays size={17} />} label="Ordered" value={formatDate(purchase.date)} />
+              <Detail className="border-b border-gray-200 pl-5 pb-5 sm:border-r sm:border-b-0 sm:pb-0 sm:pr-5" icon={<Truck size={17} />} label="Deliver by" value={formatDate(purchase.deliveryDate)} />
+              <Detail className="border-r border-gray-200 pl-3 pr-5 pt-5 sm:pl-5 sm:pt-0 md:pl-0" icon={<Clock3 size={17} />} label="Payment Due" value={formatDate(purchase.dueDate)} />
+              <Detail className="pl-5 pt-5 sm:pt-0" icon={<WalletCards size={17} />} label="Terms" value={getPaymentTermLabel(purchase.paymentTerms, paymentTerms || [])} />
+            </div>
+            <Divider className="!my-5 " />
+          </>
+        ) : null}
       </div>
       {purchase.note ? (
         <div className="mx-4 mb-8 sm:mx-8">

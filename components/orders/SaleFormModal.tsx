@@ -13,6 +13,8 @@ import { Sale } from "@/types/index";
 import { ProductVariantSelectorModal } from "@/components/products/ProductVariantSelectorModal";
 import { buildSaleFormColumns, SaleProductSearchResults, SaleSummaryPanel } from "./saleFormSections";
 import { useSaleFormController } from "./useSaleFormController";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
 
 interface SaleFormModalProps extends ModalProps {
   sale?: Sale;
@@ -21,6 +23,7 @@ interface SaleFormModalProps extends ModalProps {
 
 export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormModalProps) {
   const controller = useSaleFormController({ open, toggle, sale, onSaved });
+  const quotesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.quotesEnabled !== false);
   const columns = buildSaleFormColumns({
     currency: controller.currency,
     differentProductTax: controller.differentProductTax,
@@ -47,7 +50,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
             <Button className="w-full sm:w-auto" onClick={toggle}>
               Cancel
             </Button>
-            {!sale && (
+            {!sale && quotesEnabled && (
               <Button className="w-full sm:w-auto" disabled={controller.loading} onClick={() => controller.submit("quote")}>
                 Save as Quote
               </Button>

@@ -50,7 +50,7 @@ export function buildPurchaseDetailHeaderMoreItems(context: PurchaseDetailHeader
   return [
     { key: "edit", disabled: !context.canEdit, icon: <Pencil size={15} />, label: "Edit Purchase" },
     { key: "landed_cost", disabled: Boolean(context.purchase.locked), icon: <Truck size={15} />, label: "Add Landed Cost" },
-    ...(context.returnsEnabled ? [{ key: "return", icon: <Undo2 size={15} />, label: "Return Items", disabled: !context.canReturn }] : []),
+    ...(context.returnsEnabled && context.canReturn ? [{ key: "return", icon: <Undo2 size={15} />, label: "Return Items" }] : []),
     ...(context.refundPaymentsEnabled || context.writeOffPaymentsEnabled ? [{ type: "divider" as const }] : []),
     ...(context.refundPaymentsEnabled ? [{ key: "refund", icon: <RotateCcw size={15} />, label: "Refund Payment", disabled: !context.canRefundPayment }] : []),
     ...(context.writeOffPaymentsEnabled ? [{ key: "write_off", icon: <Receipt size={15} />, label: "Write Off Balance", disabled: !context.canWriteOffPayment }] : []),
@@ -159,8 +159,8 @@ export function buildPurchaseDetailHeaderActions(context: PurchaseDetailHeaderMe
               <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<PackageCheck size={15} />} disabled={!context.canReceive} onClick={context.onReceive}>
                 Fulfill
               </Button>
-            ) : context.returnsEnabled ? (
-              <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<Undo2 size={15} />} disabled={!context.canReturn} onClick={context.onReturn}>
+            ) : context.returnsEnabled && context.canReturn ? (
+              <Button type="primary" className="!shadow-none  !border-2 !bg-white !border-[#f7c855] !text-black !font-semibold" icon={<Undo2 size={15} />} onClick={context.onReturn}>
                 Return
               </Button>
             ) : null}

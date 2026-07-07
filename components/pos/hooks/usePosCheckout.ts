@@ -67,6 +67,8 @@ type UsePosCheckoutParams = {
 
 export function usePosCheckout({ payments, setPayments, availablePaymentMethods, grandTotal, form, posSettings, setPosFulfillmentMode, submitParams }: UsePosCheckoutParams) {
   const cashPaymentMethodIds = useMemo(() => new Set(availablePaymentMethods.filter((method) => isCashPaymentMethodName(method.name)).map((method) => method.id)), [availablePaymentMethods]);
+  const paymentTotal = useMemo(() => roundMoney(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)), [payments]);
+  const remainingAmount = useMemo(() => roundMoney(Math.max(grandTotal - paymentTotal, 0)), [grandTotal, paymentTotal]);
 
   const getPaymentAmountLimit = useCallback(
     (entryId: string, paymentMethodId?: string, entries: PosPaymentEntry[] = payments) => {
@@ -200,10 +202,16 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
       }
 
       const paymentTotal = roundMoney(validPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
+      const remainingAmount = roundMoney(Math.max(grandTotal - paymentTotal, 0));
       const cashPayments = validPayments.filter((payment) => payment.paymentMethodId && cashPaymentMethodIds.has(payment.paymentMethodId));
       const cashPaymentTotal = roundMoney(cashPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
       const changeAmount = roundMoney(Math.max(paymentTotal - grandTotal, 0));
       const nonCashPaymentTotal = roundMoney(paymentTotal - cashPaymentTotal);
+
+      if (remainingAmount > 0.005) {
+        message.error("POS checkout requires full payment before completing the sale.");
+        return;
+      }
 
       if (changeAmount > 0.005 && cashPayments.length === 0) {
         message.error("Only cash payments can exceed the sale total.");
@@ -337,6 +345,8 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
   return {
     cashPaymentMethodIds,
     getPaymentAmountLimit,
+    paymentTotal,
+    remainingAmount,
     addPaymentRow,
     updatePaymentRow,
     removePaymentRow,

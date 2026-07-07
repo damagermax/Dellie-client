@@ -3,12 +3,13 @@
 import { Button, Form, Input, message } from "antd";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { LuArrowLeft, LuBadgeCheck, LuChevronDown, LuChevronUp, LuCreditCard } from "react-icons/lu";
+import { LuArrowLeft, LuBadgeCheck, LuChevronDown, LuChevronUp, LuCopy, LuCreditCard } from "react-icons/lu";
 import { useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 
 import { setStoreSettings } from "@/lib/redux/features/userSlice";
 import { useGetStoreSettingsQuery, useUpdateStoreSettingsMutation } from "@/lib/redux/services/storeSettingsApi";
-import type { AppDispatch } from "@/lib/redux/store";
+import type { AppDispatch, RootState } from "@/lib/redux/store";
 import { DEFAULT_INTEGRATIONS_SETTINGS, PaystackIntegrationSettings, StripeIntegrationSettings, UpdateStoreSettingsInput } from "@/types/store-settings";
 
 type IntegrationKey = "paystack" | "stripe";
@@ -48,6 +49,20 @@ const INTEGRATION_COPY: Record<
   },
 };
 
+const WEBHOOK_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4200").replace(/\/+$/, "");
+
+function slugifyStoreName(value?: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getWebhookUrl(slug: string, key: IntegrationKey) {
+  return `${WEBHOOK_BASE_URL}/stores/${slug}/integrations/${key}/webhook`;
+}
+
 function normalizePaystack(values?: Partial<PaystackIntegrationSettings>): PaystackIntegrationSettings {
   return {
     ...DEFAULT_INTEGRATIONS_SETTINGS.paystack,
@@ -70,7 +85,9 @@ function normalizeStripe(values?: Partial<StripeIntegrationSettings>): StripeInt
 
 export default function AppsPage() {
   const dispatch = useDispatch<AppDispatch>();
+  const currentStore = useSelector((state: RootState) => state.currentUser.store);
   const [expandedKey, setExpandedKey] = useState<IntegrationKey | null>("paystack");
+  const [editingKey, setEditingKey] = useState<IntegrationKey | null>(null);
   const [paystackForm] = Form.useForm<PaystackFormValues>();
   const [stripeForm] = Form.useForm<StripeFormValues>();
   const { data, isLoading } = useGetStoreSettingsQuery();
@@ -78,6 +95,7 @@ export default function AppsPage() {
 
   const paystack = normalizePaystack(data?.integrations?.paystack);
   const stripe = normalizeStripe(data?.integrations?.stripe);
+  const activeStoreSlug = currentStore?.slug || slugifyStoreName(currentStore?.name);
 
   useEffect(() => {
     paystackForm.setFieldsValue({
@@ -102,6 +120,20 @@ export default function AppsPage() {
     }
   };
 
+  const handleCopyWebhookUrl = async (key: IntegrationKey) => {
+    if (!activeStoreSlug) {
+      message.error("Store webhook URL is not available.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(getWebhookUrl(activeStoreSlug, key));
+      message.success(`${INTEGRATION_COPY[key].title} webhook URL copied.`);
+    } catch {
+      message.error("Webhook URL could not be copied.");
+    }
+  };
+
   const handleSavePaystack = async (values: PaystackFormValues) => {
     await saveSettings(
       {
@@ -116,6 +148,7 @@ export default function AppsPage() {
       },
       "Paystack connected.",
     );
+    setEditingKey(null);
   };
 
   const handleSaveStripe = async (values: StripeFormValues) => {
@@ -132,11 +165,13 @@ export default function AppsPage() {
       },
       "Stripe connected.",
     );
+    setEditingKey(null);
   };
 
   const handleDisconnect = async (key: IntegrationKey) => {
     if (key === "paystack") {
       paystackForm.resetFields();
+      setEditingKey(null);
       await saveSettings(
         {
           integrations: {
@@ -154,6 +189,7 @@ export default function AppsPage() {
     }
 
     stripeForm.resetFields();
+    setEditingKey(null);
     await saveSettings(
       {
         integrations: {
@@ -173,6 +209,8 @@ export default function AppsPage() {
     const copy = INTEGRATION_COPY[key];
     const isExpanded = expandedKey === key;
     const isConnected = key === "paystack" ? paystack.connected : stripe.connected;
+    const isEditing = editingKey === key;
+    const showCredentialsForm = !isConnected || isEditing;
 
     return (
       <div key={key} className="border-b border-gray-100 last:border-b-0">
@@ -205,47 +243,133 @@ export default function AppsPage() {
           <div className="border-t border-gray-100 px-4 py-4">
             {key === "paystack" ? (
               <Form form={paystackForm} layout="vertical" onFinish={handleSavePaystack} className="grid gap-x-4 md:grid-cols-2">
-                <Form.Item label="Public Key" name="publicKey" rules={[{ required: true, message: "Enter your Paystack public key" }]}>
-                  <Input placeholder="pk_test_..." />
-                </Form.Item>
-                <Form.Item label="Secret Key" name="secretKey" rules={[{ required: true, message: "Enter your Paystack secret key" }]}>
-                  <Input.Password placeholder="sk_test_..." />
-                </Form.Item>
-                <Form.Item label="Webhook Secret" name="webhookSecret" className="md:col-span-2">
-                  <Input.Password placeholder="Optional webhook secret" />
-                </Form.Item>
                 <div className="flex flex-wrap items-center gap-2 md:col-span-2">
-                  <Button type="primary" htmlType="submit" loading={isSaving}>
-                    {paystack.connected ? "Save Changes" : "Connect Paystack"}
-                  </Button>
                   {paystack.connected ? (
-                    <Button onClick={() => handleDisconnect("paystack")} loading={isSaving}>
-                      Disconnect
+                    <>
+                      {!isEditing ? (
+                        <Button type="primary" onClick={() => setEditingKey("paystack")} loading={isSaving}>
+                          Edit
+                        </Button>
+                      ) : (
+                        <>
+                          <Button type="primary" htmlType="submit" loading={isSaving}>
+                            Save Changes
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              paystackForm.setFieldsValue({
+                                publicKey: paystack.publicKey,
+                                secretKey: paystack.secretKey,
+                                webhookSecret: paystack.webhookSecret,
+                              });
+                              setEditingKey(null);
+                            }}
+                            loading={isSaving}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                      <Button onClick={() => handleDisconnect("paystack")} loading={isSaving}>
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button type="primary" htmlType="submit" loading={isSaving}>
+                      Connect Paystack
                     </Button>
-                  ) : null}
+                  )}
                 </div>
+                {showCredentialsForm ? (
+                  <>
+                    <Form.Item label="Public Key" name="publicKey" rules={[{ required: true, message: "Enter your Paystack public key" }]}>
+                      <Input placeholder="pk_test_..." />
+                    </Form.Item>
+                    <Form.Item label="Secret Key" name="secretKey" rules={[{ required: true, message: "Enter your Paystack secret key" }]}>
+                      <Input.Password placeholder="sk_test_..." />
+                    </Form.Item>
+                    <Form.Item label="Webhook Secret" name="webhookSecret" className="md:col-span-2">
+                      <Input.Password placeholder="Optional webhook secret" />
+                    </Form.Item>
+                  </>
+                ) : null}
+                {paystack.connected ? (
+                  <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 md:col-span-2">
+                    <p className="text-sm font-semibold text-gray-950">Webhook URL</p>
+                    <p className="mt-1 text-sm text-gray-600">Paste this into your Paystack dashboard webhook URL field.</p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Input readOnly value={activeStoreSlug ? getWebhookUrl(activeStoreSlug, "paystack") : ""} className="!h-10" />
+                      <Button type="default" icon={<LuCopy size={16} />} className="!h-10 !shrink-0" disabled={!activeStoreSlug} onClick={() => handleCopyWebhookUrl("paystack")}>
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </Form>
             ) : (
               <Form form={stripeForm} layout="vertical" onFinish={handleSaveStripe} className="grid gap-x-4 md:grid-cols-2">
-                <Form.Item label="Publishable Key" name="publishableKey" rules={[{ required: true, message: "Enter your Stripe publishable key" }]}>
-                  <Input placeholder="pk_test_..." />
-                </Form.Item>
-                <Form.Item label="Secret Key" name="secretKey" rules={[{ required: true, message: "Enter your Stripe secret key" }]}>
-                  <Input.Password placeholder="sk_test_..." />
-                </Form.Item>
-                <Form.Item label="Webhook Secret" name="webhookSecret" className="md:col-span-2">
-                  <Input.Password placeholder="whsec_..." />
-                </Form.Item>
                 <div className="flex flex-wrap items-center gap-2 md:col-span-2">
-                  <Button type="primary" htmlType="submit" loading={isSaving}>
-                    {stripe.connected ? "Save Changes" : "Connect Stripe"}
-                  </Button>
                   {stripe.connected ? (
-                    <Button onClick={() => handleDisconnect("stripe")} loading={isSaving}>
-                      Disconnect
+                    <>
+                      {!isEditing ? (
+                        <Button type="primary" onClick={() => setEditingKey("stripe")} loading={isSaving}>
+                          Edit
+                        </Button>
+                      ) : (
+                        <>
+                          <Button type="primary" htmlType="submit" loading={isSaving}>
+                            Save Changes
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              stripeForm.setFieldsValue({
+                                publishableKey: stripe.publishableKey,
+                                secretKey: stripe.secretKey,
+                                webhookSecret: stripe.webhookSecret,
+                              });
+                              setEditingKey(null);
+                            }}
+                            loading={isSaving}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                      <Button onClick={() => handleDisconnect("stripe")} loading={isSaving}>
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button type="primary" htmlType="submit" loading={isSaving}>
+                      Connect Stripe
                     </Button>
-                  ) : null}
+                  )}
                 </div>
+                {showCredentialsForm ? (
+                  <>
+                    <Form.Item label="Publishable Key" name="publishableKey" rules={[{ required: true, message: "Enter your Stripe publishable key" }]}>
+                      <Input placeholder="pk_test_..." />
+                    </Form.Item>
+                    <Form.Item label="Secret Key" name="secretKey" rules={[{ required: true, message: "Enter your Stripe secret key" }]}>
+                      <Input.Password placeholder="sk_test_..." />
+                    </Form.Item>
+                    <Form.Item label="Webhook Secret" name="webhookSecret" className="md:col-span-2">
+                      <Input.Password placeholder="whsec_..." />
+                    </Form.Item>
+                  </>
+                ) : null}
+                {stripe.connected ? (
+                  <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4 md:col-span-2">
+                    <p className="text-sm font-semibold text-gray-950">Webhook URL</p>
+                    <p className="mt-1 text-sm text-gray-600">Paste this into your Stripe webhook endpoint URL field.</p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Input readOnly value={activeStoreSlug ? getWebhookUrl(activeStoreSlug, "stripe") : ""} className="!h-10" />
+                      <Button type="default" icon={<LuCopy size={16} />} className="!h-10 !shrink-0" disabled={!activeStoreSlug} onClick={() => handleCopyWebhookUrl("stripe")}>
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </Form>
             )}
           </div>

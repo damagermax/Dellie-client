@@ -26,6 +26,7 @@ export default function PurchaseReportsPage() {
   const [locationId, setLocationId] = useState("all");
   const { ready, hasPermission } = usePermissions();
   const canViewReport = hasPermission(StorePermission.REPORTS_VIEW);
+  const purchasesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules.purchases);
   const activeStoreId = useSelector((state: RootState) => state.currentUser.activeStoreId || state.currentUser.store?.id || undefined);
   const { data: locations = [] } = useGetLocationsQuery({ status: LocationStatus.ACTIVE, parentsOnly: false });
 
@@ -45,7 +46,7 @@ export default function PurchaseReportsPage() {
     isFetching,
     isError,
     refetch,
-  } = useGetPurchaseReportQuery(query, { skip: !ready || !canViewReport });
+  } = useGetPurchaseReportQuery(query, { skip: !ready || !canViewReport || !purchasesEnabled });
 
   const locationOptions = useMemo(() => {
     const options = [{ label: "All locations", value: "all" }];
@@ -60,6 +61,14 @@ export default function PurchaseReportsPage() {
     return (
       <DashboardPageContainer>
         <DashboardStateCard title="You do not have permission to view reports." description="Ask a store administrator to grant report access." />
+      </DashboardPageContainer>
+    );
+  }
+
+  if (ready && !purchasesEnabled) {
+    return (
+      <DashboardPageContainer>
+        <DashboardStateCard title="Purchases are turned off" description="Turn the purchases module back on to view purchase reports." />
       </DashboardPageContainer>
     );
   }

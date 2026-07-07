@@ -35,7 +35,7 @@ export function ProductVariantSelectorModal({ parent, onClose, onSelect, priceLa
       overlayClassName="bg-[#1c1917]/70 backdrop-blur-[2px]"
     >
       <div className="divide-y divide-gray-100 px-5 pb-5">
-        {(parent?.variants || []).filter((variant) => variant.isAvailable !== false).map((variant) => (
+        {(parent?.variants || []).filter((variant) => variant.status !== "archived").map((variant) => (
           <button
             type="button"
             key={variant.id}

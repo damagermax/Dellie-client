@@ -2,12 +2,15 @@
 
 import { DatePicker, Select } from "antd";
 import dayjs, { Dayjs } from "dayjs";
+import { useEffect } from "react";
 import { SearchableContactSelect } from "@/components/contacts/SeachableContactSelect";
 import { SearchableLocationSelect } from "@/components/location/SearchableLocationSelect";
 import { AppFilterDrawer } from "@/components/ui/AppFilterDrawer";
 import { FilterField } from "@/components/ui/FilterField";
 import { SaleQueryParams } from "@/types/sale";
 import { PurchaseReceiptStatus } from "@/types/purchase";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
 
 const { RangePicker } = DatePicker;
 
@@ -29,10 +32,16 @@ const saleSourceOptions = [
 ];
 
 export function SalesFilterDrawer({ open, filters, onChange, onClose, onApply, onClear }: SalesFilterDrawerProps) {
+  const quotesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.quotesEnabled !== false);
   const dateRangeValue =
     filters.dateFrom && filters.dateTo
       ? [dayjs(filters.dateFrom), dayjs(filters.dateTo)]
       : null;
+
+  useEffect(() => {
+    if (quotesEnabled || filters.status !== "draft") return;
+    onChange({ status: undefined });
+  }, [filters.status, onChange, quotesEnabled]);
 
   const handleDateRangeChange = (value: [Dayjs, Dayjs] | null) => {
     if (!value) {
@@ -58,7 +67,7 @@ export function SalesFilterDrawer({ open, filters, onChange, onClose, onApply, o
             { value: "", label: "All" },
             { value: "open", label: "Open" },
             { value: "closed", label: "Closed" },
-            { value: "draft", label: "Draft" },
+            ...(quotesEnabled ? [{ value: "draft", label: "Draft" }] : []),
           ]}
         />
       </FilterField>

@@ -33,7 +33,7 @@ import { DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Button, DatePicker, Select } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
 const { RangePicker } = DatePicker;
@@ -71,6 +71,8 @@ function FinanceReportContent() {
   const [categoryId, setCategoryId] = useState("all");
   const { ready, hasPermission } = usePermissions();
   const canViewReport = hasPermission(StorePermission.REPORTS_VIEW);
+  const expensesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules.expenses);
+  const selectedView: FinanceView = view === "expenses" && !expensesEnabled ? "cashflow" : view;
   const activeStoreId = useSelector(
     (state: RootState) =>
       state.currentUser.activeStoreId ||
@@ -87,27 +89,27 @@ function FinanceReportContent() {
   );
 
   const cashflow = useGetCashflowReportQuery(baseQuery, {
-    skip: !ready || !canViewReport || view !== "cashflow",
+    skip: !ready || !canViewReport || selectedView !== "cashflow",
   });
   const expenses = useGetExpenseReportQuery(
     {
       ...baseQuery,
       categoryId:
-        view === "expenses" && categoryId !== "all" ? categoryId : undefined,
+        selectedView === "expenses" && categoryId !== "all" ? categoryId : undefined,
     },
     {
       skip:
         !ready ||
         !canViewReport ||
-        (view !== "expenses" && view !== "profit-loss"),
+        (selectedView !== "expenses" && selectedView !== "profit-loss"),
     },
   );
   const sales = useGetSalesReportQuery(baseQuery, {
-    skip: !ready || !canViewReport || view !== "profit-loss",
+    skip: !ready || !canViewReport || selectedView !== "profit-loss",
   });
   const { data: categoryData } = useGetCategoriesQuery(
     { type: CategoryType.EXPENSE, status: CategoryStatus.ACTIVE },
-    { skip: !ready || !canViewReport || view !== "expenses" },
+    { skip: !ready || !canViewReport || selectedView !== "expenses" },
   );
   const categoryOptions = useMemo(
     () => [
@@ -119,6 +121,20 @@ function FinanceReportContent() {
     ],
     [categoryData],
   );
+  const financeViewOptions = useMemo(
+    () => FINANCE_VIEW_OPTIONS.filter((item) => item.value !== "expenses" || expensesEnabled),
+    [expensesEnabled],
+  );
+
+  useEffect(() => {
+    if (view !== "expenses" || expensesEnabled) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("view");
+    router.replace(`${pathname}${params.size ? `?${params.toString()}` : ""}`, {
+      scroll: false,
+    });
+  }, [expensesEnabled, pathname, router, searchParams, view]);
 
   const setView = (nextView: FinanceView) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -142,24 +158,24 @@ function FinanceReportContent() {
 
   const loading =
     !ready ||
-    (view === "cashflow" && cashflow.isLoading) ||
-    (view === "profit-loss" && (sales.isLoading || expenses.isLoading)) ||
-    (view === "expenses" && expenses.isLoading);
+    (selectedView === "cashflow" && cashflow.isLoading) ||
+    (selectedView === "profit-loss" && (sales.isLoading || expenses.isLoading)) ||
+    (selectedView === "expenses" && expenses.isLoading);
   const isError =
-    (view === "cashflow" && cashflow.isError) ||
-    (view === "profit-loss" && (sales.isError || expenses.isError)) ||
-    (view === "expenses" && expenses.isError);
+    (selectedView === "cashflow" && cashflow.isError) ||
+    (selectedView === "profit-loss" && (sales.isError || expenses.isError)) ||
+    (selectedView === "expenses" && expenses.isError);
   const isFetching =
-    (view === "cashflow" && cashflow.isFetching) ||
-    (view === "profit-loss" && (sales.isFetching || expenses.isFetching)) ||
-    (view === "expenses" && expenses.isFetching);
+    (selectedView === "cashflow" && cashflow.isFetching) ||
+    (selectedView === "profit-loss" && (sales.isFetching || expenses.isFetching)) ||
+    (selectedView === "expenses" && expenses.isFetching);
 
   const handleRefresh = () => {
-    if (view === "cashflow") {
+    if (selectedView === "cashflow") {
       void cashflow.refetch();
       return;
     }
-    if (view === "profit-loss") {
+    if (selectedView === "profit-loss") {
       void sales.refetch();
       void expenses.refetch();
       return;
@@ -168,15 +184,15 @@ function FinanceReportContent() {
   };
 
   const handleDownload = () => {
-    if (view === "cashflow" && cashflow.data) {
+    if (selectedView === "cashflow" && cashflow.data) {
       downloadCashflow(cashflow.data);
       return;
     }
-    if (view === "profit-loss" && sales.data && expenses.data) {
+    if (selectedView === "profit-loss" && sales.data && expenses.data) {
       downloadProfitLoss(sales.data, expenses.data);
       return;
     }
-    if (view === "expenses" && expenses.data) {
+    if (selectedView === "expenses" && expenses.data) {
       downloadExpenses(expenses.data);
     }
   };
@@ -185,13 +201,13 @@ function FinanceReportContent() {
     <DashboardPageContainer>
       <DashboardToolbar>
         <div className="inline-flex rounded-sm border border-gray-200 bg-gray-50 p-1">
-          {FINANCE_VIEW_OPTIONS.map((item) => (
+          {financeViewOptions.map((item) => (
             <button
               key={item.value}
               type="button"
               onClick={() => setView(item.value)}
               className={`rounded-sm px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                view === item.value
+                selectedView === item.value
                   ? "bg-white text-gray-950"
                   : "text-gray-500 hover:text-gray-900"
               }`}
@@ -201,7 +217,7 @@ function FinanceReportContent() {
           ))}
         </div>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          {view === "expenses" ? (
+          {selectedView === "expenses" ? (
             <Select
               className="min-w-[220px]"
               value={categoryId}
@@ -226,9 +242,9 @@ function FinanceReportContent() {
               icon={<DownloadOutlined />}
               onClick={handleDownload}
               disabled={
-                (view === "cashflow" && !cashflow.data) ||
-                (view === "profit-loss" && (!sales.data || !expenses.data)) ||
-                (view === "expenses" && !expenses.data)
+                (selectedView === "cashflow" && !cashflow.data) ||
+                (selectedView === "profit-loss" && (!sales.data || !expenses.data)) ||
+                (selectedView === "expenses" && !expenses.data)
               }
             />
           </div>
@@ -239,12 +255,12 @@ function FinanceReportContent() {
         <FinanceReportShimmer />
       ) : isError ? (
         <DashboardStateCard
-          title={`${getFinanceViewLabel(view)} report could not be loaded`}
+          title={`${getFinanceViewLabel(selectedView)} report could not be loaded`}
           description="Check your connection and try refreshing the report."
           actionLabel="Try again"
           onAction={handleRefresh}
         />
-      ) : view === "cashflow" &&
+      ) : selectedView === "cashflow" &&
         cashflow.data &&
         hasCashflowData(cashflow.data) ? (
         <div className="space-y-6">
@@ -261,7 +277,7 @@ function FinanceReportContent() {
             <SettlementMetricsCard report={cashflow.data} />
           </div>
         </div>
-      ) : view === "profit-loss" &&
+      ) : selectedView === "profit-loss" &&
         sales.data &&
         expenses.data &&
         hasProfitLossData(sales.data, expenses.data) ? (
@@ -271,7 +287,7 @@ function FinanceReportContent() {
             expenseReport={expenses.data}
           />
         </div>
-      ) : view === "expenses" &&
+      ) : selectedView === "expenses" &&
         expenses.data &&
         hasExpenseData(expenses.data) ? (
         <div className="space-y-6">
@@ -284,9 +300,9 @@ function FinanceReportContent() {
       ) : (
         <DashboardStateCard
           title={
-            view === "cashflow"
+            selectedView === "cashflow"
               ? "No cash activity in this period"
-              : view === "profit-loss"
+              : selectedView === "profit-loss"
                   ? "No profit and loss activity in this period"
               : "No expenses in this period"
           }

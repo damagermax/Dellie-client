@@ -7,7 +7,6 @@ export interface PurchaseReportQuery {
 
 export interface PurchaseReportMetric {
   value: number;
-  changePercent: number | null;
 }
 
 export interface PurchaseReportResponse {

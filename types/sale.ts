@@ -1,6 +1,7 @@
 import { PaginatedResponse } from "./shared";
 import { PurchaseDiscountType, PurchaseLineItem, PurchaseReceiptStatus, PurchaseReturnEvent, PurchaseStockEvent } from "./purchase";
 import type { Address } from "./contact";
+import type { Payment } from "./transaction";
 
 export interface SaleLineItemInput {
   productId: string;
@@ -58,7 +59,7 @@ export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" |
   balance: number;
   paymentStatus: "unpaid" | "partial" | "paid";
   source?: string;
-  payments?: unknown[];
+  payments?: Payment[];
   createdAt: string;
   updatedAt: string;
 }

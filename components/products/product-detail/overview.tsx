@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { FaBox, FaLayerGroup } from "react-icons/fa";
 import { GrHistory } from "react-icons/gr";
 import { ImBoxRemove } from "react-icons/im";
-import { TbPackageExport } from "react-icons/tb";
 
 import { ProductVariantsTable } from "@/components/products/ProductVariantsTable";
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
@@ -13,7 +12,6 @@ import { hasBundleComponents } from "@/lib/products/type-label";
 import { BundleSection } from "./bundle-section";
 import { OrderHistoryTable } from "./order-history-table";
 import { OverviewSection } from "./overview-section";
-import { PackagingSection } from "./packaging-section";
 import { TabLabel } from "./shared";
 import type { DetailTab, ProductDetail } from "./types";
 
@@ -47,21 +45,6 @@ export function buildProductDetailTabs(
       label: <TabLabel icon={<ImBoxRemove />} text="Batches" />,
       children: options.renderBatchTable(product),
     });
-  }
-
-  if (product.type === ITEM_TYPE.PACKAGING) {
-    tabs.push(
-      {
-        key: "packaging",
-        label: <TabLabel icon={<TbPackageExport />} text="Repack" />,
-        children: <PackagingSection product={product} />,
-      },
-      {
-        key: "batches",
-        label: <TabLabel icon={<ImBoxRemove />} text="Batches" />,
-        children: options.renderBatchTable(product),
-      },
-    );
   }
 
   if (hasBundleComponents(product)) {

@@ -75,7 +75,7 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
       {controller.fulfillOpen && <PurchaseOrderStockOperationModal open={controller.fulfillOpen} toggle={controller.toggleFulfill} purchase={purchase} onSaved={controller.refetch} />}
       {controller.returnOpen && state.canReturn && state.canUseReturns && <PurchaseReturnOperationModal open={controller.returnOpen} toggle={controller.toggleReturn} purchase={purchase} onSaved={controller.refetch} />}
       {controller.landedCostOpen && <PurchaseOrderLandedCostModal open={controller.landedCostOpen} toggle={controller.closeLandedCostModal} purchase={purchase} onSaved={controller.refetch} initialValues={controller.selectedLandedCost} />}
-      {controller.paymentOpen && <PaymentFormModal type={controller.paymentType} open={controller.paymentOpen} toggle={controller.closePaymentModal} linkTransaction={{ id: purchase.id, rate: purchase.rate || 1, currencyId: purchase.currencyId?.id || "" }} initialValues={controller.selectedPayment} />}
+      {controller.paymentOpen && <PaymentFormModal type={controller.paymentType} open={controller.paymentOpen} toggle={controller.closePaymentModal} linkTransaction={{ id: purchase.id, rate: purchase.rate || 1, currencyId: purchase.currencyId?.id || "", type: TransactionType.PURCHASE }} initialValues={controller.selectedPayment} purchase={purchase} />}
       {controller.editingItem && (
         <TransactionItemEditModal
           open={Boolean(controller.editingItem)}

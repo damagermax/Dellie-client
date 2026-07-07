@@ -112,10 +112,8 @@ export function MobilePurchaseList({
               {hasTaxedItems ? <MobileStat label="Tax" value={line.taxDescription ? `${line.taxRate || 0}%` : "-"} /> : null}
             </div>
             <div className="mt-3 flex items-center justify-between gap-3 text-[13px]">
-              <span className="text-gray-500">Unit Cost {Number(line.unitPrice).toFixed(2)}</span>
-              <span className="font-semibold text-gray-900">
-                {currency} {Number(line.total).toFixed(2)}
-              </span>
+              <span className="text-gray-500">Unit Cost {money(currency, Number(line.unitPrice || 0))}</span>
+              <span className="font-semibold text-gray-900">{money(currency, Number(line.total || 0))}</span>
             </div>
           </MobileCard>
         ))}

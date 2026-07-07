@@ -16,6 +16,8 @@ export type ProductVariantRow = {
   imageUrl?: string;
   categoryName?: string;
   productId?: string;
+  status?: "active" | "archived";
+  isAvailable?: boolean;
   priceTiers?: ProductPriceTier[];
   costPrice?: number;
   availableStock?: number;
@@ -59,34 +61,20 @@ export function ProductVariantsTable({ variants }: { variants: ProductVariantRow
       render: (_: unknown, variant: ProductVariantRow) => variant.formattedNormalPrice || `GHS ${getNormalPrice(variant).toFixed(2)}`,
     },
     {
-      title: "Available",
-      dataIndex: "availableStock",
-      key: "availableStock",
-      render: (availableStock?: number) => <span className="font-medium text-gray-700">{Number(availableStock || 0)}</span>,
-    },
-    {
       title: "Status",
       dataIndex: "statusLabel",
       key: "statusLabel",
-      render: (statusLabel?: string, variant?: ProductVariantRow) => {
-        const isOutOfStock = Number(variant?.availableStock || 0) <= 0;
+      render: (_statusLabel?: string, variant?: ProductVariantRow) => {
+        const isArchived = variant?.status === "archived";
+        const availableStock = Number(variant?.availableStock || 0);
+        const isOutOfStock = availableStock <= 0;
+        const label = isArchived ? `${availableStock} Archived` : isOutOfStock ? "Sold out" : `${availableStock} Available`;
         return (
-          <span className={`inline-flex rounded-full border px-2 py-0.5 text-sm font-medium ${isOutOfStock ? "border-red-200 bg-red-50 text-red-600" : "border-green-200 bg-green-50 text-green-700"}`}>
-            {statusLabel || (isOutOfStock ? "Sold out" : "Available")}
+          <span className={`inline-flex rounded-full border px-2 py-0.5 text-sm font-medium ${isArchived ? "border-gray-200 bg-gray-100 text-gray-600" : isOutOfStock ? "border-red-200 bg-red-50 text-red-600" : "border-green-200 bg-green-50 text-green-700"}`}>
+            {label}
           </span>
         );
       },
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      align: "right" as const,
-      className: "!pr-8",
-      render: (_: unknown, variant: ProductVariantRow) => (
-        <Link href={`/products/${variant.id}`} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200 hover:text-gray-900" aria-label={`Open ${variant.name}`}>
-          <ArrowUpRight size={15} />
-        </Link>
-      ),
     },
   ];
 

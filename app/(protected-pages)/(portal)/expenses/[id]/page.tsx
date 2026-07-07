@@ -1,35 +1,40 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
-import { Button, Divider, Tag, message } from "antd";
+import React, { useMemo, useState } from "react";
+import { Button, Divider, Modal, Tag, message } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { Pencil, Plus, ReceiptText, Trash2 } from "lucide-react";
+import { Paperclip, Pencil, XCircle } from "lucide-react";
 import ExpenseFormModal from "@/components/expenses/ExpenseFormModel";
+import ExpenseAttachmentsModal from "@/components/expenses/ExpenseAttachmentsModal";
 import PaymentFormModal from "@/components/payment/PaymentFormModel";
 import PaymentView from "@/components/payment/PaymentView";
-import PreviewImage from "@/components/ui/PreviewImage";
 import EntityAuditTimeline from "@/components/audit/EntityAuditTimeline";
 import { GoBack } from "@/components/ui/GoBack";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
+import ResponsiveActionMenu from "@/components/ui/ResponsiveActionMenu";
+import { DropdownItemLabel } from "@/components/ui/ActionDropdown";
 import useToggle from "@/hooks/UseToggle";
-import { useAddExpenseAttachmentsMutation, useDeleteExpenseAttachmentMutation, useGetTransactionQuery } from "@/lib/redux/services";
+import { useAddExpenseAttachmentsMutation, useDeleteExpenseAttachmentMutation, useDeleteExpenseMutation, useGetTransactionQuery } from "@/lib/redux/services";
 import { formatDate } from "@/lib/dateUtils";
 import { Expense, Payment, TransactionType } from "@/types/transaction";
 import { usePermissions } from "@/hooks/usePermissions";
 import { StorePermission } from "@/types/store-access";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
+import { useRouter } from "next/navigation";
 dayjs.extend(relativeTime);
 
 export default function ExpenseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
+  const router = useRouter();
   const { ready, hasAnyPermission } = usePermissions();
   const [expenseModalOpen, toggleExpenseModal] = useToggle();
   const [paymentModalOpen, togglePaymentModal] = useToggle();
+  const [attachmentsOpen, toggleAttachmentsOpen] = useToggle();
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [paymentType, setPaymentType] = useState(TransactionType.PAYMENT);
-  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const canViewExpense = hasAnyPermission([StorePermission.PAYMENTS_VIEW, StorePermission.PAYMENTS_MANAGE, StorePermission.EXPENSES_VIEW, StorePermission.EXPENSES_MANAGE]);
   const canManageExpense = hasAnyPermission([StorePermission.PAYMENTS_MANAGE, StorePermission.EXPENSES_MANAGE]);
   const featureSettings = useSelector((state: RootState) => state.currentUser.storeSettings.features);
@@ -37,12 +42,11 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   const { data, isLoading, isError } = useGetTransactionQuery(id, { skip: !id || !ready || !canViewExpense, refetchOnMountOrArgChange: true });
   const [addAttachments, { isLoading: isUploading }] = useAddExpenseAttachmentsMutation();
   const [deleteAttachment, { isLoading: isDeletingAttachment }] = useDeleteExpenseAttachmentMutation();
+  const [deleteExpense, { isLoading: isCancelling }] = useDeleteExpenseMutation();
 
   const expense = data as Expense | undefined;
   const currency = expense?.currency?.code || "";
   const attachments = expense?.attachments || [];
-  const attachmentLimit = 4;
-  const remainingAttachments = Math.max(attachmentLimit - attachments.length, 0);
   const totalAmount = Number(expense?.amount || 0);
   const totalPaidAmount =
     expense?.payments?.reduce<number>((sum, tx) => {
@@ -76,38 +80,65 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   if (!canViewExpense) return <AccessDeniedView title="Expenses" description="You do not have permission to view this expense." />;
   if (isError || !expense) return <p className="px-8 py-10 text-sm text-red-600">This expense could not be loaded.</p>;
 
-  const handleAttachmentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []).slice(0, remainingAttachments);
-    event.target.value = "";
-
+  const handleAttachmentUpload = async (files: File[]) => {
     if (!files.length) return;
 
     const formData = new FormData();
     files.forEach((file) => formData.append("attachments", file));
-
-    try {
-      await addAttachments({ id, data: formData }).unwrap();
-      message.success("Attachment uploaded.");
-    } catch {
-      message.error("Attachment could not be uploaded.");
-    }
+    await addAttachments({ id, data: formData }).unwrap();
   };
 
   const handleDeleteAttachment = async (key?: string) => {
     if (!key || isDeletingAttachment) return;
+    await deleteAttachment({ id, key }).unwrap();
+  };
 
+  const handleCancelExpense = async () => {
     try {
-      await deleteAttachment({ id, key }).unwrap();
-      message.success("Attachment removed.");
+      await deleteExpense(id).unwrap();
+      message.success("Expense cancelled.");
+      router.push("/expenses");
     } catch {
-      message.error("Attachment could not be removed.");
+      message.error("Expense could not be cancelled.");
     }
   };
+
+  const headerActionItems = canManageExpense
+    ? [
+        {
+          key: "edit",
+          label: <DropdownItemLabel icon={<Pencil size={15} />} text="Edit" />,
+          onClick: toggleExpenseModal,
+        },
+        {
+          key: "attachment",
+          label: <DropdownItemLabel icon={<Paperclip size={15} />} text="Attachment" />,
+          onClick: toggleAttachmentsOpen,
+        },
+        {
+          key: "cancel",
+          label: <DropdownItemLabel icon={<XCircle size={15} />} text="Cancel" danger />,
+          danger: true,
+          onClick: () => setCancelConfirmOpen(true),
+        },
+      ]
+    : [];
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8faff_0%,#eef2ff_45%,#f7f8fc_100%)]">
       {canManageExpense && <ExpenseFormModal open={expenseModalOpen} toggle={toggleExpenseModal} initialValues={expense} />}
-      {paymentModalOpen && <PaymentFormModal type={paymentType} open={paymentModalOpen} toggle={togglePaymentModal} linkTransaction={{ id, rate: expense?.rate || 1, currencyId: expense?.currency?.id || "" }} />}
+      {paymentModalOpen && <PaymentFormModal type={paymentType} open={paymentModalOpen} toggle={togglePaymentModal} linkTransaction={{ id, rate: expense?.rate || 1, currencyId: expense?.currency?.id || "", type: TransactionType.EXPENSE }} />}
+      <ExpenseAttachmentsModal
+        open={attachmentsOpen}
+        toggle={toggleAttachmentsOpen}
+        expenseId={expense.id || id}
+        attachments={attachments}
+        canManage={canManageExpense}
+        isUploading={isUploading}
+        isDeleting={isDeletingAttachment}
+        onUpload={handleAttachmentUpload}
+        onDelete={handleDeleteAttachment}
+      />
 
       <div className="flex min-h-screen flex-col bg-gray-50 lg:flex-row">
         <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
@@ -174,20 +205,12 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
                       setPaymentType(TransactionType.REFUND);
                       togglePaymentModal();
                     }}
-                  >
+                    >
                     Refund
                   </Button>
                 )}
-                {canManageExpense && <Button type="text" className="!bg-gray-200/80 " icon={<Pencil size={15} />} onClick={toggleExpenseModal} />}
+                {canManageExpense && <ResponsiveActionMenu items={headerActionItems} title="Expense Actions" />}
               </div>
-              {/* <div className="flex flex-wrap items-center gap-2">
-                <Button type="primary" className="!border-2 !border-[#f7c855] !bg-white !font-semibold !text-black !shadow-none" icon={<CreditCard size={15} />} onClick={() => (setPaymentType(TransactionType.PAYMENT), togglePaymentModal())}>
-                  Record Payment
-                </Button>
-                <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<Pencil size={15} />} onClick={toggleExpenseModal}>
-                  Edit
-                </Button>
-              </div> */}
             </div>
           </div>
 
@@ -215,90 +238,38 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           </div>
 
           <PaymentView payments={expense.payments as Payment[]} canManage={canManageExpense} />
+
+          <div className="border-t border-gray-200 bg-white px-4 py-6 md:px-8">
+            <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-3">
+              <div className="space-y-2 p-5 text-right xl:col-start-3 xl:col-end-4">
+                <Summary label="Total Expense" value={money(currency, totalAmount)} />
+                <Summary label="Paid" value={money(currency, totalPaidAmount)} />
+                <div className="border-y border-gray-300 py-2">
+                  <Summary label="Balance" value={money(currency, balance)} strong />
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <aside id="expense-attachments" className="flex w-full scroll-mt-14 flex-col gap-4 border-t border-gray-200 bg-[#f7f8fd] px-4 pb-4 pt-5 lg:w-[30%] lg:border-l lg:border-t-0 lg:px-6 xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto">
           <div className="border-b border-gray-200 pb-5">
             <EntityAuditTimeline entityType="expense" entityId={expense.id || id} />
           </div>
-          <div className="border-b border-gray-200">
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <h2 className="text-base font-medium text-gray-900">Expense Summary</h2>
-              <Tag className="!m-0 !rounded-full !px-3 capitalize" color={paymentStatus === "paid" ? "green" : paymentStatus === "partial" ? "orange" : "blue"}>
-                {paymentStatus}
-              </Tag>
-            </div>
-
-            <Summary label="Total Expense" value={money(currency, totalAmount)} />
-            <Summary label="Paid" value={money(currency, totalPaidAmount)} />
-            <Divider className="my-3" />
-            <Summary label="Balance" value={money(currency, balance)} strong />
-          </div>
-
-          <div className="overflow-hidden bg-gray-100  ">
-            <div className="border-b border-gray-200  p-4">
-              <p className="text-lg font-medium text-gray-900">Attachments</p>
-            </div>
-            <div className="p-4">
-              {canManageExpense && <input ref={attachmentInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleAttachmentUpload} />}
-
-              {!attachments.length ? (
-                <button
-                  type="button"
-                  onClick={() => attachmentInputRef.current?.click()}
-                  disabled={isUploading || !canManageExpense}
-                  className="flex min-h-[230px] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-solid border-gray-200 bg-gray-100 p-5 text-center transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  <div className="rounded-full bg-gray-200 p-5">
-                    <ReceiptText className="text-gray-400" strokeWidth={0.8} size={30} />
-                  </div>
-                  <p className="mt-5 mb-1 text-sm text-gray-600">Upload a clear image of your receipt</p>
-                  <p className="text-xs text-gray-400">You can add up to 4 images. JPG or PNG only.</p>
-                </button>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {attachments.map((item, index) => (
-                    <div key={item.key || item.url || index} className="group h-fit overflow-hidden rounded-lg border border-gray-200 bg-white ">
-                      <div className="relative aspect-square ">
-                        <PreviewImage width={260} height={260} src={item.url} alt={`Expense attachment ${index + 1}`} />
-                        {canManageExpense && (
-                          <button
-                            type="button"
-                            disabled={isDeletingAttachment}
-                            className="absolute right-2 top-2 rounded-full border border-gray-200 bg-white/90 p-1.5 text-gray-600 opacity-0 transition hover:text-red-500 group-hover:opacity-100 disabled:opacity-60"
-                            onClick={() => handleDeleteAttachment(item.key)}
-                            aria-label="Remove attachment"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                        <div className="absolute left-2 top-2 hidden rounded-full border border-gray-200 bg-white/90 px-2 py-1 text-[11px] font-medium text-gray-700">{index + 1}</div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {canManageExpense && remainingAttachments > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => attachmentInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="flex aspect-square w-full min-h-0 flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50  text-center transition hover:border-gray-950 hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      <div className="rounded-full bg-gray-200 p-1">
-                        <Plus size={12} className="text-gray-500" />
-                      </div>
-                      <span className=" text-[13px] mt-1   text-gray-900">Add image</span>
-                      <span className=" text-xs text-gray-500">
-                        {remainingAttachments} slot{remainingAttachments === 1 ? "" : "s"} left
-                      </span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
         </aside>
       </div>
+
+      <Modal open={cancelConfirmOpen} onCancel={() => setCancelConfirmOpen(false)} footer={null} title="Cancel expense?">
+        <div className="px-5 py-4">
+          <p className="text-sm text-gray-600">All related transactions will be reversed. This action cannot be undone.</p>
+          <div className="mt-5 flex items-center justify-end gap-3">
+            <Button onClick={() => setCancelConfirmOpen(false)}>Back</Button>
+            <Button danger type="primary" loading={isCancelling} onClick={handleCancelExpense}>
+              Cancel Expense
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

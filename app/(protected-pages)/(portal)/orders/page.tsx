@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import SaleFormModal from "@/components/orders/SaleFormModal";
 import SalesMobileList from "@/components/orders/SalesMobileList";
@@ -17,11 +17,14 @@ import { SalesFilterDrawer } from "@/components/orders/SalesFilterDrawer";
 import { DesktopQuickFilterSegment } from "@/components/ui/DesktopQuickFilterSegment";
 import { buildSalesColumns } from "./_lib/salesPageConfig";
 import { useSalesPageController } from "./_lib/useSalesPageController";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
 
 type SalesQuickFilter = "all" | "quote" | "unpaid" | "paid" | "unfulfilled" | "fulfilled";
 
 export default function SalesPage() {
   const searchParams = useSearchParams();
+  const quotesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.quotesEnabled !== false);
   const initialQuery = useMemo(
     () => ({
       page: 1,
@@ -34,7 +37,7 @@ export default function SalesPage() {
   );
   const controller = useSalesPageController(initialQuery);
   const salesQuickFilter: SalesQuickFilter | undefined =
-    controller.query.status === "draft" && !controller.query.paymentStatus && !controller.query.fulfillmentStatus && !controller.query.overdue
+    quotesEnabled && controller.query.status === "draft" && !controller.query.paymentStatus && !controller.query.fulfillmentStatus && !controller.query.overdue
       ? "quote"
       : controller.query.paymentStatus === "unpaid" && !controller.query.status && !controller.query.fulfillmentStatus && !controller.query.overdue
         ? "unpaid"
@@ -47,6 +50,23 @@ export default function SalesPage() {
               : !controller.query.status && !controller.query.paymentStatus && !controller.query.fulfillmentStatus && !controller.query.overdue
                 ? "all"
                 : undefined;
+  const salesQuickFilterOptions = useMemo(
+    () => [
+      { label: "All", value: "all" as const },
+      ...(quotesEnabled ? [{ label: "Quote", value: "quote" as const }] : []),
+      { label: "Unpaid", value: "unpaid" as const },
+      { label: "Paid", value: "paid" as const },
+      { label: "Unfulfilled", value: "unfulfilled" as const },
+      { label: "Fulfilled", value: "fulfilled" as const },
+    ],
+    [quotesEnabled],
+  );
+
+  useEffect(() => {
+    if (quotesEnabled || controller.query.status !== "draft") return;
+    controller.setQuery((current) => ({ ...current, status: undefined, page: 1 }));
+  }, [controller, quotesEnabled]);
+
   const columns = buildSalesColumns();
 
   return (
@@ -58,19 +78,12 @@ export default function SalesPage() {
           <AppSearch placeholder="Search sale number..." onReset={() => controller.setQuery((current) => ({ ...current, search: undefined, page: 1 }))} onSearchChange={(values) => controller.setQuery((current) => ({ ...current, ...values, page: 1 }))} onFilterClick={controller.openFilters} filterCount={controller.filterCount} />
           <DesktopQuickFilterSegment<SalesQuickFilter>
             value={salesQuickFilter}
-            options={[
-              { label: "All", value: "all" },
-              { label: "Quote", value: "quote" },
-              { label: "Unpaid", value: "unpaid" },
-              { label: "Paid", value: "paid" },
-              { label: "Unfulfilled", value: "unfulfilled" },
-              { label: "Fulfilled", value: "fulfilled" },
-            ]}
+            options={salesQuickFilterOptions}
             onChange={(value) =>
               controller.setQuery((current) => ({
                 ...current,
                 page: 1,
-                status: value === "quote" ? "draft" : undefined,
+                status: quotesEnabled && value === "quote" ? "draft" : undefined,
                 paymentStatus: value === "unpaid" ? "unpaid" : value === "paid" ? "paid" : undefined,
                 fulfillmentStatus: value === "unfulfilled" ? "pending" : value === "fulfilled" ? "received" : undefined,
                 overdue: undefined,

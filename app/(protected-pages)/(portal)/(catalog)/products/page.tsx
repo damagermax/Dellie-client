@@ -16,11 +16,15 @@ import { Button } from "antd";
 import { usePermissions } from "@/hooks/usePermissions";
 import { StorePermission } from "@/types/store-access";
 import { DesktopQuickFilterSegment } from "@/components/ui/DesktopQuickFilterSegment";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
+import { useEffect, useMemo } from "react";
 
 type ProductsQuickFilter = "all" | "out_of_stock" | "expiring_soon" | "archived";
 
 export default function ProductsPage() {
   const { ready, hasPermission } = usePermissions();
+  const trackQuantityEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.trackQuantityEnabled !== false);
   const [openProductForm, toggleProductForm] = useToggle();
   const [filterOpen, setFilterOpen] = useState(false);
   const view = "table";
@@ -28,15 +32,16 @@ export default function ProductsPage() {
   const [productsQuery, setProductsQuery] = useState<ProductQueryParams>({ page: 1, limit: 20 });
   const [draftFilters, setDraftFilters] = useState<ProductQueryParams>({});
   const filterCount =
-    Number(Boolean(productsQuery.type)) +
+    Number(Boolean(trackQuantityEnabled && productsQuery.type)) +
     Number(Boolean(productsQuery.categoryId)) +
-    Number(Boolean(productsQuery.stockStatus)) +
+    Number(Boolean(productsQuery.locationId)) +
+    Number(Boolean(trackQuantityEnabled && productsQuery.stockStatus)) +
     Number(Boolean(productsQuery.status)) +
-    Number(Boolean(productsQuery.expiryStatus));
+    Number(Boolean(trackQuantityEnabled && productsQuery.expiryStatus));
   const productsQuickFilter: ProductsQuickFilter | undefined =
-    productsQuery.stockStatus === "out_of_stock" && productsQuery.status !== "archived" && !productsQuery.expiryStatus
+    trackQuantityEnabled && productsQuery.stockStatus === "out_of_stock" && productsQuery.status !== "archived" && !productsQuery.expiryStatus
       ? "out_of_stock"
-      : productsQuery.expiryStatus === "expiring_soon" && !productsQuery.stockStatus && productsQuery.status !== "archived"
+      : trackQuantityEnabled && productsQuery.expiryStatus === "expiring_soon" && !productsQuery.stockStatus && productsQuery.status !== "archived"
         ? "expiring_soon"
         : productsQuery.status === "archived" && !productsQuery.stockStatus && !productsQuery.expiryStatus
           ? "archived"
@@ -44,17 +49,46 @@ export default function ProductsPage() {
             ? "all"
             : undefined;
 
+  const quickFilterOptions = useMemo(
+    () =>
+      [
+        { label: "All", value: "all" },
+        ...(trackQuantityEnabled ? [{ label: "Out of stock", value: "out_of_stock" as const }, { label: "Soon expiring", value: "expiring_soon" as const }] : []),
+        { label: "Archived", value: "archived" },
+      ] satisfies Array<{ label: string; value: ProductsQuickFilter }>,
+    [trackQuantityEnabled],
+  );
+
+  useEffect(() => {
+    if (trackQuantityEnabled) return;
+
+    setDraftFilters((prev) => ({
+      ...prev,
+      type: undefined,
+      stockStatus: undefined,
+      expiryStatus: undefined,
+    }));
+    setProductsQuery((prev) => ({
+      ...prev,
+      type: undefined,
+      stockStatus: undefined,
+      expiryStatus: undefined,
+      page: 1,
+    }));
+  }, [trackQuantityEnabled]);
+
   const handleFilterChange = (values: Partial<ProductQueryParams>) => {
     setProductsQuery((prev) => ({ ...prev, ...values, page: 1 }));
   };
 
   const openFilters = () => {
     setDraftFilters({
-      type: productsQuery.type,
+      type: trackQuantityEnabled ? productsQuery.type : undefined,
       categoryId: productsQuery.categoryId,
-      stockStatus: productsQuery.stockStatus,
+      locationId: productsQuery.locationId,
+      stockStatus: trackQuantityEnabled ? productsQuery.stockStatus : undefined,
       status: productsQuery.status,
-      expiryStatus: productsQuery.expiryStatus,
+      expiryStatus: trackQuantityEnabled ? productsQuery.expiryStatus : undefined,
     });
     setFilterOpen(true);
   };
@@ -62,11 +96,12 @@ export default function ProductsPage() {
   const handleApplyFilters = () => {
     setProductsQuery((prev) => ({
       ...prev,
-      type: draftFilters.type,
+      type: trackQuantityEnabled ? draftFilters.type : undefined,
       categoryId: draftFilters.categoryId,
-      stockStatus: draftFilters.stockStatus,
+      locationId: draftFilters.locationId,
+      stockStatus: trackQuantityEnabled ? draftFilters.stockStatus : undefined,
       status: draftFilters.status,
-      expiryStatus: draftFilters.expiryStatus,
+      expiryStatus: trackQuantityEnabled ? draftFilters.expiryStatus : undefined,
       page: 1,
     }));
     setFilterOpen(false);
@@ -74,7 +109,7 @@ export default function ProductsPage() {
 
   const handleFilterReset = () => {
     setDraftFilters({});
-    setProductsQuery((prev) => ({ ...prev, type: undefined, categoryId: undefined, stockStatus: undefined, status: undefined, expiryStatus: undefined, page: 1 }));
+    setProductsQuery((prev) => ({ ...prev, type: undefined, categoryId: undefined, locationId: undefined, stockStatus: undefined, status: undefined, expiryStatus: undefined, page: 1 }));
   };
 
   if (!ready) return <AppViewLoader loading />;
@@ -90,18 +125,13 @@ export default function ProductsPage() {
           <AppSearch placeholder="Search products, variants, SKUs, or barcodes" onReset={() => setProductsQuery((prev) => ({ ...prev, search: undefined, page: 1 }))} onSearchChange={handleFilterChange} onFilterClick={openFilters} filterCount={filterCount} />
           <DesktopQuickFilterSegment<ProductsQuickFilter>
             value={productsQuickFilter}
-            options={[
-              { label: "All", value: "all" },
-              { label: "Out of stock", value: "out_of_stock" },
-              { label: "Soon expiring", value: "expiring_soon" },
-              { label: "Archived", value: "archived" },
-            ]}
+            options={quickFilterOptions}
             onChange={(value) =>
               setProductsQuery((prev) => ({
                 ...prev,
                 page: 1,
-                stockStatus: value === "out_of_stock" ? "out_of_stock" : undefined,
-                expiryStatus: value === "expiring_soon" ? "expiring_soon" : undefined,
+                stockStatus: trackQuantityEnabled && value === "out_of_stock" ? "out_of_stock" : undefined,
+                expiryStatus: trackQuantityEnabled && value === "expiring_soon" ? "expiring_soon" : undefined,
                 status: value === "archived" ? "archived" : undefined,
               }))
             }

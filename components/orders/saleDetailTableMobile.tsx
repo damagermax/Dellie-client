@@ -105,11 +105,9 @@ export function MobileSaleList({
               <MobileMetric label="Remaining" value={Math.max(Number(line.quantity || 0) - Number(line.fulfilledQuantity || 0), 0).toLocaleString()} />
               {hasTaxedItems ? <MobileMetric label="Tax" value={line.taxDescription ? `${line.taxRate || 0}%` : "-"} /> : null}
             </div>
-            <div className="mt-3 flex justify-between border-t border-gray-100 pt-3 text-sm">
-              <span className="text-gray-500">Line total</span>
-              <span className="font-semibold text-gray-950">
-                {currency} {Number(line.total || 0).toFixed(2)}
-              </span>
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3 text-sm">
+              <span className="text-gray-500">Unit price {money(currency, Number(line.unitPrice || 0))}</span>
+              <span className="font-semibold text-gray-950">{money(currency, Number(line.total || 0))}</span>
             </div>
           </div>
         ))}

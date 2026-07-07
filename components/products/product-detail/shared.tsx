@@ -73,8 +73,6 @@ export function TypeBadge({ product }: { product: Pick<ProductDetail, "type" | "
   const colors: Record<string, string> = {
     STOCK: "green",
     NON_STOCK: "blue",
-    SERVICE: "purple",
-    PACKAGING: "gold",
     BUNDLE: "cyan",
   };
 

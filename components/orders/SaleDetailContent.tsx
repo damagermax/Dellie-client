@@ -84,15 +84,13 @@ export default function SaleDetailContent({
   onDeletePayment,
 }: SaleDetailContentProps) {
   const { data: paymentTerms } = useGetPaymentTermsQuery();
-  const { data: locations = [] } = useGetLocationsQuery({ status: LocationStatus.ACTIVE, parentsOnly: false });
+
   const isClosed = Boolean(sale.locked && !isCancelled);
-  const showFulfillmentLocation = Boolean(sale.locationId?.name) && locations.length > 1;
 
   return (
     <section className="min-w-0 flex-1 border-r border-gray-200 bg-white lg:w-[70%] lg:flex-none">
       <SaleDetailHeader
         sale={sale}
-        showFulfillmentLocation={showFulfillmentLocation}
         canManage={canManage}
         canEdit={canEdit}
         canFulfill={canFulfill}
@@ -121,7 +119,7 @@ export default function SaleDetailContent({
         onWriteOff={onWriteOff}
         onShare={onShare}
       />
-      <SaleOverviewSection sale={sale} canEdit={canEdit} isCancelled={isCancelled} isClosed={isClosed} paymentTerms={paymentTerms} showFulfillmentLocation={showFulfillmentLocation} />
+      <SaleOverviewSection sale={sale} canEdit={canEdit} isCancelled={isCancelled} isClosed={isClosed} paymentTerms={paymentTerms}  />
       <div id="sale-overview" className="scroll-mt-14">
         <div id="sale-records" className="scroll-mt-14">
           <SaleDetailTables

@@ -45,6 +45,15 @@ export type InventoryBatch = {
   sourceDate?: string;
   expiryDate?: string;
   status?: string;
+  assemblyComponents?: Array<{
+    productId?: string;
+    productName?: string;
+    sku?: string;
+    imageUrl?: string | null;
+    quantity?: number;
+    totalCost?: number;
+    unitCost?: number;
+  }>;
 };
 
 export type ProductOrderHistoryItem = {
@@ -82,6 +91,17 @@ export type BundleComponent = {
   availableBundles?: number;
 };
 
+export type ProductionComponent = {
+  productId?: string;
+  productName?: string;
+  sku?: string;
+  type?: string;
+  imageUrl?: string | null;
+  quantityRequired?: number;
+  availableQuantity?: number;
+  availableByLocation?: Record<string, number>;
+};
+
 export type ProductDetail = Record<string, unknown> & {
   id: string;
   name: string;
@@ -116,6 +136,7 @@ export type ProductDetail = Record<string, unknown> & {
   conversionRule?: string;
   bundleAvailability?: number;
   bundleComponents?: BundleComponent[];
+  productionComponents?: ProductionComponent[];
   bundleItems?: Array<{
     productId?:
       | {
