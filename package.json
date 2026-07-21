@@ -37,7 +37,7 @@
     "framer-motion": "^12.23.12",
     "libphonenumber-js": "^1.12.40",
     "lucide-react": "^0.479.0",
-    "next": "15.2.1",
+    "next": "^15.5.21",
     "nextjs-progressbar": "^0.0.16",
     "nextjs-toploader": "^3.9.17",
     "playwright": "^1.60.0",
@@ -60,7 +60,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.2.1",
+    "eslint-config-next": "^15.5.21",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
