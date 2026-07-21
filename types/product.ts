@@ -1,4 +1,5 @@
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
+import { ProductPriceTier } from "@/lib/products/pricing";
 
 export interface QuantityData {
   onHand: number;
@@ -53,8 +54,15 @@ export interface ProductQueryParams {
   search?: string | "";
   inPOS?: boolean;
   inStorefront?: boolean;
-  type?: "STOCK" | "NON_STOCK" | "SERVICE" | "BUNDLE" | "PACKAGING";
+  locationId?: string;
+  type?: "STOCK" | "NON_STOCK" | "BUNDLE";
+  categoryId?: string;
   purchasable?: boolean;
+  stockStatus?: "in_stock" | "out_of_stock";
+  status?: "active" | "archived";
+  expiryStatus?: "expiring_soon";
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
   page?: number;
   limit?: number;
 }
@@ -66,7 +74,11 @@ export interface ProductListItem {
   description?: string;
   quantity?: number;
   category?: string;
-  sellingPrice: number;
+  categoryId?: string;
+  categoryName?: string;
+  priceTiers?: ProductPriceTier[];
+  normalPrice?: number;
+  formattedNormalPrice?: string;
   costPrice?: number;
   sku: string;
   type?: ITEM_TYPE;
@@ -75,6 +87,15 @@ export interface ProductListItem {
   conversionType?: "source_to_repack" | "repack_to_source";
   conversionQuantity?: number;
   repackUnitName?: string;
+  bundleItems?: Array<{
+    productId?: string | { id?: string; name?: string };
+    quantity?: number;
+  }>;
+  productId?: string;
+  hasVariants?: boolean;
+  status?: "active" | "archived";
+  isAvailable?: boolean;
+  variants?: ProductListItem[];
   availableStock?: number;
   conversionRule?: string;
   channels: number;

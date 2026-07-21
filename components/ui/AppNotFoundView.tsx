@@ -21,11 +21,11 @@ export function AppNotFoundView({ dataLength, loading, entity, query }: AppNotFo
           {isSearchEmpty ? "We couldn’t find any results matching your search or filters. Try adjusting them and try again." : `You haven’t created any items yet. Once you do, they’ll show up here.`}
         </p>
 
-        {!isSearchEmpty && (
+        {/* {!isSearchEmpty && (
           <Button type="primary" className="mt-8">
             Create new {entity}
           </Button>
-        )}
+        )} */}
       </div>
     );
   }

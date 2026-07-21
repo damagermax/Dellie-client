@@ -2,132 +2,101 @@
 
 import React from "react";
 import { Empty, Segmented, Tabs } from "antd";
-import type { TableProps } from "antd/es/table";
-import { CreditCard, FileText, PackageCheck, Receipt, RotateCcw } from "lucide-react";
+import { useSelector } from "react-redux";
 import AppTable from "@/components/ui/AppTable";
-import { ActionDropdown } from "@/components/ui/ActionDropdown";
-import PreviewImage from "@/components/ui/PreviewImage";
-import { formatDate } from "@/lib/dateUtils";
-import { Purchase, PurchaseLandedCost, PurchaseLineItem, PurchaseReturnEvent, PurchaseStockEvent } from "@/types/index";
-
-type PurchaseTableView = "items" | "fulfillments" | "returns" | "landedCosts" | "payments";
+import { CostBreakdownModal } from "./PurchaseOrderSummary";
+import { useGetCurrencyQuery, useGetStoreSettingsQuery } from "@/lib/redux/services";
+import { RootState } from "@/lib/store";
+import { Payment, Purchase, PurchaseLandedCost, PurchaseReturnEvent, PurchaseStockEvent } from "@/types/index";
+import { buildPurchaseMobileTabItems, buildPurchaseTables, LandedCostBreakdownTable, MobilePurchaseList, PurchaseItemsTotalsCard, PurchaseTableView, purchaseTableOptions } from "./purchaseDetailTableSections";
 
 interface PurchaseOrderDetailTablesProps {
   purchase: Purchase;
   currency: string;
+  canManage?: boolean;
+  isCancelled: boolean;
+  isReadOnly?: boolean;
   onEditFulfillment: (event: PurchaseStockEvent) => void;
   onDeleteFulfillment: (event: PurchaseStockEvent) => void;
   onEditReturn: (event: PurchaseReturnEvent) => void;
   onDeleteReturn: (event: PurchaseReturnEvent) => void;
+  onEditPayment: (payment: Payment) => void;
+  onDeletePayment: (payment: Payment) => void;
+  onEditLandedCost: (landedCost: PurchaseLandedCost) => void;
+  onDeleteLandedCost: (landedCost: PurchaseLandedCost) => void;
 }
 
-function productName(product: string | { name: string }) {
-  return typeof product === "string" ? "-" : product.name;
-}
-
-function productImage(product: string | { media?: { url: string }[] }) {
-  return typeof product === "string" ? undefined : product.media?.[0]?.url;
-}
-
-function ProductCell({ name, imageUrl }: { name: string; imageUrl?: string }) {
-  return (
-    <div className="flex items-center gap-x-2">
-      <PreviewImage width={28} height={28} src={imageUrl} />
-      <span className="line-clamp-1">{name}</span>
-    </div>
-  );
-}
-
-function productSku(product: string | { sku?: string }) {
-  return typeof product === "string" ? undefined : product.sku;
-}
-
-function SegmentLabel({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <span className="flex items-center gap-x-2 px-1">
-      {icon}
-      <span>{text}</span>
-    </span>
-  );
-}
-
-const tableOptions = [
-  { label: <SegmentLabel icon={<FileText size={15} />} text="Items" />, value: "items" },
-  { label: <SegmentLabel icon={<PackageCheck size={15} />} text="Fulfillment" />, value: "fulfillments" },
-  { label: <SegmentLabel icon={<RotateCcw size={15} />} text="Returns" />, value: "returns" },
-  { label: <SegmentLabel icon={<Receipt size={15} />} text="Landed Costs" />, value: "landedCosts" },
-  { label: <SegmentLabel icon={<CreditCard size={15} />} text="Payments" />, value: "payments" },
-];
-
-const mobileTabItems = tableOptions.map((option) => ({
-  key: option.value,
-  label: option.label,
-}));
-
-export default function PurchaseOrderDetailTables({ purchase, currency, onEditFulfillment, onDeleteFulfillment, onEditReturn, onDeleteReturn }: PurchaseOrderDetailTablesProps) {
+export default function PurchaseOrderDetailTables({
+  purchase,
+  currency,
+  canManage = false,
+  isCancelled,
+  isReadOnly = false,
+  onEditFulfillment,
+  onDeleteFulfillment,
+  onEditReturn,
+  onDeleteReturn,
+  onEditPayment,
+  onDeletePayment,
+  onEditLandedCost,
+  onDeleteLandedCost,
+}: PurchaseOrderDetailTablesProps) {
   const [view, setView] = React.useState<PurchaseTableView>("items");
-  const itemColumns: TableProps<PurchaseLineItem>["columns"] = [
-    { title: "Product", key: "productName", className: "!pl-8", width: "45%", render: (_, line) => <ProductCell name={line.productName} imageUrl={line.productUrl || productImage(line.productId)} /> },
-    { title: "Quantity", dataIndex: "quantity", key: "quantity" },
-    { title: "Fulfilled", key: "fulfilled", render: (_, line) => Number(line.fulfilledQuantity || 0).toLocaleString() },
-    { title: "Returned", key: "returned", render: (_, line) => Number(line.returnedQuantity || 0).toLocaleString() },
-    { title: "Unit Cost", key: "unitPrice", render: (_, line) => Number(line.unitPrice).toFixed(2) },
-    //{ title: "Tax", key: "tax", render: (_, line) => (line.taxDescription ? `${line.taxDescription} (${line.taxRate || 0}%)` : "No tax") },
-    { title: "Total", key: "total", className: "!pr-8", render: (_, line) => Number(line.total).toFixed(2) },
-  ];
-  const fulfillmentColumns: TableProps<PurchaseStockEvent>["columns"] = [
-    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} imageUrl={productImage(event.productId)} /> },
-    { title: "Received Qty", dataIndex: "quantity", key: "quantity" },
-    { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.fulfilledAt) },
-    {
-      title: "",
-      key: "actions",
-      dataIndex: "id",
-      align: "right",
-      className: "!pr-8",
-      width: 80,
-      render: (_, event) => <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />,
-    },
-  ];
-  const returnColumns: TableProps<PurchaseReturnEvent>["columns"] = [
-    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} imageUrl={productImage(event.productId)} /> },
-    { title: "Returned Qty", dataIndex: "quantity", key: "quantity" },
-    { title: "Reason", dataIndex: "reason", key: "reason", render: (reason) => reason || "-" },
-    { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.returnedAt) },
-    {
-      title: "",
-      key: "actions",
-      dataIndex: "id",
-      align: "right",
-      className: "!pr-8",
-      width: 80,
-      render: (_, event) => <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} />,
-    },
-  ];
-  const costColumns: TableProps<PurchaseLandedCost>["columns"] = [
-    { title: "Cost", dataIndex: "name", key: "name", className: "!pl-8" },
-    {
-      title: "Applied To",
-      key: "appliesTo",
-      render: (_, cost) => (cost.appliesTo === "SELECTED_ITEMS" ? `${cost.lineItemIds.length} selected product${cost.lineItemIds.length === 1 ? "" : "s"}` : "All products"),
-    },
-    { title: "Allocation", dataIndex: "allocationMethod", key: "allocationMethod", render: (method: string) => method.replaceAll("_", " ").toLowerCase() },
-    { title: "Amount", key: "amount", className: "!pr-8", render: (_, cost) => `${currency} ${Number(cost.amount).toFixed(2)}` },
-  ];
-  const paymentColumns: TableProps<any>["columns"] = [
-    { title: "Date", key: "date", className: "!pl-8", render: (_, payment) => formatDate(payment.date) },
-    { title: "Reference", dataIndex: "reference", key: "reference", render: (reference) => reference || "-" },
-    { title: "Type", dataIndex: "type", key: "type", render: (type: string) => type?.replaceAll("_", " ") || "Payment" },
-    { title: "Amount", key: "amount", className: "!pr-8", render: (_, payment) => `${currency} ${Number(payment.amount || 0).toFixed(2)}` },
-  ];
-  const tables = {
-    items: { title: "Line Items", columns: itemColumns, data: purchase.lineItems },
-    fulfillments: { title: "Fulfillment History", columns: fulfillmentColumns, data: purchase.fulfilledItems || [] },
-    returns: { title: "Returns", columns: returnColumns, data: purchase.returnedItems || [] },
-    landedCosts: { title: "Landed Costs", columns: costColumns, data: purchase.landedCosts || [] },
-    payments: { title: "Payments", columns: paymentColumns, data: (purchase.payments || []) as any[] },
-  };
+  const [costOpen, setCostOpen] = React.useState(false);
+  const activeStoreId = useSelector((state: RootState) => state.currentUser.activeStoreId || state.currentUser.store?.id || null);
+  const activeStoreRole = useSelector((state: RootState) => state.currentUser.stores.find((store) => store.id === activeStoreId)?.role);
+  const canMutate = canManage && !isCancelled && !isReadOnly;
+  const isStaffUser = activeStoreRole === "staff";
+  const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
+  const { data: storeSettings } = useGetStoreSettingsQuery();
+  const fallbackStoreCurrencyId = user?.store?.currencyId;
+  const baseCurrencyId = storeSettings?.businessProfile?.currencyId || fallbackStoreCurrencyId;
+  const { data: baseCurrencyRecord } = useGetCurrencyQuery(baseCurrencyId, { skip: !baseCurrencyId });
+  const baseCurrency = baseCurrencyRecord?.code || user?.store?.currency?.code || user?.store?.currencyCode || user?.store?.settings?.currency || "";
+  const availableOptions = React.useMemo(
+    () =>
+      purchaseTableOptions.filter(
+        (option) =>
+          (option.value !== "returns" || Boolean(purchase.returnedItems?.length)) &&
+          (option.value !== "landedCosts" || Boolean(purchase.landedCosts?.length)),
+      ),
+    [purchase.landedCosts?.length, purchase.returnedItems?.length],
+  );
+  React.useEffect(() => {
+    if (!availableOptions.some((option) => option.value === view)) {
+      setView(availableOptions[0]?.value as PurchaseTableView);
+    }
+  }, [availableOptions, view]);
+  const mobileTabItems = buildPurchaseMobileTabItems(availableOptions);
+  const hasReturnedItems = purchase.lineItems.some((line) => Number(line.returnedQuantity || 0) > 0);
+  const hasTaxedItems = purchase.lineItems.some((line) => Boolean(line.taxDescription) || Number(line.taxAmount || 0) > 0);
+  const tables = buildPurchaseTables({
+    purchase,
+    currency,
+    baseCurrency,
+    canMutate,
+    isStaffUser,
+    hasReturnedItems,
+    hasTaxedItems,
+    onEditFulfillment,
+    onDeleteFulfillment,
+    onEditReturn,
+    onDeleteReturn,
+    onEditPayment,
+    onDeletePayment,
+    onEditLandedCost,
+    onDeleteLandedCost,
+  });
   const current = tables[view];
+  const discountedSubtotal = Math.max(Number(purchase.subTotal) - Number(purchase.discountAmount || 0), 0);
+  const paidAmount = Number(purchase.amount) - Number(purchase.balance);
+  const taxSummary = Object.entries(
+    (purchase.taxes || []).reduce<Record<string, number>>((summary, tax) => {
+      const name = purchase.taxId ? `${tax.name} @${tax.value}%` : tax.name;
+      summary[name] = (summary[name] || 0) + Number(tax.amount || 0);
+      return summary;
+    }, {}),
+  ).map(([name, amount]) => ({ name, amount }));
 
   return (
     <>
@@ -135,7 +104,7 @@ export default function PurchaseOrderDetailTables({ purchase, currency, onEditFu
         <div className="flex w-max min-w-full justify-center">
           <Segmented
             shape="round"
-            options={tableOptions}
+            options={availableOptions}
             value={view}
             onChange={(value) => setView(value as PurchaseTableView)}
             className="[&_.ant-segmented-item-selected]:!bg-[#2d837d] [&_.ant-segmented-item-selected]:!text-white"
@@ -155,30 +124,60 @@ export default function PurchaseOrderDetailTables({ purchase, currency, onEditFu
       <div>
         <div className="mb-3 hidden items-center justify-between px-8">
           <h2 className=" text-base font-medium text-gray-900">{current.title}</h2>
-
-          {/* <div className=" flex items-center gap-2">
-            <Button type="primary" className="-!bg-black  !shadow-none">
-              Fulfill
-            </Button>
-            <Button>Pay</Button>
-          </div> */}
         </div>
         {current.data.length ? (
           <>
             <div className="md:hidden">
-            <MobilePurchaseList
-              view={view}
-              purchase={purchase}
-              currency={currency}
-              onEditFulfillment={onEditFulfillment}
-              onDeleteFulfillment={onDeleteFulfillment}
-              onEditReturn={onEditReturn}
-              onDeleteReturn={onDeleteReturn}
-            />
-          </div>
-          <div className="hidden md:block">
-              <AppTable columns={current.columns || []} dataSource={current.data as any[]} rowKey="id" pagination={false} scrollX={900} />
-          </div>
+              <MobilePurchaseList
+                view={view}
+                purchase={purchase}
+                currency={currency}
+                baseCurrency={baseCurrency}
+                hasReturnedItems={hasReturnedItems}
+                hasTaxedItems={hasTaxedItems}
+                canMutate={canMutate}
+                isStaffUser={isStaffUser}
+                onEditFulfillment={onEditFulfillment}
+                onDeleteFulfillment={onDeleteFulfillment}
+                onEditReturn={onEditReturn}
+                onDeleteReturn={onDeleteReturn}
+                onEditPayment={onEditPayment}
+                onDeletePayment={onDeletePayment}
+                onEditLandedCost={onEditLandedCost}
+                onDeleteLandedCost={onDeleteLandedCost}
+              />
+            </div>
+            <div className="hidden md:block">
+              <AppTable
+                columns={current.columns}
+                dataSource={current.data}
+                rowKey="id"
+                pagination={false}
+                scrollX={900}
+                expandable={
+                  view === "landedCosts"
+                    ? {
+                        rowExpandable: (cost) => Boolean((cost as { allocations?: unknown[] }).allocations?.length),
+                        expandedRowRender: (cost) => <LandedCostBreakdownTable cost={cost as PurchaseLandedCost} />,
+                      }
+                    : undefined
+                }
+              />
+            </div>
+            {view === "items" ? (
+              <PurchaseItemsTotalsCard
+                currency={currency}
+                subTotal={Number(purchase.subTotal || 0)}
+                discountAmount={Number(purchase.discountAmount || 0)}
+                discountedSubtotal={discountedSubtotal}
+                total={Number(purchase.amount || 0)}
+                paid={paidAmount}
+                balance={Number(purchase.balance || 0)}
+                taxSummary={taxSummary}
+                taxAmount={Number(purchase.taxAmount || 0)}
+                onViewCostBreakdown={() => setCostOpen(true)}
+              />
+            ) : null}
           </>
         ) : (
           <div className="border-t border-gray-200 py-12">
@@ -186,161 +185,7 @@ export default function PurchaseOrderDetailTables({ purchase, currency, onEditFu
           </div>
         )}
       </div>
+      <CostBreakdownModal open={costOpen} onClose={() => setCostOpen(false)} purchase={purchase} currency={baseCurrency || currency} />
     </>
-  );
-}
-
-function MobilePurchaseList({
-  view,
-  purchase,
-  currency,
-  onEditFulfillment,
-  onDeleteFulfillment,
-  onEditReturn,
-  onDeleteReturn,
-}: {
-  view: PurchaseTableView;
-  purchase: Purchase;
-  currency: string;
-  onEditFulfillment: (event: PurchaseStockEvent) => void;
-  onDeleteFulfillment: (event: PurchaseStockEvent) => void;
-  onEditReturn: (event: PurchaseReturnEvent) => void;
-  onDeleteReturn: (event: PurchaseReturnEvent) => void;
-}) {
-  if (view === "items") {
-    return (
-      <div className="grid  ">
-        {purchase.lineItems.map((line) => (
-          <MobileCard key={line.id}>
-            <MobileProductHeader name={line.productName} sku={line.productSku || productSku(line.productId)} imageUrl={line.productUrl || productImage(line.productId)} />
-            <div className="mt-2 -pl-14 flex items-center justify-between gap-3 text-[13px]">
-              <span className="text-gray-500">
-                Qty {Number(line.quantity).toLocaleString()} x {line.unitPrice}
-              </span>
-              <span className="font-semibold text-gray-900">
-                {currency} {Number(line.total).toFixed(2)}
-              </span>
-            </div>
-          </MobileCard>
-        ))}
-      </div>
-    );
-  }
-
-  if (view === "fulfillments") {
-    return (
-      <div className="grid   ">
-        {(purchase.fulfilledItems || []).map((event) => (
-          <MobileCard key={event.id}>
-            <div className="flex items-start justify-between gap-3">
-              <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
-              <ActionDropdown openEditModal={() => onEditFulfillment(event)} onDelete={() => onDeleteFulfillment(event)} />
-            </div>
-            <div className="mt-2 text-[13px] text-gray-500 flex items-center justify-between gap-3">
-              <span>Qty {Number(event.quantity).toLocaleString()}</span>
-              <span>{formatDate(event.fulfilledAt)}</span>
-            </div>
-          </MobileCard>
-        ))}
-      </div>
-    );
-  }
-
-  if (view === "returns") {
-    return (
-      <div className="grid gap-3  pb-6">
-        {(purchase.returnedItems || []).map((event) => (
-          <MobileCard key={event.id}>
-            <div className="flex items-start justify-between gap-3">
-              <MobileProductHeader name={productName(event.productId)} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} />
-              <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} />
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <MobileStat label="Returned Qty" value={Number(event.quantity).toLocaleString()} />
-              <MobileStat label="Date" value={formatDate(event.returnedAt)} />
-            </div>
-            {event.reason && <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600">{event.reason}</p>}
-          </MobileCard>
-        ))}
-      </div>
-    );
-  }
-
-  if (view === "landedCosts") {
-    return (
-      <div className="">
-        {(purchase.landedCosts || []).map((cost) => (
-          <MobileCard key={cost.id}>
-            <div className="flex items-start justify-between gap-4">
-              <p className="text-base  font-medium text-gray-900">{cost.name}</p>
-
-              <p className="shrink-0 text-base font-semibold text-gray-900">
-                {currency} {Number(cost.amount).toFixed(2)}
-              </p>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-              <span className="text-gray-500 capitalize ">Allocation: {cost.allocationMethod.replaceAll("_", " ").toLowerCase()}</span>
-              <span className="text-gray-500">{cost.appliesTo === "SELECTED_ITEMS" ? `${cost.lineItemIds.length} selected product${cost.lineItemIds.length === 1 ? "" : "s"}` : "All products"}</span>
-            </div>
-          </MobileCard>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-3  pb-6">
-      {((purchase.payments || []) as any[]).map((payment, index) => (
-        <MobileCard key={payment.id || index}>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-base font-semibold capitalize text-gray-900">{payment.type?.replaceAll("_", " ") || "Payment"}</p>
-              <p className="mt-1 text-xs text-gray-500">{formatDate(payment.date)}</p>
-            </div>
-            <p className="shrink-0 text-base font-semibold text-gray-900">
-              {currency} {Number(payment.amount || 0).toFixed(2)}
-            </p>
-          </div>
-          <MobileTotal label="Reference" value={payment.reference || "-"} />
-        </MobileCard>
-      ))}
-    </div>
-  );
-}
-
-function MobileCard({ children }: { children: React.ReactNode }) {
-  return <article className=" border-b border-gray-200 bg-white px-4 py-2 ">{children}</article>;
-}
-
-function MobileProductHeader({ name, sku, imageUrl }: { name: string; sku?: string; imageUrl?: string }) {
-  return (
-    <div className="flex gap-3">
-      <div className=" flex-shrink-0">
-        <PreviewImage width={42} height={42} src={imageUrl} />
-      </div>
-      <div className="min-w-0">
-        <p className="line-clamp-2 text-sm  text-gray-900">{name}</p>
-        {sku && <p className="mt-1 text-xs text-gray-500">SKU: {sku}</p>}
-      </div>
-    </div>
-  );
-}
-
-function MobileStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-gray-50 px-3 py-2">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
-    </div>
-  );
-}
-
-function MobileTotal({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="mt-4 flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm">
-      <span className="text-gray-500">{label}</span>
-      <span className="font-semibold text-gray-900">{value}</span>
-    </div>
   );
 }

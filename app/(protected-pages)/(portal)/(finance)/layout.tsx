@@ -35,7 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return (
         <div className=" ">
             <div className="">
-                <h3 className=" px-8 pageTittle ">Finance</h3>
+                <h3 className=" px-8 pageTittle ">Finance Report</h3>
 
                 <hr className=" border-gray-200/80" />
                 <Menu

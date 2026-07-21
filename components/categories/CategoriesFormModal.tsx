@@ -1,95 +1,160 @@
 "use client";
-import { Form, Radio, Segmented, Switch } from "antd";
 
-import { InputFormItem, SelectFormItem, TextAreaFormItem } from "../ui/AppFormItems";
+import { Checkbox, Form, Switch } from "antd";
+import { UploadFile } from "antd/es/upload";
+import { useEffect, useMemo, useState } from "react";
 import { AppModal, ModalProps } from "../ui/AppModal";
-import MultiImageUploader from "../ui/MultiImageUploader";
-import { Category, CategoryCreateInput, CategoryUpdateInput, CategoryType } from "@/types/category";
-
-import { useEffect, useState } from "react";
-
-import { useCreateCategoryMutation, useGetSelectableExpenseAccountsQuery, useUpdateCategoryMutation, useGetCategoryQuery } from "@/lib/redux/services";
-import { BannerImageUpload } from "../ui/BannerImageUpload";
+import { InputFormItem, TextAreaFormItem } from "../ui/AppFormItems";
+import { Category, CategoryCreateInput, CategoryStatus, CategoryType } from "@/types/category";
+import { useCreateCategoryMutation, useUpdateCategoryMutation } from "@/lib/redux/services";
+import AppSingleImagePicker from "../ui/AppSingleImagePicker";
 
 interface CategoriesFormModalProp extends ModalProps {
   initialValues?: Category;
-  categoryOptions?: { value: string; label: string }[];
   type?: CategoryType;
 }
 
-type CategoryFormValues = CategoryCreateInput | CategoryUpdateInput;
+type CategoryFormValues = Omit<CategoryCreateInput, "status"> & {
+  status?: boolean;
+};
 
-export default function CategoriesFormModal({ open, toggle, initialValues, categoryOptions, type }: CategoriesFormModalProp) {
+export default function CategoriesFormModal({ open, toggle, initialValues, type }: CategoriesFormModalProp) {
   const [categoryForm] = Form.useForm();
-  const [categoryType, setCategoryType] = useState(initialValues?.type || type);
+  const categoryType = useMemo(() => initialValues?.type || type || CategoryType.PRODUCT, [initialValues?.type, type]);
+  const [imageFiles, setImageFiles] = useState<UploadFile[]>([]);
 
-  const { data: categoryData, isSuccess } = useGetCategoryQuery(initialValues?.id || "", { skip: !initialValues?.id, refetchOnMountOrArgChange: true });
-
-  const [createCategory, { isLoading: isCreating, isSuccess: createSuccess }] = useCreateCategoryMutation();
-  const [updateCategory, { isLoading: isUpdating, isSuccess: updateSuccess }] = useUpdateCategoryMutation();
+  const [createCategory, { isLoading: isCreating }] = useCreateCategoryMutation();
+  const [updateCategory, { isLoading: isUpdating }] = useUpdateCategoryMutation();
 
   const handleSubmit = async (values: CategoryFormValues) => {
-    console.log("values", values);
+    const payload = new FormData();
+    const nextStatus = values.status ? CategoryStatus.ACTIVE : CategoryStatus.INACTIVE;
+    const hasExistingImage = Boolean(initialValues?.imageUrl);
+    const selectedImage = imageFiles[0];
+    const hasNewImage = Boolean(selectedImage?.originFileObj);
+
+    payload.append("name", values.name);
+    payload.append("type", categoryType);
+    payload.append("status", nextStatus);
+    payload.append("description", values.description || "");
+    payload.append("showInStorefront", String(categoryType === CategoryType.PRODUCT ? Boolean(values.showInStorefront) : false));
+    payload.append("showInPOS", String(categoryType === CategoryType.PRODUCT ? Boolean(values.showInPOS) : false));
+
+    if (hasNewImage) {
+      payload.append("image", selectedImage.originFileObj as File);
+    } else if (hasExistingImage && imageFiles.length === 0) {
+      payload.append("removeImage", "true");
+    }
 
     if (initialValues?.id) {
-      await updateCategory({ id: initialValues?.id, ...values });
+      await updateCategory({ id: initialValues.id, data: payload }).unwrap();
     } else {
-      await createCategory({ ...values, type: categoryType!! } as CategoryCreateInput);
+      await createCategory(payload).unwrap();
     }
+
+    categoryForm.resetFields();
+    setImageFiles([]);
+    toggle();
   };
 
   useEffect(() => {
-    if (categoryData && isSuccess) {
-      categoryForm.setFieldsValue({ ...categoryData, expenseAccountId: categoryData.expenseAccountId });
+    if (open && initialValues) {
+      setImageFiles(
+        initialValues.imageUrl
+          ? [
+              {
+                uid: initialValues.id,
+                name: initialValues.name,
+                status: "done",
+                url: initialValues.imageUrl,
+              },
+            ]
+          : [],
+      );
+      categoryForm.setFieldsValue({
+        ...initialValues,
+        status: initialValues.status === CategoryStatus.ACTIVE,
+        showInStorefront: Boolean(initialValues.showInStorefront),
+        showInPOS: Boolean(initialValues.showInPOS),
+      });
+      return;
     }
-  }, [categoryData, isSuccess]);
 
-  useEffect(() => {
-    if (updateSuccess || createSuccess) {
-      categoryForm.resetFields();
-      toggle();
+    if (open && !initialValues?.id) {
+      setImageFiles([]);
+      categoryForm.setFieldsValue({
+        type: categoryType,
+        status: true,
+        showInStorefront: false,
+        showInPOS: false,
+      });
     }
-  }, [updateSuccess, createSuccess]);
+  }, [categoryForm, categoryType, initialValues, open]);
 
   return (
-    <AppModal title={initialValues ? "Edit Category" : "Create Category"} width={500} open={open} toggle={toggle} onOk={() => categoryForm.submit()} okText={isCreating || isUpdating ? "Saving..." : "Save"}>
-      <Form size="small" form={categoryForm} layout="vertical" onFinish={handleSubmit} initialValues={{ ...initialValues, expenseAccountId: initialValues?.expenseAccountId }}>
-        <div className="space-y-4 p-5 px-6 gap-x-12">
-          {categoryType == CategoryType.PRODUCT && (
-            <div className=" flex gap-x-5 items-end">
-              <Form.Item name="image" noStyle getValueFromEvent={(values) => values?.[0]?.originFileObj}>
-                <MultiImageUploader maxCount={1} />
-              </Form.Item>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category Image (optional)</label>
-                <p className="text-xs text-gray-500 mb-3 w-[70%]">Upload a representative image for this category (Max 1 image)</p>
+    <AppModal
+      title={initialValues ? "Edit Category" : `Create ${categoryType === CategoryType.PRODUCT ? "Product" : "Expense"} Category`}
+      width={540}
+      open={open}
+      toggle={toggle}
+      onOk={() => categoryForm.submit()}
+      okText={isCreating || isUpdating ? "Saving..." : "Save"}
+    >
+      <Form
+        // size="small"
+        form={categoryForm}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{
+          ...initialValues,
+          type: categoryType,
+          status: initialValues?.status ? initialValues.status === CategoryStatus.ACTIVE : true,
+          showInStorefront: Boolean(initialValues?.showInStorefront),
+          showInPOS: Boolean(initialValues?.showInPOS),
+        }}
+      >
+        <div className="space-y-5 p-5 px-6">
+          {categoryType === CategoryType.PRODUCT ? (
+            <div className="flex items-start gap-4">
+              <AppSingleImagePicker value={imageFiles} onChange={setImageFiles} size={72} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900">Category image</p>
+                <p className="mt-1 text-xs leading-5 text-gray-500">Optional image used to represent this category visually.</p>
               </div>
             </div>
-          )}
+          ) : null}
 
-          <div className={!categoryOptions ? "col-span-1" : "grid grid-cols-2 gap-x-5"}>
+          <div className="grid ">
             <InputFormItem label="Name" name="name" placeholder="Enter category name" rules={[{ message: "Enter category name", required: true }]} />
-
-            {categoryOptions && (
-              <SelectFormItem
-                placeholder="Select related category"
-                name="parentId"
-                label="Related to"
-                options={[
-                  {
-                    label: "Electronics",
-                    value: "2",
-                  },
-                  {
-                    label: "Fashion",
-                    value: "3",
-                  },
-                ]}
-              />
-            )}
           </div>
 
-          <TextAreaFormItem label="Description (optional)" name="description" />
+          {categoryType === CategoryType.EXPENSE ? <TextAreaFormItem label="Description" name="description" placeholder="Add a short description" /> : null}
+
+          <div>
+            <div className="flex w-full items-center justify-between    py-3">
+              <div className="pr-4">
+                <p className="text-sm font-medium text-gray-900">Keep category active</p>
+                <p className="mt-1 text-xs text-gray-500">Active categories are visible and available for selection.</p>
+              </div>
+              <Form.Item name="status" valuePropName="checked" noStyle rules={[{ required: true, message: "Set the category status" }]}>
+                <Switch checkedChildren="Active" unCheckedChildren="Inactive" className="shrink-0" />
+              </Form.Item>
+            </div>
+          </div>
+
+          {categoryType === CategoryType.PRODUCT ? (
+            <div className="">
+              <p className="text-sm font-medium text-gray-900">Visibility</p>
+              <div className="mt-3 space-y-3">
+                <Form.Item name="showInStorefront" valuePropName="checked" className="!mb-0">
+                  <Checkbox>Storefront</Checkbox>
+                </Form.Item>
+                <Form.Item name="showInPOS" valuePropName="checked" className="!mb-0">
+                  <Checkbox>POS</Checkbox>
+                </Form.Item>
+              </div>
+            </div>
+          ) : null}
         </div>
       </Form>
     </AppModal>

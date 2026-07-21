@@ -1,176 +1,408 @@
 "use client";
 
-import { AppstoreOutlined, CheckCircleOutlined, PlusOutlined, SettingOutlined } from "@ant-design/icons";
-import { Button, Card, Image, message, Typography } from "antd";
-import { useState } from "react";
+import { Button, Form, Input, message } from "antd";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { LuArrowLeft, LuBadgeCheck, LuChevronDown, LuChevronUp, LuCopy, LuCreditCard } from "react-icons/lu";
+import { useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 
-const { Text } = Typography;
+import { setStoreSettings } from "@/lib/redux/features/userSlice";
+import { API_BASE_URL_NO_TRAILING_SLASH } from "@/lib/config/apiBaseUrl";
+import { useGetStoreSettingsQuery, useUpdateStoreSettingsMutation } from "@/lib/redux/services/storeSettingsApi";
+import type { AppDispatch, RootState } from "@/lib/redux/store";
+import { DEFAULT_INTEGRATIONS_SETTINGS, PaystackIntegrationSettings, StripeIntegrationSettings, UpdateStoreSettingsInput } from "@/types/store-settings";
 
-interface App {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  status: "install" | "uninstall";
-  installedDate: string;
-  version?: string;
-  developer: string;
-  logo?: string;
+type IntegrationKey = "paystack" | "stripe";
+
+type PaystackFormValues = {
+  publicKey: string;
+  secretKey: string;
+  webhookSecret: string;
+};
+
+type StripeFormValues = {
+  publishableKey: string;
+  secretKey: string;
+  webhookSecret: string;
+};
+
+const INTEGRATION_COPY: Record<
+  IntegrationKey,
+  {
+    title: string;
+    description: string;
+    initials: string;
+    tone: string;
+  }
+> = {
+  paystack: {
+    title: "Paystack",
+    description: "Connect your Paystack account for cards, transfers, and local payment methods.",
+    initials: "PS",
+    tone: "bg-emerald-50 text-emerald-700",
+  },
+  stripe: {
+    title: "Stripe",
+    description: "Connect your Stripe account for online card payments and checkout flows.",
+    initials: "ST",
+    tone: "bg-violet-50 text-violet-700",
+  },
+};
+
+const WEBHOOK_BASE_URL = API_BASE_URL_NO_TRAILING_SLASH;
+
+function slugifyStoreName(value?: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getWebhookUrl(slug: string, key: IntegrationKey) {
+  return `${WEBHOOK_BASE_URL}/stores/${slug}/integrations/${key}/webhook`;
+}
+
+function normalizePaystack(values?: Partial<PaystackIntegrationSettings>): PaystackIntegrationSettings {
+  return {
+    ...DEFAULT_INTEGRATIONS_SETTINGS.paystack,
+    ...values,
+    publicKey: values?.publicKey || "",
+    secretKey: values?.secretKey || "",
+    webhookSecret: values?.webhookSecret || "",
+  };
+}
+
+function normalizeStripe(values?: Partial<StripeIntegrationSettings>): StripeIntegrationSettings {
+  return {
+    ...DEFAULT_INTEGRATIONS_SETTINGS.stripe,
+    ...values,
+    publishableKey: values?.publishableKey || "",
+    secretKey: values?.secretKey || "",
+    webhookSecret: values?.webhookSecret || "",
+  };
 }
 
 export default function AppsPage() {
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingApp, setEditingApp] = useState<App | null>(null);
-  const [apps, setApps] = useState<App[]>([
-    {
-      id: "1",
-      name: "Paystack",
-      description: "Online payments for Africa. Accept payments with cards, bank transfers, and USSD.",
-      category: "Payments",
-      status: "install",
-      installedDate: new Date().toISOString().split("T")[0],
-      developer: "Paystack",
-      logo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAY1BMVEUBGzMJpdsJqeAAABsAAB0Im84AECkBGDAJreYCL0oFaZACNlIFZYsJodYAAB8JotkIlMYHjb0FXH8ACiQADSYAFCwHg7EHh7YEVHYHe6YCKkQETm8DRGMGbpYCJj8DPlwGdZ/B21UTAAADF0lEQVR4nO3d4XKiMBRAYUiBRNQUCUFFrb7/U66ubvtbzeVmO+d7gM6cQau5xFAUAAAAAAAAAAAAAAAAAIBfzDahUhEGO0vgUKzGWsXmNPkZAv3JGVOqMMaNUfwy+lEp7xFZW+HE4aQaeE3cVKKBtnC6gWXpjlGysFkpX8LrRRyDZGHYqheWtWhhVWv3leVnQyGFFGqjkEIKtfsopJBCCv//wixWT4NkYdOqF5qt6PrQTupTDLMTnWIUYa89ieqkR6ZNpztNLCfpgakdRqfWaFz3Jfsa/cuf991aRT0ewix3LmLw1YeCqgozXEAAQCI2NqqkPzNitehbTatDI7qACufOGV3OXBq57zahV18/lbfb+YVUYjzkEHhLlFoH+0/ttgezkhnXxF0el7AUu9mtvsT/4RYi70SfwTTxQWhek8O89MH0FFJIoTYKKaRQH4UUUqhPqNB32mHf3EGkcLhksz40XyLrw3jOZo3fCQ1qPnRvcv8QepHeNmNop925vdiGhbhY619F4y6COzJibGuny2yOsltOmqpYaJrCDPfzrSrxPACYw2//JzpUX0sVk59l4160p7XWl5lyP4luY78HLjW/lxqzE93lfWUXyt+7xVZN/2SwPpR9K8aj+hrftKJvxRzmNFLji7sqg1nbWnTLVw7zUn7ZRSGF2n0UUkghhRRSSKF8YQ57hNeyJw5ksM9bdn0Yd+qF5iK6Piz8Wr1QZo/+N/XfzLhWepwYeq3zWe+BkjfwHwbF3665ejfHMbuxmvqVin75MdMP8rV+Qyp/hjAAIJkYUhxPk/FhM/441p/vq8ejz/LzzTbbROdEGbfN8iM8JrzNbeoMX6hV0kW+2UsvhZ6W+sw9oZ+cv6FJ/PAHc5IdSTwvbBIXyh7z+ILk89INhXOjkEIK9VFIIYX6KKQw/8Lk9/GzKwyJn34o/Ji4F6R+dp7U2YCvszZxodgRli8b2pSDGtfmNsQobs8hTZfoxjnuWT/NtybJXoXrX2llHyn6siH2Y/e+sY8ZvkQfmuDfF3L7LwoAAAAAAAAAAAAAAAAAyMMfLaaOu1xmU6AAAAAASUVORK5CYII=",
-    },
-    {
-      id: "2",
-      name: "MTN Mobile Money",
-      description: "Mobile money payments for customers with MTN mobile money accounts",
-      category: "Mobile Money",
-      status: "uninstall",
-      installedDate: new Date().toISOString().split("T")[0],
-      developer: "MTN",
-      logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZmCMBsoxG-pDYAGoUumdgI8LpGzjm2KSukg&s",
-    },
-    {
-      id: "3",
-      name: "Telecel Cash",
-      description: "Mobile money payments for customers with Telecel Cash accounts",
-      category: "Mobile Money",
-      status: "uninstall",
-      installedDate: new Date().toISOString().split("T")[0],
-      developer: "Telecel",
-      logo: "https://ebindmomo.apps.cbg.com.gh/assets/img/T-Cash%20Red.png",
-    },
-    {
-      id: "4",
-      name: "AT Money",
-      description: "Mobile money payments for customers with AT Money accounts",
-      category: "Mobile Money",
-      status: "uninstall",
-      installedDate: new Date().toISOString().split("T")[0],
-      developer: "AT",
-      logo: "data:image/png;base64,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",
-    },
-  ]);
+  const dispatch = useDispatch<AppDispatch>();
+  const currentStore = useSelector((state: RootState) => state.currentUser.store);
+  const [expandedKey, setExpandedKey] = useState<IntegrationKey | null>("paystack");
+  const [editingKey, setEditingKey] = useState<IntegrationKey | null>(null);
+  const [paystackForm] = Form.useForm<PaystackFormValues>();
+  const [stripeForm] = Form.useForm<StripeFormValues>();
+  const { data, isLoading } = useGetStoreSettingsQuery();
+  const [updateStoreSettings, { isLoading: isSaving }] = useUpdateStoreSettingsMutation();
 
-  const showModal = (app?: App) => {
-    setEditingApp(app || null);
-    setIsModalVisible(true);
-  };
+  const paystack = normalizePaystack(data?.integrations?.paystack);
+  const stripe = normalizeStripe(data?.integrations?.stripe);
+  const activeStoreSlug = currentStore?.slug || slugifyStoreName(currentStore?.name);
 
-  const handleCancel = () => {
-    setIsModalVisible(false);
-    setEditingApp(null);
-  };
+  useEffect(() => {
+    paystackForm.setFieldsValue({
+      publicKey: paystack.publicKey,
+      secretKey: paystack.secretKey,
+      webhookSecret: paystack.webhookSecret,
+    });
+    stripeForm.setFieldsValue({
+      publishableKey: stripe.publishableKey,
+      secretKey: stripe.secretKey,
+      webhookSecret: stripe.webhookSecret,
+    });
+  }, [paystack, paystackForm, stripe, stripeForm]);
 
-  const toggleAppStatus = (id: string) => {
-    setApps(apps.map((app) => (app.id === id ? { ...app, status: app.status === "install" ? "uninstall" : "install" } : app)));
-    message.success("App status updated");
-  };
-
-  const handleSubmit = (values: any) => {
-    if (editingApp) {
-      // Update existing app
-      setApps(apps.map((app) => (app.id === editingApp.id ? { ...app, ...values } : app)));
-      message.success("App updated successfully");
-    } else {
-      // Add new app
-      const newApp = {
-        ...values,
-        id: Date.now().toString(),
-        status: values.status || "install",
-        installedDate: new Date().toISOString().split("T")[0],
-      };
-      setApps([...apps, newApp]);
-      message.success("App added successfully");
+  const saveSettings = async (payload: UpdateStoreSettingsInput, successMessage: string) => {
+    try {
+      const updatedSettings = await updateStoreSettings(payload).unwrap();
+      dispatch(setStoreSettings(updatedSettings));
+      message.success(successMessage);
+    } catch {
+      message.error("Integration settings could not be updated.");
     }
-    setIsModalVisible(false);
-    setEditingApp(null);
+  };
+
+  const handleCopyWebhookUrl = async (key: IntegrationKey) => {
+    if (!activeStoreSlug) {
+      message.error("Store webhook URL is not available.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(getWebhookUrl(activeStoreSlug, key));
+      message.success(`${INTEGRATION_COPY[key].title} webhook URL copied.`);
+    } catch {
+      message.error("Webhook URL could not be copied.");
+    }
+  };
+
+  const handleSavePaystack = async (values: PaystackFormValues) => {
+    await saveSettings(
+      {
+        integrations: {
+          paystack: {
+            connected: Boolean(values.publicKey && values.secretKey),
+            publicKey: values.publicKey,
+            secretKey: values.secretKey,
+            webhookSecret: values.webhookSecret,
+          },
+        },
+      },
+      "Paystack connected.",
+    );
+    setEditingKey(null);
+  };
+
+  const handleSaveStripe = async (values: StripeFormValues) => {
+    await saveSettings(
+      {
+        integrations: {
+          stripe: {
+            connected: Boolean(values.publishableKey && values.secretKey),
+            publishableKey: values.publishableKey,
+            secretKey: values.secretKey,
+            webhookSecret: values.webhookSecret,
+          },
+        },
+      },
+      "Stripe connected.",
+    );
+    setEditingKey(null);
+  };
+
+  const handleDisconnect = async (key: IntegrationKey) => {
+    if (key === "paystack") {
+      paystackForm.resetFields();
+      setEditingKey(null);
+      await saveSettings(
+        {
+          integrations: {
+            paystack: {
+              connected: false,
+              publicKey: "",
+              secretKey: "",
+              webhookSecret: "",
+            },
+          },
+        },
+        "Paystack disconnected.",
+      );
+      return;
+    }
+
+    stripeForm.resetFields();
+    setEditingKey(null);
+    await saveSettings(
+      {
+        integrations: {
+          stripe: {
+            connected: false,
+            publishableKey: "",
+            secretKey: "",
+            webhookSecret: "",
+          },
+        },
+      },
+      "Stripe disconnected.",
+    );
+  };
+
+  const renderIntegrationRow = (key: IntegrationKey) => {
+    const copy = INTEGRATION_COPY[key];
+    const isExpanded = expandedKey === key;
+    const isConnected = key === "paystack" ? paystack.connected : stripe.connected;
+    const isEditing = editingKey === key;
+    const showCredentialsForm = !isConnected || isEditing;
+
+    return (
+      <div key={key} className="border-b border-gray-100 last:border-b-0">
+        <button
+          type="button"
+          className="flex w-full items-start justify-between gap-4 px-4 py-4 text-left"
+          onClick={() => setExpandedKey((current) => (current === key ? null : key))}
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <span className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-sm font-semibold ${copy.tone}`}>{copy.initials}</span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-medium text-gray-900">{copy.title}</h2>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+                    isConnected ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {isConnected ? <LuBadgeCheck size={14} /> : <LuCreditCard size={14} />}
+                  {isConnected ? "Connected" : "Not connected"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm leading-6 text-gray-500">{copy.description}</p>
+            </div>
+          </div>
+          <span className="mt-1 shrink-0 text-gray-400">{isExpanded ? <LuChevronUp size={18} /> : <LuChevronDown size={18} />}</span>
+        </button>
+
+        {isExpanded ? (
+          <div className="border-t border-gray-100 px-4 py-4">
+            {key === "paystack" ? (
+              <Form form={paystackForm} layout="vertical" onFinish={handleSavePaystack} className="grid gap-x-4 md:grid-cols-2">
+                <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+                  {paystack.connected ? (
+                    <>
+                      {!isEditing ? (
+                        <Button type="primary" onClick={() => setEditingKey("paystack")} loading={isSaving}>
+                          Edit
+                        </Button>
+                      ) : (
+                        <>
+                          <Button type="primary" htmlType="submit" loading={isSaving}>
+                            Save Changes
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              paystackForm.setFieldsValue({
+                                publicKey: paystack.publicKey,
+                                secretKey: paystack.secretKey,
+                                webhookSecret: paystack.webhookSecret,
+                              });
+                              setEditingKey(null);
+                            }}
+                            loading={isSaving}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                      <Button onClick={() => handleDisconnect("paystack")} loading={isSaving}>
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button type="primary" htmlType="submit" loading={isSaving}>
+                      Connect Paystack
+                    </Button>
+                  )}
+                </div>
+                {showCredentialsForm ? (
+                  <>
+                    <Form.Item label="Public Key" name="publicKey" rules={[{ required: true, message: "Enter your Paystack public key" }]}>
+                      <Input placeholder="pk_test_..." />
+                    </Form.Item>
+                    <Form.Item label="Secret Key" name="secretKey" rules={[{ required: true, message: "Enter your Paystack secret key" }]}>
+                      <Input.Password placeholder="sk_test_..." />
+                    </Form.Item>
+                    <Form.Item label="Webhook Secret" name="webhookSecret" className="md:col-span-2">
+                      <Input.Password placeholder="Optional webhook secret" />
+                    </Form.Item>
+                  </>
+                ) : null}
+                {paystack.connected ? (
+                  <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 md:col-span-2">
+                    <p className="text-sm font-semibold text-gray-950">Webhook URL</p>
+                    <p className="mt-1 text-sm text-gray-600">Paste this into your Paystack dashboard webhook URL field.</p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Input readOnly value={activeStoreSlug ? getWebhookUrl(activeStoreSlug, "paystack") : ""} className="!h-10" />
+                      <Button type="default" icon={<LuCopy size={16} />} className="!h-10 !shrink-0" disabled={!activeStoreSlug} onClick={() => handleCopyWebhookUrl("paystack")}>
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </Form>
+            ) : (
+              <Form form={stripeForm} layout="vertical" onFinish={handleSaveStripe} className="grid gap-x-4 md:grid-cols-2">
+                <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+                  {stripe.connected ? (
+                    <>
+                      {!isEditing ? (
+                        <Button type="primary" onClick={() => setEditingKey("stripe")} loading={isSaving}>
+                          Edit
+                        </Button>
+                      ) : (
+                        <>
+                          <Button type="primary" htmlType="submit" loading={isSaving}>
+                            Save Changes
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              stripeForm.setFieldsValue({
+                                publishableKey: stripe.publishableKey,
+                                secretKey: stripe.secretKey,
+                                webhookSecret: stripe.webhookSecret,
+                              });
+                              setEditingKey(null);
+                            }}
+                            loading={isSaving}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                      <Button onClick={() => handleDisconnect("stripe")} loading={isSaving}>
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button type="primary" htmlType="submit" loading={isSaving}>
+                      Connect Stripe
+                    </Button>
+                  )}
+                </div>
+                {showCredentialsForm ? (
+                  <>
+                    <Form.Item label="Publishable Key" name="publishableKey" rules={[{ required: true, message: "Enter your Stripe publishable key" }]}>
+                      <Input placeholder="pk_test_..." />
+                    </Form.Item>
+                    <Form.Item label="Secret Key" name="secretKey" rules={[{ required: true, message: "Enter your Stripe secret key" }]}>
+                      <Input.Password placeholder="sk_test_..." />
+                    </Form.Item>
+                    <Form.Item label="Webhook Secret" name="webhookSecret" className="md:col-span-2">
+                      <Input.Password placeholder="whsec_..." />
+                    </Form.Item>
+                  </>
+                ) : null}
+                {stripe.connected ? (
+                  <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4 md:col-span-2">
+                    <p className="text-sm font-semibold text-gray-950">Webhook URL</p>
+                    <p className="mt-1 text-sm text-gray-600">Paste this into your Stripe webhook endpoint URL field.</p>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Input readOnly value={activeStoreSlug ? getWebhookUrl(activeStoreSlug, "stripe") : ""} className="!h-10" />
+                      <Button type="default" icon={<LuCopy size={16} />} className="!h-10 !shrink-0" disabled={!activeStoreSlug} onClick={() => handleCopyWebhookUrl("stripe")}>
+                        Copy
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </Form>
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-6 w-[70%]">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Apps & Integrations</h2>
-          <p className="text-sm text-gray-500 mt-1">Connect and manage your payment gateways and other integrations</p>
+    <div className="mx-auto w-full max-w-4xl bg-white">
+      <header className="border-b border-gray-200 px-4 py-5 sm:px-6">
+        <div className="flex items-start gap-3">
+          <Link
+            href="/settings"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
+            aria-label="Back to settings"
+          >
+            <LuArrowLeft size={18} />
+          </Link>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold text-gray-900">Apps & Integrations</h1>
+            <p className="mt-1 text-sm text-gray-500">Connect your payment accounts and save the credentials used for checkout.</p>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()} className="flex items-center gap-1">
-            Add Integration
-          </Button>
-        </div>
-      </div>
+      </header>
 
-      <div className="grid gap-4">
-        {apps.map((app) => (
-          <Card key={app.id} className="border border-gray-200 hover:border-blue-300 transition-all duration-200 bg-white !rounded-lg   hover:shadow-md" bodyStyle={{ padding: "16px 20px" }}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-4 flex-grow">
-                <div className="flex-shrink-0 h-14 w-14 flex items-center justify-center bg-white rounded-lg border border-gray-100 overflow-hidden">
-                  <div className="h-full w-full flex items-center justify-center bg-gray-50">
-                    {app.logo ? (
-                      <Image
-                        src={app.logo}
-                        alt={`${app.name} logo`}
-                        preview={false}
-                        className="h-full w-full   object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = "none";
-                          const fallback = target.nextElementSibling as HTMLElement;
-                          if (fallback) {
-                            fallback.style.display = "flex";
-                          }
-                        }}
-                      />
-                    ) : null}
-                    <div className="hidden absolute items-center justify-center">
-                      <AppstoreOutlined className="text-gray-400 text-2xl" />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-grow">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h4 className="text-base font-medium">{app.name}</h4>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">{app.description}</p>
-                  <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-gray-500">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="text-gray-400">By</span>
-                      <span className="font-medium">{app.developer}</span>
-                    </span>
-                    <span>•</span>
-                    <span>{app.category}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 mt-2 sm:mt-0">
-                {app.status === "install" ? (
-                  <Button icon={<CheckCircleOutlined />} type="default" size="small" onClick={() => toggleAppStatus(app.id)} className="flex items-center gap-1 text-gray-700 border-gray-300">
-                    Uninstall
-                  </Button>
-                ) : (
-                  <Button type="primary" size="small" onClick={() => toggleAppStatus(app.id)} className="flex items-center gap-1" icon={app.status != "uninstall" ? <SettingOutlined /> : <PlusOutlined />}>
-                    {app.status != "uninstall" ? "Uninstall" : "Setup"}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <section className="px-4 py-4 sm:px-6">
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          {isLoading ? <div className="px-4 py-6 text-sm text-gray-500">Loading integrations…</div> : null}
+          {!isLoading ? ["paystack", "stripe"].map((key) => renderIntegrationRow(key as IntegrationKey)) : null}
+        </div>
+      </section>
     </div>
   );
 }

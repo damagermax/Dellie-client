@@ -1,6 +1,8 @@
+"use client";
+
 import Modal from "antd/es/modal/Modal";
 import { ReactNode } from "react";
-import { Spin } from "antd";
+import { Grid, Spin } from "antd";
 
 export type ModalProps = {
   open: boolean;
@@ -16,32 +18,63 @@ export type AppModalProps = {
   okText?: string;
   loading?: boolean;
   footer?: ReactNode | null;
+  overlayClassName?: string;
 } & ModalProps;
 
-export function AppModal({ open, title, footer, toggle, children, width = 900, height = "60vh", onOk, okText, loading = false }: AppModalProps) {
+export function AppModal({ open, title, footer, toggle, children, width = 900, height = "60vh", onOk, okText, loading = false, overlayClassName }: AppModalProps) {
+  const screens = Grid.useBreakpoint();
+  const fullScreen = !screens.lg;
+
   return (
     <Modal
-      width={width}
+      width={fullScreen ? "100vw" : width}
       title={
         <div>
-          <h3 className=" text-lg">{title}</h3>
-          <p className="  text-sm  text-gray-600 font-normal">{}</p>
+          <h3 className="text-lg">{title}</h3>
         </div>
       }
-      wrapClassName={"bg-black/60  backdrop-blur-xs "}
-      onClose={toggle}
-      styles={{ header: { background: "white" } }}
+      wrapClassName={overlayClassName || "bg-black/60 backdrop-blur-xs"}
+      styles={{
+        mask: { backdropFilter: "blur(8px)", background: "rgba(15, 23, 42, 0.55)" },
+        header: {
+          background: "white",
+          padding: fullScreen ? "20px 20px 0" : undefined,
+        },
+        body: {
+          padding: 0,
+          flex: 1,
+          minHeight: 0,
+          overflow: fullScreen ? "hidden" : "auto",
+        },
+        content: fullScreen
+          ? {
+              height: "100dvh",
+              maxHeight: "100dvh",
+              borderRadius: 0,
+              padding: 0,
+              display: "flex",
+              flexDirection: "column",
+            }
+          : {
+              overflow: "hidden",
+            },
+        footer: footer
+          ? {
+              marginTop: 0,
+              padding: 0,
+            }
+          : undefined,
+      }}
       onCancel={toggle}
-      className="  !rounded-4xl"
+      className={fullScreen ? "!m-0 !max-w-none !rounded-none" : "!rounded-[28px]"}
       open={open}
       footer={footer}
       okText={okText || "Save"}
       onOk={onOk}
-      destroyOnClose
       okButtonProps={{ className: "bg-indigo-600 hover:bg-indigo-700" }}
     >
-      <div className=" overflow-auto">
-        <div style={{ maxHeight: height }}>
+      <div className={fullScreen ? "h-full min-h-0 overflow-y-auto overscroll-contain" : "overflow-auto"}>
+        <div className={fullScreen ? "min-h-full" : undefined} style={{ maxHeight: fullScreen ? undefined : height }}>
           <Spin className=" z-50" spinning={loading}>
             {children}
           </Spin>

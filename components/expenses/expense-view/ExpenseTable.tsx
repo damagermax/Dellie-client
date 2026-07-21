@@ -2,20 +2,18 @@
 
 import AppTable from "@/components/ui/AppTable";
 import type { TableProps } from "antd/es/table";
-import { ActionDropdown, DropdownItemLabel } from "../../ui/ActionDropdown";
-import AppTag from "../../ui/AppTag";
 
-import { ExpenseViewItemAction } from "./ExpenseView";
 import { Expense } from "@/types/transaction";
 import { formatDate } from "@/lib/dateUtils";
 import Link from "next/link";
-import PreviewImage from "@/components/ui/PreviewImage";
+import { TransactionBalancePill } from "@/components/ui/TransactionBalancePill";
 
-interface ExpenseTableProps extends ExpenseViewItemAction {
+interface ExpenseTableProps {
   expenses: Expense[];
+  pagination?: TableProps<Expense>["pagination"];
 }
 
-export default function ExpenseTable({ expenses, onDelete, openEditModal }: ExpenseTableProps) {
+export default function ExpenseTable({ expenses, pagination }: ExpenseTableProps) {
   const columns: TableProps<Expense>["columns"] = [
     {
       title: "Description",
@@ -32,11 +30,17 @@ export default function ExpenseTable({ expenses, onDelete, openEditModal }: Expe
             <Link href={`expenses/${record.id}`} className="line-clamp-1 text-gray-600! hover:text-blue-500! text-ellipsis capitalize cursor-pointer">
               {record?.note}
             </Link>
-            <p className=" text-xs">{formatDate(record?.date)}</p>
           </div>
         </div>
       ),
       className: "!pl-8",
+    },
+    {
+      title: "Date",
+      dataIndex: "date",
+      key: "expenseDate",
+      width: 140,
+      render: (_, record) => formatDate(record?.date),
     },
 
     {
@@ -61,7 +65,6 @@ export default function ExpenseTable({ expenses, onDelete, openEditModal }: Expe
 
       render: (_, record) => {
         const paid = record.balance && record.balance >= 0;
-        const owing = record.balance && record.balance < 0;
         return (
           <p className={`line-clamp-1 text-ellipsis capitalize  font-semibold  w-fit px-2 py-0 rounded-xl  ${paid && "border border-amber-600 text-amber-600"}`}>
             {record.currency?.code} {record.amount?.toLocaleString()}
@@ -74,30 +77,13 @@ export default function ExpenseTable({ expenses, onDelete, openEditModal }: Expe
       dataIndex: "baseBalance",
       key: "baseBalance",
       width: 150,
-      render: (_, record) => {
-        const owing = record.balance && record.balance < 0;
-        return (
-          <div>
-            <p className={`line-clamp-1 text-ellipsis capitalize w-fit px-2 font-semibold ${owing && "border   rounded-xl border-red-500 text-red-500"} `}>
-              {record.currency?.code} {record.balance?.toLocaleString()}
-            </p>
-          </div>
-        );
-      },
-    },
-    {
-      key: "id",
-      align: "right",
-      dataIndex: "id",
-      className: "!pr-8",
-      width: 120,
-      render: (id, expense) => <ActionDropdown openEditModal={() => openEditModal(expense)} onDelete={() => onDelete(id)} />,
+      render: (_, record) => <TransactionBalancePill balance={Number(record.balance || 0)} currencyCode={record.currency?.code || ""} />,
     },
   ];
 
   return (
     <>
-      <AppTable columns={columns} dataSource={expenses ? expenses : []} className="custom-table" rowClassName="hover:bg-gray-50" />
+      <AppTable columns={columns} dataSource={expenses ? expenses : []} className="custom-table" rowClassName="hover:bg-gray-50" pagination={pagination} rowKey="id" />
     </>
   );
 }

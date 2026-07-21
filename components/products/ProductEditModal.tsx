@@ -3,8 +3,8 @@
 import { AppModal, ModalProps } from "@/components/ui/AppModal";
 import { SearchableCategorySelect } from "@/components/categories/SearchableCategorySelect";
 import { useUpdateProductMutation, useGetProductsQuery } from "@/lib/redux/services";
-import { ProductListItem } from "@/types";
-import { Checkbox, Form, Input, InputNumber, Radio, message } from "antd";
+import { ProductListItem } from "@/types/index";
+import { Checkbox, Divider, Form, Input, InputNumber, message } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import AppTable from "@/components/ui/AppTable";
@@ -12,14 +12,33 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import { RiSearchLine } from "react-icons/ri";
 import { Trash2 } from "lucide-react";
 import { ITEM_TYPE } from "./ProductFormModal";
+import { CategoryType } from "@/types/category";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
+import {
+  NORMAL_PRICE_TIER_NAME,
+  ProductPriceTier,
+  TRADE_PRICE_TIER_NAME,
+  getDefaultEditablePriceTiers,
+  getEditablePriceTiers,
+  getNormalPrice,
+  normalizePriceTierValues,
+} from "@/lib/products/pricing";
+import { getProductTypeLabel } from "@/lib/products/type-label";
+import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 
 type BundleItemInput = {
   productId: string;
   name: string;
   sku?: string;
   imageUrl?: string;
-  sellingPrice: number;
+  normalPrice: number;
   quantity: number;
+};
+
+const getProductListItemId = (product: Partial<ProductListItem> & { _id?: string }) => {
+  const rawId = product.id || product.productId || product._id;
+  return typeof rawId === "string" ? rawId : "";
 };
 
 type ProductEditModalProduct = {
@@ -32,6 +51,7 @@ type ProductEditModalProduct = {
   barcode?: string;
   costPrice?: number;
   sellingPrice?: number;
+  priceTiers?: ProductPriceTier[];
   weight?: number;
   showInStorefront?: boolean;
   showInPOS?: boolean;
@@ -45,7 +65,7 @@ type ProductEditModalProduct = {
   conversionQuantity?: number;
   repackUnitName?: string;
   bundleItems?: Array<{
-    productId?: { id?: string; name?: string; sku?: string; media?: { url?: string }[]; sellingPrice?: number } | string;
+    productId?: { id?: string; name?: string; sku?: string; media?: { url?: string }[]; priceTiers?: ProductPriceTier[]; normalPrice?: number } | string;
     quantity?: number;
   }>;
   hasVariants?: boolean;
@@ -56,10 +76,7 @@ interface ProductEditModalProps extends ModalProps {
   onSaved?: () => void;
 }
 
-const REPACK_CONVERSION_TYPE = {
-  SOURCE_TO_REPACK: "source_to_repack",
-  REPACK_TO_SOURCE: "repack_to_source",
-} as const;
+const NUMBER_INPUT_CLASS = "!w-full";
 
 export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps }: ProductEditModalProps) {
   const [form] = Form.useForm();
@@ -68,19 +85,19 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
   const [bundleItemsError, setBundleItemsError] = useState("");
   const [bundleSellingPriceEdited, setBundleSellingPriceEdited] = useState(false);
   const [productSearch, setProductSearch] = useState("");
-  const [repackSourceSearch, setRepackSourceSearch] = useState("");
-  const [selectedRepackSourceProduct, setSelectedRepackSourceProduct] = useState<ProductListItem | null>(null);
-
   const debouncedProductSearch = useDebouncedValue(productSearch);
-  const debouncedRepackSourceSearch = useDebouncedValue(repackSourceSearch);
 
   const { data: products } = useGetProductsQuery({ search: debouncedProductSearch, limit: 20, purchasable: true });
-  const { data: sourceProducts } = useGetProductsQuery({ search: debouncedRepackSourceSearch, type: "STOCK", limit: 20 });
 
-  const conversionType = Form.useWatch("conversionType", form) || REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK;
-  const conversionQuantity = Number(Form.useWatch("conversionQuantity", form) || 0);
-  const productName = Form.useWatch("name", form) || product.name;
+  const containsOtherProducts = Boolean(Form.useWatch("containsOtherProducts", form));
   const itemType = product.type;
+  const isVariantParent = Boolean(product.hasVariants);
+  const storeSettings = useSelector((state: RootState) => state.currentUser.storeSettings);
+  const enabledModules = storeSettings.enabledModules;
+  const enableTradePrice = Boolean(storeSettings.pricing?.enableTradePrice);
+  const featureSettings = storeSettings.features;
+  const currencyCode = useStoreCurrencyCode();
+  const bundleFeatureEnabled = itemType === ITEM_TYPE.STOCK ? featureSettings?.stockBundleEnabled !== false : itemType === ITEM_TYPE.NON_STOCK ? featureSettings?.nonStockBundleEnabled !== false : false;
 
   useEffect(() => {
     if (!open) return;
@@ -93,17 +110,14 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
       sku: product.sku,
       barcode: product.barcode,
       costPrice: product.costPrice,
-      sellingPrice: product.sellingPrice,
+      priceTiers: getEditablePriceTiers(product, enableTradePrice),
       weight: product.weight,
+      containsOtherProducts: [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(product.type) && Boolean(product.bundleItems?.length),
       showInStorefront: product.showInStorefront ?? true,
       showInPOS: product.showInPOS ?? true,
       lowStockThreshold: product.lowStockThreshold,
       minOrderLevel: product.minOrderLevel,
       allowOversell: product.allowOversell ?? false,
-      sourceProductId: product.sourceProductId,
-      conversionType: product.conversionType || REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK,
-      conversionQuantity: product.conversionQuantity || product.sourceQuantity,
-      repackUnitName: product.repackUnitName,
     });
 
     setBundleItems(
@@ -116,63 +130,62 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
           name: component?.name || productId,
           sku: component?.sku,
           imageUrl: component?.media?.[0]?.url,
-          sellingPrice: Number(component?.sellingPrice || 0),
+          normalPrice: getNormalPrice(component),
           quantity: Number(item.quantity || 1),
         };
       }),
     );
-
-    const sourceName = product.sourceProductName;
-    setSelectedRepackSourceProduct(
-      product.sourceProductId && sourceName
-        ? {
-            id: product.sourceProductId,
-            name: sourceName,
-            sku: "",
-            imageUrl: "",
-            sellingPrice: 0,
-            channels: 0,
-          }
-        : null,
-    );
     setBundleItemsError("");
-    setBundleSellingPriceEdited(Boolean(product.type === ITEM_TYPE.BUNDLE && product.sellingPrice));
+    setBundleSellingPriceEdited(Boolean(product.priceTiers?.length));
     setProductSearch("");
-    setRepackSourceSearch("");
-  }, [form, open, product]);
+  }, [enableTradePrice, form, open, product]);
 
-  const bundleItemsTotal = useMemo(() => bundleItems.reduce((total, item) => total + item.sellingPrice * item.quantity, 0), [bundleItems]);
-
-  useEffect(() => {
-    if (itemType === ITEM_TYPE.BUNDLE && !bundleSellingPriceEdited) {
-      form.setFieldValue("sellingPrice", bundleItemsTotal);
-    }
-  }, [bundleItemsTotal, bundleSellingPriceEdited, form, itemType]);
+  const bundleItemsTotal = useMemo(() => bundleItems.reduce((total, item) => total + item.normalPrice * item.quantity, 0), [bundleItems]);
 
   useEffect(() => {
-    if (itemType !== ITEM_TYPE.PACKAGING) {
-      setSelectedRepackSourceProduct(null);
-      setRepackSourceSearch("");
+    if ([ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts && !bundleSellingPriceEdited) {
+      form.setFieldValue("priceTiers", getDefaultEditablePriceTiers(bundleItemsTotal, enableTradePrice));
     }
-  }, [itemType]);
+  }, [bundleItemsTotal, bundleSellingPriceEdited, containsOtherProducts, enableTradePrice, form, itemType]);
+
+  useEffect(() => {
+    if (!containsOtherProducts) {
+      setBundleItemsError("");
+      setProductSearch("");
+    }
+  }, [containsOtherProducts]);
+
+  useEffect(() => {
+    if (bundleFeatureEnabled) return;
+    form.setFieldValue("containsOtherProducts", false);
+    setBundleItems([]);
+    setBundleItemsError("");
+    setProductSearch("");
+  }, [bundleFeatureEnabled, form]);
 
   const addBundleItem = useCallback((selected: ProductListItem) => {
+    const productId = getProductListItemId(selected);
+    if (!productId) {
+      message.error("The selected bundle item is missing a product ID.");
+      return;
+    }
+
     setBundleItemsError("");
     setBundleItems((prev) => {
-      const existing = prev.find((item) => item.productId === selected.id);
+      const existing = prev.find((item) => item.productId === productId);
 
       if (existing) {
-        return prev.map((item) => (item.productId === selected.id ? { ...item, quantity: item.quantity + 1 } : item));
+        return prev.map((item) => (item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item));
       }
 
       return [
         ...prev,
         {
-          productId: selected.id,
+          productId,
           name: selected.name,
           sku: selected.sku,
           imageUrl: selected.imageUrl,
-          sellingPrice: Number(selected.sellingPrice || 0),
+          normalPrice: getNormalPrice(selected),
           quantity: 1,
         },
       ];
@@ -197,21 +210,6 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
     setBundleItems((prev) => prev.filter((item) => item.productId !== productId));
   }, []);
 
-  const addRepackSourceProduct = useCallback(
-    (selected: ProductListItem) => {
-      setSelectedRepackSourceProduct(selected);
-      setRepackSourceSearch("");
-      form.setFieldValue("sourceProductId", selected.id);
-    },
-    [form],
-  );
-
-  const removeRepackSourceProduct = useCallback(() => {
-    setSelectedRepackSourceProduct(null);
-    setRepackSourceSearch("");
-    form.setFieldValue("sourceProductId", undefined);
-  }, [form]);
-
   const bundleColumns = useMemo(
     () => [
       {
@@ -234,15 +232,13 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
         title: "Qty",
         dataIndex: "quantity",
         key: "quantity",
-        render: (_: unknown, record: BundleItemInput) => (
-          <InputNumber variant="underlined" controls={false} min={1} value={record.quantity} onChange={(value) => updateBundleItemQuantity(record.productId, value)} suffix="units" />
-        ),
+        render: (_: unknown, record: BundleItemInput) => <InputNumber variant="underlined" controls={false} min={1} value={record.quantity} onChange={(value) => updateBundleItemQuantity(record.productId, value)} suffix="units" />,
       },
       {
         title: "",
         dataIndex: "productId",
         key: "productId",
-        align: "end",
+        align: "end" as const,
         render: (productId: string) => (
           <div className="pl-5 text-gray-500 cursor-pointer hover:text-red-400" onClick={() => removeBundleItem(productId)}>
             <Trash2 size={15} className="cursor-pointer" />
@@ -253,78 +249,47 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
     [removeBundleItem, updateBundleItemQuantity],
   );
 
-  const repackSourceColumns = useMemo(
-    () => [
-      {
-        title: "Source Product",
-        dataIndex: "name",
-        key: "name",
-        className: "!pl-5",
-        render: (_: unknown, record: ProductListItem) => (
-          <div className="flex items-center gap-x-2">
-            <PreviewImage width={28} height={28} src={record.imageUrl} />
-            <div>
-              <p>{record.name}</p>
-              {record.sku && record.sku !== "undefined" && <p className="text-xs text-gray-500">{record.sku}</p>}
-            </div>
-          </div>
-        ),
-      },
-      {
-        title: "",
-        dataIndex: "id",
-        key: "id",
-        align: "end",
-        render: () => (
-          <div className="pl-5 text-gray-500 cursor-pointer hover:text-red-400" onClick={removeRepackSourceProduct}>
-            <Trash2 size={15} className="cursor-pointer" />
-          </div>
-        ),
-      },
-    ],
-    [removeRepackSourceProduct],
-  );
-
   const handleSubmit = async () => {
     const values = await form.validateFields().catch(() => null);
     if (!values) return;
 
-    if (itemType === ITEM_TYPE.BUNDLE && !bundleItems.length) {
+    if (!isVariantParent && [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts && !bundleItems.length) {
       setBundleItemsError("Add at least one item to this bundle");
       return;
     }
 
-    const payload: Record<string, unknown> = {
+    const sharedPayload: Record<string, unknown> = {
       name: values.name,
       description: values.description || "",
       categoryId: values.categoryId,
-      sku: values.sku,
-      barcode: values.barcode,
-      costPrice: values.costPrice,
-      sellingPrice: values.sellingPrice,
-      weight: values.weight,
-      showInStorefront: Boolean(values.showInStorefront),
-      showInPOS: Boolean(values.showInPOS),
-      lowStockThreshold: values.lowStockThreshold,
-      allowOversell: Boolean(values.allowOversell),
     };
 
-    if (itemType === ITEM_TYPE.BUNDLE) {
-      payload.sellingPrice = values.sellingPrice ?? bundleItemsTotal;
+    if (enabledModules.storefront && typeof values.showInStorefront !== "undefined") {
+      sharedPayload.showInStorefront = Boolean(values.showInStorefront);
+    }
+
+    if (enabledModules.pos && typeof values.showInPOS !== "undefined") {
+      sharedPayload.showInPOS = Boolean(values.showInPOS);
+    }
+
+    const payload: Record<string, unknown> = isVariantParent
+      ? sharedPayload
+      : {
+          ...sharedPayload,
+          sku: values.sku,
+          barcode: values.barcode,
+          costPrice: values.costPrice,
+          priceTiers: normalizePriceTierValues(values.priceTiers, 0, enableTradePrice),
+          weight: values.weight,
+          lowStockThreshold: values.lowStockThreshold,
+          allowOversell: Boolean(values.allowOversell),
+        };
+
+    if (!isVariantParent && [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts) {
+      payload.priceTiers = normalizePriceTierValues(values.priceTiers, bundleItemsTotal, enableTradePrice);
       payload.bundleItems = bundleItems.map(({ productId, quantity }) => ({ productId, quantity }));
-    }
-
-    if (itemType === ITEM_TYPE.PACKAGING) {
-      payload.sourceProductId = values.sourceProductId;
-      payload.conversionType = values.conversionType || REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK;
-      payload.conversionQuantity = values.conversionQuantity;
-      payload.repackUnitName = values.repackUnitName || values.name;
-    }
-
-    if (itemType === ITEM_TYPE.SERVICE) {
-      delete payload.weight;
-      delete payload.lowStockThreshold;
-      delete payload.allowOversell;
+    } else if (!isVariantParent && [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType)) {
+      payload.bundleItems = [];
     }
 
     try {
@@ -344,39 +309,20 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
       </div>
       <div className="shadow-xl bg-white">
         {productSearch &&
-          products?.data?.map((item: ProductListItem) => (
-            <div key={item.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addBundleItem(item)}>
-              <div className="flex gap-x-2 items-center">
-                <PreviewImage width={28} height={28} src={item.imageUrl} />
-                <div>
-                  <p>{item.name}</p>
-                  {item.sku && item.sku !== "undefined" && <p className="text-gray-500">{item.sku}</p>}
+          products?.data?.map((item: ProductListItem) => {
+            const productId = getProductListItemId(item);
+            return (
+              <div key={productId || item.name} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addBundleItem(item)}>
+                <div className="flex gap-x-2 items-center">
+                  <PreviewImage width={28} height={28} src={item.imageUrl} />
+                  <div>
+                    <p>{item.name}</p>
+                    {item.sku && item.sku !== "undefined" && <p className="text-gray-500">{item.sku}</p>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-      </div>
-    </div>
-  );
-
-  const searchRepackSourceProduct = (
-    <div className="px-5 bg-gray-100">
-      <div className="sticky inset-0 z-50 py-4">
-        <Input prefix={<RiSearchLine />} placeholder="Search stock product" className="rounded-full!" value={repackSourceSearch} onChange={({ target: { value } }) => setRepackSourceSearch(value)} />
-      </div>
-      <div className="shadow-xl bg-white">
-        {repackSourceSearch &&
-          sourceProducts?.data?.map((item: ProductListItem) => (
-            <div key={item.id} className="cursor-pointer flex items-center justify-between border-t border-gray-200 px-5 py-2" onClick={() => addRepackSourceProduct(item)}>
-              <div className="flex gap-x-2">
-                <PreviewImage width={28} height={28} src={item.imageUrl} />
-                <div>
-                  <p className="line-clamp-1">{item.name}</p>
-                  {item.sku && item.sku !== "undefined" && <p className="text-gray-700 text-[0.7rem]">{item.sku}</p>}
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
       </div>
     </div>
   );
@@ -386,200 +332,129 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
       open={open}
       toggle={toggle}
       loading={isLoading}
-      width={1080}
-      height="75vh"
-      title={
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-lg font-semibold text-gray-900">Edit {product.name}</p>
-            <p className="mt-1 text-sm text-gray-500">Update the core product details, pricing, visibility, and type-specific settings.</p>
-          </div>
-        </div>
-      }
+      width={650}
+      height="70vh"
+      title={<p className="capitalize">{isVariantParent ? "Edit variant product" : `Edit ${getProductTypeLabel(product)} item`}</p>}
       onOk={handleSubmit}
-      okText="Save changes"
+      okText={isLoading ? "Saving.." : "Save"}
       {...modalProps}
     >
       <div>
-        <Form disabled={isLoading} className="pb-2" size="small" form={form} layout="vertical">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-6">
-              <SectionCard
-                title="Basic details"
-                description="Identity and naming fields that show up everywhere."
-              >
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Form.Item label="Name" name="name" rules={[{ required: true, message: "Product name is required." }]}>
-                    <Input placeholder="Enter product name" />
-                  </Form.Item>
+        <Form disabled={isLoading} className=" " form={form} layout="vertical">
+          <div className="gap-x-12">
+            <div className="px-5">
+              <Form.Item label="Name" name="name" rules={[{ required: true, message: "Product name is required." }]}>
+                <Input placeholder="Enter product name. Eg. Red T-Shirt" />
+              </Form.Item>
+            </div>
+
+            <div className="">
+              {isVariantParent && (
+                <div className="px-5">
                   <Form.Item label="Category" name="categoryId">
-                    <SearchableCategorySelect />
+                    <SearchableCategorySelect type={CategoryType.PRODUCT} />
                   </Form.Item>
-                  <Form.Item label="SKU" name="sku">
-                    <Input placeholder="Enter SKU" />
-                  </Form.Item>
-                  <Form.Item label="Barcode" name="barcode">
-                    <Input placeholder="Enter barcode" />
-                  </Form.Item>
-                  {itemType === ITEM_TYPE.STOCK && (
-                    <Form.Item label="Weight (Optional)" name="weight">
-                      <InputNumber className="w-full" min={0} controls={false} placeholder="0.0" />
-                    </Form.Item>
-                  )}
-                </div>
-                <Form.Item label="Description (Optional)" name="description" className="mb-0">
-                  <Input.TextArea rows={5} placeholder="Enter product description" />
-                </Form.Item>
-              </SectionCard>
 
-              {itemType !== ITEM_TYPE.BUNDLE && itemType !== ITEM_TYPE.PACKAGING && (
-                <SectionCard title="Pricing" description="Set costs and selling price in one place.">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Form.Item label="Cost Price" name="costPrice" className="mb-0">
-                      <InputNumber className="w-full" min={0} controls={false} placeholder="0.0" />
-                    </Form.Item>
-                    <Form.Item label="Selling Price" name="sellingPrice" className="mb-0">
-                      <InputNumber className="w-full" min={0} controls={false} placeholder="0.0" />
-                    </Form.Item>
+                  <Form.Item label="Description" name="description">
+                    <Input.TextArea rows={4} placeholder="Enter product description" />
+                  </Form.Item>
+
+                  <div className="rounded-md border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    <p className="font-medium">Shared product details</p>
+                    <p className="mt-1 text-xs">Cost, selling prices, weight, and inventory are managed on each variant.</p>
                   </div>
-                </SectionCard>
+                </div>
               )}
 
-              {itemType === ITEM_TYPE.PACKAGING && (
-                <SectionCard title="Packaging setup" description="Define the source product and conversion rule.">
-                  <Form.Item name="sourceProductId" rules={[{ required: true, message: "Select source product" }]} className="!mb-0">
-                    <Input type="hidden" />
+              {!isVariantParent && [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && (
+                <>
+                  <div className="grid grid-cols-2 px-5 gap-x-5 md:grid-cols-4">
+                    <div className="col-span-2">
+                      <Form.Item label="Category" name="categoryId">
+                        <SearchableCategorySelect type={CategoryType.PRODUCT} />
+                      </Form.Item>
+                    </div>
+
+                    <Form.Item label="Cost Price" name="costPrice" className="col-span-1">
+                      <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} prefix={currencyCode || undefined} placeholder="0.0" />
+                    </Form.Item>
+
+                    <Form.Item label="Weight (Optional)" name="weight" className="col-span-1">
+                      <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} suffix="kg" placeholder="0.0" />
+                    </Form.Item>
+                  </div>
+
+                  <Form.Item label="Description (Optional)" className="px-5!" name="description">
+                    <Input.TextArea rows={4} placeholder="Enter product description" />
                   </Form.Item>
 
-                  <Form.Item
-                    label="Conversion type"
-                    name="conversionType"
-                    initialValue={REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK}
-                    className="!mb-0"
-                    rules={[{ required: true, message: "Select conversion type" }]}
-                  >
-                    <Radio.Group className="w-full">
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <Radio.Button className="!h-auto !p-4 !text-left" value={REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK}>
-                          <p className="font-medium">Smaller unit from a larger product</p>
-                          <p className="mt-1 text-xs text-gray-500">Example: Carton to Bottle</p>
-                        </Radio.Button>
-                        <Radio.Button className="!h-auto !p-4 !text-left" value={REPACK_CONVERSION_TYPE.REPACK_TO_SOURCE}>
-                          <p className="font-medium">Larger unit from smaller products</p>
-                          <p className="mt-1 text-xs text-gray-500">Example: Bottle to Carton</p>
-                        </Radio.Button>
+                  {[ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && bundleFeatureEnabled && (
+                    <div className=" flex items-center bg-gray-100 md:bg-transparent justify-between border-t border-gray-200  px-4 py-3">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-800">Contains Other Products?</h3>
+                        <p className="mt-1 text-xs text-gray-500">Turn this on when the product is sold as a composite of other products.</p>
                       </div>
-                    </Radio.Group>
-                  </Form.Item>
-
-                  <div className="mt-5">
-                    <div className="mb-3 flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-gray-800">Source product</h3>
-                      {selectedRepackSourceProduct && (
-                        <button type="button" className="text-xs font-medium text-slate-500 hover:text-slate-800" onClick={removeRepackSourceProduct}>
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    {selectedRepackSourceProduct ? <AppTable columns={repackSourceColumns} dataSource={[selectedRepackSourceProduct]} rowKey={(record: ProductListItem) => record.id} pagination={false} /> : searchRepackSourceProduct}
-                  </div>
-
-                  <div className="mt-5 grid gap-4 md:grid-cols-2">
-                    <Form.Item
-                      label={conversionType === REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK ? "1 source unit makes how many units?" : "How many source units make 1 unit?"}
-                      name="conversionQuantity"
-                      rules={[{ required: true, message: "Enter conversion quantity" }]}
-                    >
-                      <InputNumber className="w-full" min={0} controls={false} placeholder="24" />
-                    </Form.Item>
-
-                    <Form.Item label="Selling Price" name="sellingPrice" className="mb-0">
-                      <InputNumber className="w-full" min={0} controls={false} placeholder="0.0" />
-                    </Form.Item>
-                  </div>
-
-                  {selectedRepackSourceProduct && conversionQuantity > 0 && (
-                    <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                      {conversionType === REPACK_CONVERSION_TYPE.SOURCE_TO_REPACK ? (
-                        <>
-                          <p>
-                            1 {selectedRepackSourceProduct.name} = {conversionQuantity} {productName}
-                          </p>
-                          <p className="mt-1">
-                            Selling 1 {productName} deducts 1/{conversionQuantity} {selectedRepackSourceProduct.name}.
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p>
-                            {conversionQuantity} {selectedRepackSourceProduct.name} = 1 {productName}
-                          </p>
-                          <p className="mt-1">
-                            Selling 1 {productName} deducts {conversionQuantity} {selectedRepackSourceProduct.name}.
-                          </p>
-                        </>
-                      )}
+                      <Form.Item name="containsOtherProducts" valuePropName="checked" className="!mb-0">
+                        <Checkbox />
+                      </Form.Item>
                     </div>
                   )}
-                </SectionCard>
-              )}
 
-              {itemType === ITEM_TYPE.BUNDLE && (
-                <SectionCard title="Bundle items" description="Add the products that make up this bundle.">
-                  {bundleItemsError && <p className="mb-3 text-sm font-medium text-red-500">{bundleItemsError}</p>}
-                  <AppTable columns={bundleColumns} dataSource={bundleItems || []} rowKey={(record: BundleItemInput) => record.productId} pagination={false} />
-                  {searchBundleProduct}
-                  <div className="mt-5 grid gap-4 md:grid-cols-2">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">Items total</p>
-                      <p className="mt-2 text-xl font-semibold text-slate-900">GHS {bundleItemsTotal.toFixed(2)}</p>
+                  {[ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts && (
+                    <div className="mb-4">
+                      <div className="px-5">{bundleItemsError && <p className="mt-1 text-xs text-red-500">{bundleItemsError}</p>}</div>
+                      <AppTable columns={bundleColumns} dataSource={bundleItems || []} rowKey={(record: BundleItemInput) => record.productId} pagination={false} />
+                      {searchBundleProduct}
                     </div>
-                    <Form.Item label="Bundle selling price" name="sellingPrice" className="mb-0">
-                      <InputNumber className="w-full" min={0} prefix="GHS" controls={false} placeholder="0.00" onChange={() => setBundleSellingPriceEdited(true)} />
-                    </Form.Item>
-                  </div>
-                </SectionCard>
+                  )}
+
+                  <PriceTiersEditor enableTradePrice={enableTradePrice} currencyCode={currencyCode} />
+                </>
               )}
             </div>
 
-            <div className="space-y-6">
-              <SectionCard title="Visibility" description="Where this product should appear.">
-                <div className="space-y-3">
-                  <Form.Item name="showInStorefront" className="!mb-0" valuePropName="checked">
-                    <Checkbox>Show in storefront</Checkbox>
-                  </Form.Item>
-                  <Form.Item name="showInPOS" className="!mb-0" valuePropName="checked">
-                    <Checkbox>Show in POS</Checkbox>
-                  </Form.Item>
+            {!isVariantParent && [ITEM_TYPE.STOCK].includes(itemType) && !containsOtherProducts && (
+              <>
+                {/* <Divider /> */}
+                <div className="px-5  mt-3 flex items-center justify-between">
+                  <h3 className="text-base font-medium text-gray-700">Inventory</h3>
                 </div>
-              </SectionCard>
-
-              {(itemType === ITEM_TYPE.STOCK || itemType === ITEM_TYPE.NON_STOCK) && (
-                <SectionCard title="Inventory controls" description="Use these fields to manage stock behavior.">
-                  <div className="space-y-4">
-                    <Form.Item label="Low Stock Alert" name="lowStockThreshold" className="mb-0">
-                      <InputNumber className="w-full" min={0} controls={false} placeholder="0" />
+                <div className="px-5 mt-4 grid gap-y-3">
+                  <div className="grid grid-cols-2 gap-x-5 ">
+                    <Form.Item label="Low Stock Alert" name="lowStockThreshold">
+                      <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} placeholder="0" />
                     </Form.Item>
-                    <Form.Item name="allowOversell" valuePropName="checked" className="!mb-0">
-                      <Checkbox>Continue selling when out of stock</Checkbox>
+
+                    <Form.Item label="Barcode" name="barcode">
+                      <Input className="!mb-0" placeholder="Enter barcode" />
                     </Form.Item>
                   </div>
-                </SectionCard>
-              )}
 
-              {itemType === ITEM_TYPE.SERVICE && (
-                <SectionCard title="Service note" description="Services do not use inventory tracking.">
-                  <p className="text-sm leading-6 text-slate-600">Update description, pricing, and visibility. No stock controls are applied to service products.</p>
-                </SectionCard>
-              )}
-
-              {product.hasVariants && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  <p className="font-medium">Variant product</p>
-                  <p className="mt-1 leading-6">Variant structure is preserved here. If you need to change variant-specific data, use the product management flow for variants.</p>
+                  <Form.Item name="allowOversell" valuePropName="checked">
+                    <Checkbox>Continue selling when out of stock</Checkbox>
+                  </Form.Item>
                 </div>
-              )}
-            </div>
+              </>
+            )}
+
+            {(enabledModules.storefront || enabledModules.pos) && (
+              <>
+                <Divider />
+                <div className="grid px-5  gap-y-2 items-center">
+                  {enabledModules.storefront && (
+                    <Form.Item name="showInStorefront" className="!mb-0" valuePropName="checked">
+                      <Checkbox>Show in Storefront</Checkbox>
+                    </Form.Item>
+                  )}
+
+                  {enabledModules.pos && (
+                    <Form.Item name="showInPOS" className="!mb-0" valuePropName="checked">
+                      <Checkbox>Show in POS</Checkbox>
+                    </Form.Item>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </Form>
       </div>
@@ -587,18 +462,61 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
   );
 }
 
-function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function cleanPayload(values: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined && value !== null));
+}
+
+function PriceTiersEditor({ enableTradePrice, currencyCode }: { enableTradePrice: boolean; currencyCode: string }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_0_rgba(15,23,42,0.02)]">
-      <div className="mb-5">
-        <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-        {description && <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>}
-      </div>
-      {children}
-    </section>
+    <div className=" -border -border-gray-200  ">
+      {/* <div className="mb-3">
+        <p className="text-sm font-medium text-gray-800">Price Tiers</p>
+        <p className="text-xs text-gray-500">{enableTradePrice ? "Normal and trade prices are required for every product." : "Normal selling price is active for this store."}</p>
+      </div> */}
+      <Form.List name="priceTiers">
+        {(fields) => (
+          <div className="space-y-3">
+            {fields.slice(0, enableTradePrice ? 2 : 1).map((field, index) => (
+              <article key={field.key} className=" border border-gray-200 bg-white p-3">
+                <Form.Item {...field} name={[field.name, "name"]} hidden>
+                  <Input />
+                </Form.Item>
+
+                <div className="mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900">{index === 0 ? NORMAL_PRICE_TIER_NAME : TRADE_PRICE_TIER_NAME}</h3>
+                  <p className="mt-0.5 text-xs text-gray-500">{tierDescription(index === 0 ? NORMAL_PRICE_TIER_NAME : TRADE_PRICE_TIER_NAME, index === 0)}</p>
+                </div>
+
+                <div className="grid gap-3 grid-cols-4 md:grid-cols-3">
+                  <Form.Item {...field} label="Price" name={[field.name, "price"]} className="!mb-0  col-span-2 md:col-span-1" rules={[{ required: true, message: "Enter price" }]}>
+                    <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} prefix={currencyCode || undefined} placeholder="0.00" />
+                  </Form.Item>
+                  <Form.Item {...field} label="MOQ" name={[field.name, "moq"]} className="!mb-0" rules={[{ required: true, message: "Enter MOQ" }]}>
+                    <InputNumber className={NUMBER_INPUT_CLASS} min={1} controls={false} placeholder="1" />
+                  </Form.Item>
+                  <Form.Item {...field} label="Discount" name={[field.name, "discountPercent"]} className="!mb-0" rules={[{ required: true, message: "Enter discount" }]}>
+                    <InputNumber className={NUMBER_INPUT_CLASS} min={0} suffix="%" controls={false} placeholder="0" />
+                  </Form.Item>
+                </div>
+
+                {/* <Form.Item noStyle shouldUpdate>
+                  {({ getFieldValue }) => (
+                    <div className="mt-2.5 text-xs text-gray-500">
+                      Margin: <span className="font-medium text-gray-700">{formatEditMargin(getFieldValue(["priceTiers", field.name, "price"]), getFieldValue("costPrice"))}</span>
+                    </div>
+                  )}
+                </Form.Item> */}
+              </article>
+            ))}
+          </div>
+        )}
+      </Form.List>
+    </div>
   );
 }
 
-function cleanPayload(values: Record<string, unknown>) {
-  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined && value !== null));
+function tierDescription(name?: string, isNormal?: boolean) {
+  if (isNormal) return "Default customer-facing price";
+  if (name === TRADE_PRICE_TIER_NAME) return "Trade and bulk customer price";
+  return "Custom product price";
 }

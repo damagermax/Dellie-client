@@ -1,8 +1,7 @@
 "use client";
 
-import { AddButton } from "@/components/ui/AppButtons";
+import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
 import LocationsFormModal from "@/components/settings/locations/LocationsFormModal";
-import LocationList from "@/components/settings/locations/LocationList";
 import useToggle from "@/hooks/UseToggle";
 import LocationView from "@/components/location/LocationView";
 
@@ -17,12 +16,15 @@ export default function LocationsPage() {
           <p className="text-gray-500">Manage your store locations and inventory</p>
         </div>
 
-        <AddButton onClick={toggleCreateModal} label="Add Location" />
+        <div className="hidden md:block">
+          <AddButton onClick={toggleCreateModal} label="Add Location" />
+        </div>
       </div>
 
       <LocationView />
 
       <LocationsFormModal open={openCreateModal} toggle={toggleCreateModal} />
+      <FloatingAddButton onClick={toggleCreateModal} label="Add Location" />
     </div>
   );
 }

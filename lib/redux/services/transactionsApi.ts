@@ -22,6 +22,24 @@ export const transactionsApi = baseApi.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.TRANSACTION, id }, TAG_TYPES.TRANSACTIONS],
     }),
 
+    addExpenseAttachments: builder.mutation<Transaction, { id: string; data: FormData }>({
+      query: ({ id, data }) => ({
+        url: `transactions/${id}/attachments`,
+        method: "POST",
+        formData: true,
+        body: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.TRANSACTION, id }, TAG_TYPES.TRANSACTIONS],
+    }),
+
+    deleteExpenseAttachment: builder.mutation<Transaction, { id: string; key: string }>({
+      query: ({ id, key }) => ({
+        url: `transactions/${id}/attachments/${encodeURIComponent(key)}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: TAG_TYPES.TRANSACTION, id }, TAG_TYPES.TRANSACTIONS],
+    }),
+
     createTransactionAction: builder.mutation<void, ApplyPaymentInput>({
       query: ({ linkTransactionId, ...data }) => ({
         url: `transactions/${linkTransactionId}/payments`,
@@ -43,7 +61,7 @@ export const transactionsApi = baseApi.injectEndpoints({
     deleteTransactionAction: builder.mutation<any, string>({
       query: (id) => ({
         url: `transactions/payments/${id}`,
-        method: "Delete",
+        method: "DELETE",
       }),
       invalidatesTags: ({ linkTransactionId }, error) => [TAG_TYPES.TRANSACTIONS, { type: TAG_TYPES.TRANSACTION, id: linkTransactionId }],
     }),
@@ -68,5 +86,15 @@ export const transactionsApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useCreateExpenseMutation, useUpdateExpenseMutation, useDeleteExpenseMutation, useGetExpensesQuery, useGetTransactionQuery, useCreateTransactionActionMutation, useDeleteTransactionActionMutation, useUpdateTransactionActionMutation } =
-  transactionsApi;
+export const {
+  useCreateExpenseMutation,
+  useUpdateExpenseMutation,
+  useDeleteExpenseMutation,
+  useGetExpensesQuery,
+  useGetTransactionQuery,
+  useCreateTransactionActionMutation,
+  useDeleteTransactionActionMutation,
+  useUpdateTransactionActionMutation,
+  useAddExpenseAttachmentsMutation,
+  useDeleteExpenseAttachmentMutation,
+} = transactionsApi;

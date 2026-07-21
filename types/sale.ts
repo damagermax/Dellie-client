@@ -1,5 +1,7 @@
 import { PaginatedResponse } from "./shared";
 import { PurchaseDiscountType, PurchaseLineItem, PurchaseReceiptStatus, PurchaseReturnEvent, PurchaseStockEvent } from "./purchase";
+import type { Address } from "./contact";
+import type { Payment } from "./transaction";
 
 export interface SaleLineItemInput {
   productId: string;
@@ -11,29 +13,37 @@ export interface SaleLineItemInput {
 }
 
 export interface CreateSaleInput {
-  contactId: string;
+  contactId?: string;
   date: string;
+  fulfillmentMethod?: "delivery" | "pickup";
   deliveryDate?: string;
+  deliveryAddress?: Address;
   locationId: string;
-  currencyId: string;
-  rate: number;
+  currencyId?: string;
+  rate?: number;
+  status?: "open" | "draft";
   paymentTerms?: string;
   dueDate?: string;
   note?: string;
   source?: string;
+  posFulfillmentMode?: "fulfill_now" | "pending";
   discountValue?: number;
   discountType?: PurchaseDiscountType;
   taxId?: string;
+  deliveryFee?: number;
   lineItems: SaleLineItemInput[];
 }
 
-export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" | "currencyId" | "lineItems"> {
+export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" | "currencyId" | "lineItems" | "status"> {
   id: string;
-  saleNumber: string;
+  saleNumber?: string;
+  quoteNumber?: string;
+  documentNumber?: string;
   type: "sale";
   status: "open" | "closed" | "draft";
   receiptStatus: PurchaseReceiptStatus;
   locked?: boolean;
+  isDeleted?: boolean;
   contactId?: { id: string; name: string; displayName?: string; email?: string; phone?: string };
   locationId?: { id: string; name: string; address?: string };
   currencyId?: { id: string; code: string; name?: string };
@@ -49,7 +59,7 @@ export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" |
   balance: number;
   paymentStatus: "unpaid" | "partial" | "paid";
   source?: string;
-  payments?: unknown[];
+  payments?: Payment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -63,6 +73,18 @@ export interface SaleQueryParams {
   limit?: number;
   search?: string;
   status?: "open" | "closed" | "draft";
+  fulfillmentStatus?: PurchaseReceiptStatus;
+  paymentStatus?: "paid" | "partial" | "unpaid";
+  overdue?: boolean;
+  customerId?: string;
+  locationId?: string;
+  createdBy?: string;
+  source?: string;
+  fulfillmentMethod?: "delivery" | "pickup";
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export type SalesResponse = PaginatedResponse<Sale>;
@@ -77,9 +99,13 @@ export interface FulfillSaleInput {
   items: SaleOperationItemInput[];
 }
 
+export interface ReturnSaleLineItemInput extends SaleOperationItemInput {
+  reason?: string;
+}
+
 export interface ReturnSaleInput {
   id: string;
-  items: (SaleOperationItemInput & { reason?: string })[];
+  items: ReturnSaleLineItemInput[];
 }
 
 export interface UpdateSaleFulfillmentInput {

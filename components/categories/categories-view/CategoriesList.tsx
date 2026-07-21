@@ -1,120 +1,87 @@
 "use client";
 
-import { useGetCategoriesQuery, useUpdateCategoryMutation, useDeleteCategoryMutation } from "@/lib/redux/services";
-import CategoriesFormModal from "../CategoriesFormModal";
-
-import CategoriesTable from "./CategoriesTable";
-import { Category, CategoriesQueryParams, CategoryStatus } from "@/types/category";
 import { useState } from "react";
-import useToggle from "@/hooks/UseToggle";
+import { useGetCategoriesQuery } from "@/lib/redux/services";
 import { AppNotFoundView } from "@/components/ui/AppNotFoundView";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
-import { Checkbox } from "antd";
-import { TbChevronDown, TbChevronRight } from "react-icons/tb";
-
-export interface CategoriesListItemAction {
-  openEditModal: (category: Category) => void;
-  onDelete: (id: string) => void;
-  onDeactivate: (id: string) => void;
-  onActivate: (id: string) => void;
-}
+import CategoriesFormModal from "../CategoriesFormModal";
+import { Category, CategoriesQueryParams, CategoryType } from "@/types/category";
+import { Tag } from "antd";
 
 interface CategoriesListProps {
   query: CategoriesQueryParams;
 }
 
 export default function CategoriesList({ query }: CategoriesListProps) {
-  const [updateCategory, { isLoading: isUpdating }] = useUpdateCategoryMutation();
-  const [deleteCategory, { isLoading: isDeleting }] = useDeleteCategoryMutation();
-
-  const [isEditModalOpen, toggleEditModal] = useToggle();
-
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>();
-
-  const formData = new FormData();
 
   const { data: categories, isLoading: loadingCategories } = useGetCategoriesQuery(query);
 
-  const openEditModal = (Category: Category) => {
-    setSelectedCategory(Category);
-    toggleEditModal();
-  };
-
-  const handleActivateCategory = async (categoryId: string) => {
-    !isUpdating && (await updateCategory({ id: categoryId, status: CategoryStatus.ACTIVE }));
-  };
-  const handleDeactivateCategory = async (categoryId: string) => {
-    !isUpdating && (await updateCategory({ id: categoryId, status: CategoryStatus.INACTIVE }));
-  };
-  const handleDeleteCategory = async (categoryId: string) => {
-    !isDeleting && (await deleteCategory(categoryId));
-  };
-
-  // const handleUploadCategoryImage = async (categoryId: string) => {
-  //   // Create a file input element dynamically
-  //   const input = document.createElement("input");
-  //   input.type = "file";
-  //   input.accept = "image/*";
-  //   input.click();
-
-  //   // Wait for the user to pick a file
-  //   input.onchange = async () => {
-  //     if (!input.files || input.files.length === 0) {
-  //       console.log("No file selected.");
-  //       return;
-  //     }
-
-  //     const image = input.files[0];
-  //     formData.append("image", image);
-  //     !isUpdating && (await updateCategory({ id: categoryId, data: formData }));
-  //     formData.delete("status");
-  //   };
-  // };
-
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  const toggleExpand = (id: string) => {
-    setExpanded((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+  const openEditModal = (category: Category) => {
+    setSelectedCategory(category);
+    setIsEditModalOpen(true);
   };
 
   return (
-    <div className="">
+    <div>
       <AppViewLoader loading={loadingCategories} />
-
       <AppNotFoundView dataLength={categories?.data?.length || 0} loading={loadingCategories} query={query} entity="Categories" />
 
-      <div className=" py-5 px-5  sticky -top-[calc(6.5rem)] border-b border-blue-100 -bg-gray-100   ">
-        <div className="flex items-center gap-3">
-          <Checkbox />
-          <p className=" text-gray-900 font-medium ">Product Categories</p>
-        </div>
-      </div>
-
-      <div className="px-6  pb-32">
-        {categories?.data?.map((category) => {
-          const isExpanded = expanded[category.id];
+      <div className="px-5 pb-32">
+        {categories?.data?.map((category, index) => {
+          const isProductCategory = category.type === CategoryType.PRODUCT;
 
           return (
-            <div className=" py-5 border-b border-blue-100">
-              <div className="flex  justify-between items-start gap-x-3 flex-1">
-                <div>
-                  <h3 className="font-medium text-gray-800">{category?.name}</h3>
-                  <p className="text-xs  text-gray-500  capitalize">{category?.type?.toLowerCase()}</p>
-                </div>
+            <div key={category.id} className={`flex items-start justify-between gap-4 py-5 ${index !== categories.data.length - 1 ? "border-b border-blue-100" : ""}`}>
+              <button type="button" className="flex min-w-0 flex-1 flex-col items-start text-left" onClick={() => openEditModal(category)}>
+                <div className="flex min-w-0 items-start gap-3">
+                  {isProductCategory ? (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
+                      {category.imageUrl ? <img src={category.imageUrl} alt={category.name} className="h-full w-full object-cover" /> : <span className="text-xs font-medium text-gray-400">IMG</span>}
+                    </div>
+                  ) : null}
 
-                <button onClick={() => toggleExpand(category?.id)} className="mt-1 hidden  text-gray-500">
-                  {isExpanded ? <TbChevronDown size={16} /> : <TbChevronRight size={16} />}
-                </button>
-              </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <h3 className="truncate font-medium text-gray-800">{category.name}</h3>
+                      <Tag color={category.status === CategoryStatus.ACTIVE ? "green" : "default"} className="!m-0 !rounded-full !px-1.5 !py-0 !text-[10px] !leading-4">
+                        {category.status === CategoryStatus.ACTIVE ? "Active" : "Inactive"}
+                      </Tag>
+                    </div>
+
+                    {isProductCategory ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        {[
+                          category.showInStorefront ? "Storefront" : null,
+                          category.showInPOS ? "POS" : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ") || "Hidden"}
+                      </p>
+                    ) : (
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">{category.description || "No description provided."}</p>
+                    )}
+                  </div>
+                </div>
+              </button>
+
             </div>
           );
         })}
       </div>
 
-      {isEditModalOpen && <CategoriesFormModal type={query.type} toggle={toggleEditModal} open={isEditModalOpen} initialValues={selectedCategory} />}
+      {isEditModalOpen && (
+        <CategoriesFormModal
+          type={query.type}
+          toggle={() => {
+            setIsEditModalOpen(false);
+            setSelectedCategory(undefined);
+          }}
+          open={isEditModalOpen}
+          initialValues={selectedCategory}
+        />
+      )}
     </div>
   );
 }

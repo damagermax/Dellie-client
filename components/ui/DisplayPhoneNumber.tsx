@@ -16,8 +16,8 @@ export function PhoneDisplay({ phone }: PhoneDisplayProps) {
     <div className="flex items-center gap-2">
       <div
         style={{
-          width: "24px",
-          height: "24px",
+          width: "15px",
+          height: "15px",
           borderRadius: "50%",
           overflow: "hidden",
           display: "flex",

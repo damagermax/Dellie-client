@@ -1,15 +1,34 @@
 import { PaginatedResponse } from "./shared";
+import { TransactionAttachment } from "./transaction";
+import type { Payment } from "./transaction";
 
 export type PurchaseDiscountType = "fixed" | "percent";
 export type PurchaseReceiptStatus = "pending" | "partially_received" | "received";
+export type SaleLineCostSource = "sale_snapshot" | "legacy_estimate";
 
 export interface PurchaseLineItemInput {
   productId: string;
   quantity: number;
   unitPrice: number;
+  weight?: number;
   discountValue?: number;
   discountType?: PurchaseDiscountType;
   taxId?: string;
+}
+
+export interface PurchaseLineLandedCostBreakdown {
+  landedCostId?: string;
+  name?: string;
+  allocationMethod?: PurchaseLandedCostAllocation;
+  currencyId: string | { id: string; code: string; name?: string };
+  currencyCode: string;
+  exchangeRate: number;
+  amount: number;
+  baseAmount: number;
+  allocatedAmount: number;
+  baseAllocatedAmount: number;
+  allocatedPerUnit: number;
+  baseAllocatedPerUnit: number;
 }
 
 export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId"> {
@@ -26,10 +45,19 @@ export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId
   taxDescription?: string;
   taxRate?: number;
   taxAmount: number;
+  baseUnitPrice?: number;
+  baseUnitCost?: number;
+  costSource?: SaleLineCostSource;
+  baseTaxAmount?: number;
+  baseTotal?: number;
   total: number;
   fulfilledQuantity?: number;
   returnedQuantity?: number;
   landedCost?: number;
+  allocatedLandedCost?: number;
+  finalUnitCost?: number;
+  finalLineCost?: number;
+  landedCostBreakdown?: PurchaseLineLandedCostBreakdown[];
 }
 
 export interface CreatePurchaseInput {
@@ -37,8 +65,8 @@ export interface CreatePurchaseInput {
   date: string;
   deliveryDate?: string;
   locationId: string;
-  currencyId: string;
-  rate: number;
+  currencyId?: string;
+  rate?: number;
   paymentTerms?: string;
   dueDate?: string;
   note?: string;
@@ -55,6 +83,7 @@ export interface Purchase extends Omit<CreatePurchaseInput, "contactId" | "locat
   status: "open" | "closed" | "draft";
   receiptStatus: PurchaseReceiptStatus;
   locked?: boolean;
+  isDeleted?: boolean;
   contactId?: { id: string; name: string; displayName?: string; email?: string; phone?: string };
   locationId?: { id: string; name: string; address?: string };
   currencyId?: { id: string; code: string; name?: string };
@@ -72,7 +101,8 @@ export interface Purchase extends Omit<CreatePurchaseInput, "contactId" | "locat
   amount: number;
   balance: number;
   paymentStatus: "unpaid" | "partial" | "paid";
-  payments?: unknown[];
+  payments?: Payment[];
+  attachments?: TransactionAttachment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +116,14 @@ export interface PurchaseQueryParams {
   limit?: number;
   search?: string;
   status?: "open" | "closed" | "draft";
+  fulfillmentStatus?: PurchaseReceiptStatus;
+  paymentStatus?: "paid" | "partial" | "unpaid";
+  supplierId?: string;
+  locationId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export type PurchasesResponse = PaginatedResponse<Purchase>;
@@ -100,9 +138,13 @@ export interface FulfillPurchaseInput {
   items: PurchaseOperationItemInput[];
 }
 
+export interface ReturnPurchaseLineItemInput extends PurchaseOperationItemInput {
+  reason?: string;
+}
+
 export interface ReturnPurchaseInput {
   id: string;
-  items: (PurchaseOperationItemInput & { reason?: string })[];
+  items: ReturnPurchaseLineItemInput[];
 }
 
 export interface UpdatePurchaseFulfillmentInput {
@@ -125,13 +167,20 @@ export type PurchaseLandedCostScope = "ALL_ITEMS" | "SELECTED_ITEMS";
 export interface AddPurchaseLandedCostInput {
   id: string;
   name: string;
+  date: string;
   amount: number;
   currencyId: string;
   exchangeRate: number;
   allocationMethod: PurchaseLandedCostAllocation;
   appliesTo?: PurchaseLandedCostScope;
   contactId?: string;
+  note?: string;
+  paymentMethodId?: string;
   lineItemIds?: string[];
+}
+
+export interface UpdatePurchaseLandedCostInput extends AddPurchaseLandedCostInput {
+  landedCostId: string;
 }
 
 export interface PurchaseStockEvent {
@@ -149,12 +198,34 @@ export interface PurchaseReturnEvent extends Omit<PurchaseStockEvent, "fulfilled
 
 export interface PurchaseLandedCost {
   id: string;
+  transactionId?: string;
   name: string;
+  date?: string;
+  note?: string;
   amount: number;
   baseAmount: number;
   exchangeRate: number;
   allocationMethod: PurchaseLandedCostAllocation;
   appliesTo?: PurchaseLandedCostScope;
   currencyId: string | { id: string; code: string; name?: string };
+  contactId?: string;
+  contactName?: string;
+  currencyCode?: string;
   lineItemIds: string[];
+  allocations?: {
+    lineItemId: string;
+    productId?: string;
+    productName?: string;
+    quantity: number;
+    basis: number;
+    currencyId: string | { id: string; code: string; name?: string };
+    currencyCode: string;
+    exchangeRate: number;
+    amount: number;
+    baseAmount: number;
+    allocatedAmount: number;
+    baseAllocatedAmount: number;
+    allocatedPerUnit: number;
+    baseAllocatedPerUnit: number;
+  }[];
 }

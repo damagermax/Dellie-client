@@ -1,6 +1,6 @@
 "use client";
 
-import { AddButton } from "@/components/ui/AppButtons";
+import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 import useToggle from "@/hooks/UseToggle";
 import dynamic from "next/dynamic";
@@ -32,13 +32,16 @@ export default function TagsPage() {
           <AppSearch placeholder="Search tags..." onReset={handleFilterRest} onSearchChange={handleFilterChange} menu={{ items: TagsFilters({ onChange: handleFilterChange, filters: tagQuery }) }} />
         </div>
         <div className="flex gap-4">
-          <AddButton onClick={toggleTagForm} label="New Tag" />
+          <div className="hidden md:block">
+            <AddButton onClick={toggleTagForm} label="New Tag" />
+          </div>
         </div>
       </div>
 
       <TagsView query={tagQuery} />
 
       <TagsFormModal open={openTagForm} toggle={toggleTagForm} />
+      <FloatingAddButton onClick={toggleTagForm} label="New Tag" />
     </div>
   );
 }

@@ -1,85 +1,59 @@
-import { Button, Divider, Dropdown, Space } from "antd";
+import { Badge, Button } from "antd";
 import Input from "antd/es/input/Input";
 import { RiSearchLine } from "react-icons/ri";
 import { LuListFilter } from "react-icons/lu";
-import type { MenuProps } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 
 interface AppSearchProps {
   placeholder?: string;
   className?: string;
-  menu?: MenuProps;
+  menu?: unknown;
   onReset?: () => void;
   onSearchChange?: (v: { search?: string }) => void;
+  onFilterClick?: () => void;
+  filterCount?: number;
 }
 
-export function AppSearch({ placeholder = "Search...", className = "", menu, onReset, onSearchChange }: AppSearchProps) {
-  const items: MenuProps["items"] = [
-    {
-      key: "filter",
-      label: "Filter",
-      disabled: true,
-      className: "w-[300px]",
-    },
-    {
-      type: "divider",
-    },
-
-    ...(menu?.items ?? []),
-
-    {
-      type: "divider",
-    },
-
-    {
-      key: "reset",
-      label: (
-        <div className=" flex justify-end text-sm">
-          <p>Clear all filter</p>
-        </div>
-      ),
-      onClick: onReset,
-    },
-  ];
-
+export function AppSearch({ placeholder = "Search...", className = "", onReset, onSearchChange, onFilterClick, filterCount = 0 }: AppSearchProps) {
   const [searchValue, setSearchValue] = useState("");
-
   const debounceSearchValue = useDebouncedValue(searchValue);
+
+  const onSearchChangeRef = useRef(onSearchChange);
+
+  useEffect(() => {
+    onSearchChangeRef.current = onSearchChange;
+  }, [onSearchChange]);
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
+
+    if (!value) {
+      onReset?.();
+    }
   };
 
   useEffect(() => {
-    if (onSearchChange) {
-      onSearchChange({ search: debounceSearchValue });
-    }
+    onSearchChangeRef.current?.({ search: debounceSearchValue });
   }, [debounceSearchValue]);
 
   return (
-    <div className={`w-[320px] !h-[32px] flex items-center gap-x-5 relative ${className}`}>
-      <Input size="small" onChange={(e) => handleSearchChange(e.target.value)} placeholder={placeholder} className="!bg-[#fafafad6] !border-gray-200/80 !placeholder-gray-500 !rounded-full !py-[.37rem] !pl-8 w-full" />
-      <div className="absolute text-gray-500 top-0 left-0 rounded-full px-2 py-[9px] flex items-center">
+    <div className={`relative flex !h-[32px] w-full items-center gap-x-3 md:w-[320px] ${className}`}>
+      <Input allowClear size="small" value={searchValue} onChange={(e) => handleSearchChange(e.target.value)} placeholder={placeholder} className="w-full !rounded-full !border-gray-200/80 !bg-[#fafafad6] !py-[.28rem] !pl-10 !pr-24 !placeholder-gray-500" />
+
+      <div className="pointer-events-none absolute left-0 top-0 z-10 flex items-center rounded-full px-2 py-[9px] text-gray-500">
         <RiSearchLine />
       </div>
 
-      <div className="absolute top-0 bottom-0 flex items-center pr-1 right-0">
-        <Dropdown
-          trigger={["click"]}
-          menu={{ items }}
-          placement="bottomRight"
-          dropdownRender={(menu) => (
-            <div style={{ marginTop: 10 }} className=" bg-white  shadow-[0_4px_20px_rgba(0,0,0,0.25)] overflow-hidden !rounded-lg  ">
-              {menu}
-            </div>
-          )}
-        >
-          <Button onClick={(e) => e.preventDefault()} size="small" className="!text-xs" icon={<LuListFilter />}>
-            Filter
-          </Button>
-        </Dropdown>
-      </div>
+      {onFilterClick ? (
+        <div className="absolute bottom-0 right-0 top-0 z-10 flex items-center pr-1">
+          <Badge count={filterCount} size="small" offset={[-4, 2]}>
+            <Button onClick={onFilterClick} size="small" className="!text-xs !shadow-none" icon={<LuListFilter />}>
+              Filter
+            </Button>
+          </Badge>
+        </div>
+      ) : null}
     </div>
   );
 }

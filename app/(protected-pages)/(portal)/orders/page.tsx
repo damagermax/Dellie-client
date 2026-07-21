@@ -1,170 +1,132 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Modal, message } from "antd";
-import type { TableProps } from "antd/es/table";
-import { GrEdit } from "react-icons/gr";
-import { HiOutlineTrash } from "react-icons/hi2";
-import { LuEye, LuFileText } from "react-icons/lu";
-import { ReceiptText } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import SaleFormModal from "@/components/orders/SaleFormModal";
-import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/SaleShareDocumentModal";
-import { saleApiError, visibleSaleDeleteRestrictions } from "@/components/orders/saleUtils";
-import SettingsDrawer from "@/components/settings/SettingsDrawer";
-import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdown";
-import { AddButton } from "@/components/ui/AppButtons";
+import SalesMobileList from "@/components/orders/SalesMobileList";
+import SaleShareDocumentModal from "@/components/orders/SaleShareDocumentModal";
+import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
 import { AppNotFoundView } from "@/components/ui/AppNotFoundView";
 import { AppSearch } from "@/components/ui/AppSearchInput";
+import AppPaginationFooter from "@/components/ui/AppPaginationFooter";
 import AppTable from "@/components/ui/AppTable";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
-import useToggle from "@/hooks/UseToggle";
-import { formatDate } from "@/lib/dateUtils";
-import { useDeleteSaleMutation, useGetSalesQuery } from "@/lib/redux/services";
-import { Sale, SaleQueryParams } from "@/types/index";
+import MobileInfiniteScrollFooter from "@/components/ui/MobileInfiniteScrollFooter";
+import MobileListShimmer from "@/components/ui/MobileListShimmer";
+import { SalesFilterDrawer } from "@/components/orders/SalesFilterDrawer";
+import { DesktopQuickFilterSegment } from "@/components/ui/DesktopQuickFilterSegment";
+import { buildSalesColumns } from "./_lib/salesPageConfig";
+import { useSalesPageController } from "./_lib/useSalesPageController";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
+
+type SalesQuickFilter = "all" | "quote" | "unpaid" | "paid" | "unfulfilled" | "fulfilled";
 
 export default function SalesPage() {
-  const router = useRouter();
-  const [formOpen, toggleForm] = useToggle();
-  const [editOpen, toggleEdit] = useToggle();
-  const [selectedSale, setSelectedSale] = useState<Sale>();
-  const [shareDocumentType, setShareDocumentType] = useState<SaleDocumentType>();
-  const [deletingSaleId, setDeletingSaleId] = useState<string>();
-  const [query, setQuery] = useState<SaleQueryParams>({ page: 1, limit: 20 });
-  const { data, error, isLoading, isError } = useGetSalesQuery(query, { refetchOnMountOrArgChange: true });
-  const [deleteSale] = useDeleteSaleMutation();
+  const searchParams = useSearchParams();
+  const quotesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.quotesEnabled !== false);
+  const initialQuery = useMemo(
+    () => ({
+      page: 1,
+      limit: 20,
+      paymentStatus: readPaymentStatus(searchParams.get("paymentStatus")),
+      fulfillmentStatus: readSalesFulfillmentStatus(searchParams.get("fulfillmentStatus")),
+      overdue: searchParams.get("overdue") === "true" ? true : undefined,
+    }),
+    [searchParams],
+  );
+  const controller = useSalesPageController(initialQuery);
+  const salesQuickFilter: SalesQuickFilter | undefined =
+    quotesEnabled && controller.query.status === "draft" && !controller.query.paymentStatus && !controller.query.fulfillmentStatus && !controller.query.overdue
+      ? "quote"
+      : controller.query.paymentStatus === "unpaid" && !controller.query.status && !controller.query.fulfillmentStatus && !controller.query.overdue
+        ? "unpaid"
+        : controller.query.paymentStatus === "paid" && !controller.query.status && !controller.query.fulfillmentStatus && !controller.query.overdue
+          ? "paid"
+          : controller.query.fulfillmentStatus === "pending" && !controller.query.status && !controller.query.paymentStatus && !controller.query.overdue
+            ? "unfulfilled"
+            : controller.query.fulfillmentStatus === "received" && !controller.query.status && !controller.query.paymentStatus && !controller.query.overdue
+              ? "fulfilled"
+              : !controller.query.status && !controller.query.paymentStatus && !controller.query.fulfillmentStatus && !controller.query.overdue
+                ? "all"
+                : undefined;
+  const salesQuickFilterOptions = useMemo(
+    () => [
+      { label: "All", value: "all" as const },
+      ...(quotesEnabled ? [{ label: "Quote", value: "quote" as const }] : []),
+      { label: "Unpaid", value: "unpaid" as const },
+      { label: "Paid", value: "paid" as const },
+      { label: "Unfulfilled", value: "unfulfilled" as const },
+      { label: "Fulfilled", value: "fulfilled" as const },
+    ],
+    [quotesEnabled],
+  );
 
-  const confirmDelete = (sale: Sale) => {
-    if (deletingSaleId === sale.id) return;
-    const restrictions = visibleSaleDeleteRestrictions(sale);
-    if (restrictions.length) {
-      Modal.warning({
-        title: `${sale.saleNumber} cannot be deleted`,
-        content: `This sale cannot be deleted because ${restrictions.join(", ")}.`,
-      });
-      return;
-    }
-    Modal.confirm({
-      title: `Delete ${sale.saleNumber}?`,
-      content: "Stock deducted by this sale will be restored. This action cannot be undone.",
-      okText: "Delete",
-      okType: "danger",
-      onOk: async () => {
-        setDeletingSaleId(sale.id);
-        try {
-          await deleteSale(sale.id).unwrap();
-          message.success("Sale deleted and stock restored.");
-          if (selectedSale?.id === sale.id) {
-            if (editOpen) toggleEdit();
-            setSelectedSale(undefined);
-          }
-        } catch (error) {
-          message.error(saleApiError(error, "Sale could not be deleted."));
-          throw error;
-        } finally {
-          setDeletingSaleId(undefined);
-        }
-      },
-    });
-  };
+  useEffect(() => {
+    if (quotesEnabled || controller.query.status !== "draft") return;
+    controller.setQuery((current) => ({ ...current, status: undefined, page: 1 }));
+  }, [controller, quotesEnabled]);
 
-  const columns: TableProps<Sale>["columns"] = [
-    {
-      title: "Sale Number",
-      key: "saleNumber",
-      className: "!pl-8",
-      render: (_, sale) => (
-        <Link href={`/orders/${sale.id}`} className="font-medium !text-gray-700 hover:!text-indigo-600">
-          {sale.saleNumber}
-        </Link>
-      ),
-    },
-    { title: "Customer", key: "customer", render: (_, sale) => sale.contactId?.name || sale.contactId?.displayName || "-" },
-    { title: "Date", key: "date", render: (_, sale) => formatDate(sale.date) },
-    { title: "Expected Delivery", key: "deliveryDate", render: (_, sale) => formatDate(sale.deliveryDate) },
-    { title: "Location", key: "location", render: (_, sale) => sale.locationId?.name || "-" },
-    { title: "Total Amount", key: "amount", render: (_, sale) => `${sale.currencyId?.code || ""} ${Number(sale.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
-    { title: "Balance", key: "balance", render: (_, sale) => `${sale.currencyId?.code || ""} ${Number(sale.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
-    {
-      title: "Actions",
-      key: "actions",
-      align: "right",
-      className: "!pr-8",
-      render: (_, sale) => (
-        <ActionDropdown
-          menu={{
-            items: [
-              {
-                key: "view",
-                label: <DropdownItemLabel icon={<LuEye size={15} />} text="View" />,
-                onClick: () => router.push(`/orders/${sale.id}`),
-              },
-              {
-                key: "edit",
-                label: <DropdownItemLabel icon={<GrEdit size={15} />} text="Edit" />,
-                disabled: Boolean(sale.locked || sale.receiptStatus === "received" || sale.returnedItems?.length),
-                onClick: () => {
-                  setSelectedSale(sale);
-                  toggleEdit();
-                },
-              },
-              {
-                key: "invoice",
-                label: <DropdownItemLabel icon={<LuFileText size={15} />} text="Share Invoice" />,
-                onClick: () => {
-                  setSelectedSale(sale);
-                  setShareDocumentType("invoice");
-                },
-              },
-              {
-                key: "receipt",
-                label: <DropdownItemLabel icon={<ReceiptText size={15} />} text="Share Receipt" />,
-                onClick: () => {
-                  setSelectedSale(sale);
-                  setShareDocumentType("receipt");
-                },
-              },
-              {
-                key: "delete",
-                label: <DropdownItemLabel icon={<HiOutlineTrash size={15} />} text="Delete" danger />,
-                disabled: deletingSaleId === sale.id,
-                onClick: () => confirmDelete(sale),
-              },
-            ],
-          }}
-        />
-      ),
-    },
-  ];
+  const columns = buildSalesColumns();
 
   return (
     <div>
-      <h3 className="pageTittle px-8">Sales</h3>
+      <h3 className="pageTittle px-4 md:px-8">Sales</h3>
       <hr className="border-gray-200/80" />
-      <div className="flex w-full justify-between px-8 py-8">
-        <AppSearch placeholder="Search sale number..." onReset={() => setQuery({ page: 1, limit: 20 })} onSearchChange={(values) => setQuery((current) => ({ ...current, ...values, page: 1 }))} />
-        <div className="flex gap-x-5">
-          <AddButton onClick={toggleForm} label="New Sale" />
-          <SettingsDrawer />
+      <div className="flex w-full flex-col gap-4 px-4 py-5 md:flex-row md:items-center md:justify-between md:px-8 md:py-8">
+        <div className="flex w-full items-center gap-3 md:w-auto">
+          <AppSearch placeholder="Search sale number..." onReset={() => controller.setQuery((current) => ({ ...current, search: undefined, page: 1 }))} onSearchChange={(values) => controller.setQuery((current) => ({ ...current, ...values, page: 1 }))} onFilterClick={controller.openFilters} filterCount={controller.filterCount} />
+          <DesktopQuickFilterSegment<SalesQuickFilter>
+            value={salesQuickFilter}
+            options={salesQuickFilterOptions}
+            onChange={(value) =>
+              controller.setQuery((current) => ({
+                ...current,
+                page: 1,
+                status: quotesEnabled && value === "quote" ? "draft" : undefined,
+                paymentStatus: value === "unpaid" ? "unpaid" : value === "paid" ? "paid" : undefined,
+                fulfillmentStatus: value === "unfulfilled" ? "pending" : value === "fulfilled" ? "received" : undefined,
+                overdue: undefined,
+              }))
+            }
+          />
+        </div>
+        <div className="flex gap-x-3 md:gap-x-5">
+          <div className="hidden md:block">
+            <AddButton onClick={controller.toggleForm} label="New Sale" />
+          </div>
         </div>
       </div>
 
-      <AppViewLoader loading={isLoading} />
-      {isError && <p className="px-8 py-8 text-sm text-red-600">{saleApiError(error, "Sales could not be loaded.")}</p>}
-      {!isError && <AppNotFoundView dataLength={data?.data?.length || 0} loading={isLoading} query={{ search: query.search }} entity="Sale" />}
-      {!isError && <AppTable columns={columns} dataSource={data?.data || []} rowKey="id" />}
-
-      {formOpen && <SaleFormModal open={formOpen} toggle={toggleForm} />}
-      {editOpen && selectedSale && <SaleFormModal open={editOpen} toggle={toggleEdit} sale={selectedSale} />}
-      {shareDocumentType && selectedSale && (
-        <SaleShareDocumentModal
-          open={Boolean(shareDocumentType)}
-          toggle={() => setShareDocumentType(undefined)}
-          sale={selectedSale}
-          type={shareDocumentType}
-        />
+      <div className="hidden md:block">
+        <AppViewLoader loading={controller.isLoading} />
+      </div>
+      {controller.isError && <p className="px-8 py-8 text-sm text-red-600">{controller.error ? "Sales could not be loaded." : "Sales could not be loaded."}</p>}
+      {!controller.isError && <AppNotFoundView dataLength={controller.data?.data?.length || 0} loading={controller.isLoading} query={{ search: controller.query.search }} entity="Sale" />}
+      {!controller.isError && (
+        <>
+          <div className="hidden md:block">
+            <AppTable columns={columns} dataSource={controller.data?.data || []} rowKey="id" pagination={false} disableFixedColumns />
+            <AppPaginationFooter entity="sales" dataLength={controller.data?.data?.length || 0} meta={controller.meta} page={controller.data?.page || controller.query.page} limit={controller.data?.limit || controller.query.limit} total={controller.data?.total} onChange={(page, limit) => controller.setQuery((current) => ({ ...current, page, limit }))} />
+          </div>
+          {controller.isLoading ? <MobileListShimmer showAvatar={false} /> : <SalesMobileList sales={controller.mobileList.items} />}
+          <MobileInfiniteScrollFooter entity="sales" dataLength={controller.mobileList.items.length} hasNextPage={controller.mobileList.hasNextPage} isFetching={controller.isFetching && !controller.isLoading} sentinelRef={controller.mobileList.sentinelRef} onLoadMore={controller.mobileList.loadNextPage} />
+        </>
       )}
+
+      {controller.formOpen && <SaleFormModal open={controller.formOpen} toggle={controller.toggleForm} />}
+      {controller.editOpen && controller.selectedSale && <SaleFormModal open={controller.editOpen} toggle={controller.toggleEdit} sale={controller.selectedSale} />}
+      <SalesFilterDrawer open={controller.filterOpen} filters={controller.draftFilters} onChange={(values) => controller.setDraftFilters((prev) => ({ ...prev, ...values }))} onClose={() => controller.setFilterOpen(false)} onApply={controller.applyFilters} onClear={controller.clearFilters} />
+      {controller.shareDocumentType && controller.selectedSale && <SaleShareDocumentModal open={Boolean(controller.shareDocumentType)} toggle={() => controller.setShareDocumentType(undefined)} sale={controller.selectedSale} type={controller.shareDocumentType} />}
+      <FloatingAddButton onClick={controller.toggleForm} label="New Sale" />
     </div>
   );
+}
+
+function readPaymentStatus(value: string | null): "paid" | "partial" | "unpaid" | undefined {
+  return value === "paid" || value === "partial" || value === "unpaid" ? value : undefined;
+}
+
+function readSalesFulfillmentStatus(value: string | null): "pending" | "partially_received" | "received" | undefined {
+  return value === "pending" || value === "partially_received" || value === "received" ? value : undefined;
 }

@@ -1,102 +1,89 @@
-import { CategoryScale, ChartData, Chart as ChartJS, ChartOptions, Legend, LinearScale, LineElement, PointElement, Title, Tooltip } from "chart.js";
-import { Line } from "react-chartjs-2";
+"use client";
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+import { useState } from "react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { cn } from "@/lib/utils";
 
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+interface SalesChartProps {
+  data: Array<{ label: string; revenue: number; orders: number }>;
+  currencyCode: string;
+}
 
-export function SalesChart() {
-    const data: ChartData<"line"> = {
-        labels: months,
-        datasets: [
-            {
-                label: "Revenue",
-                data: [12000, 19000, 15000, 25000, 20000, 28000, 32000],
-                borderColor: "rgb(24, 144, 255)",
-                backgroundColor: "rgba(24, 144, 255, 0.5)",
-                tension: 0.3,
-                yAxisID: "y",
-            },
-            {
-                label: "Orders",
-                data: [120, 190, 150, 250, 200, 280, 320],
-                borderColor: "rgb(82, 196, 26)",
-                backgroundColor: "rgba(82, 196, 26, 0.5)",
-                tension: 0.3,
-                yAxisID: "y1",
-            },
-        ],
-    };
+type SalesMetric = "revenue" | "orders";
 
-    const options: ChartOptions<"line"> = {
-        responsive: true,
-        interaction: {
-            mode: "index",
-            intersect: false,
-        },
-        plugins: {
-            title: {
-                display: false,
-            },
-            tooltip: {
-                callbacks: {
-                    label: function (context) {
-                        const label = context.dataset.label || "";
-                        if (context.parsed.y === null) return "";
+const chartConfig: Record<
+  SalesMetric,
+  {
+    label: string;
+    description: string;
+    color: string;
+    gradientId: string;
+  }
+> = {
+  revenue: {
+    label: "Revenue",
+    description: "Sales value across the selected period.",
+    color: "#2563eb",
+    gradientId: "fill-sales-revenue",
+  },
+  orders: {
+    label: "Orders",
+    description: "All open and closed sales in the selected period.",
+    color: "#f59e0b",
+    gradientId: "fill-sales-orders",
+  },
+};
 
-                        if (context.datasetIndex === 0) {
-                            return `${label}: ${new Intl.NumberFormat("en-GH", {
-                                style: "currency",
-                                currency: "GHS",
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 0,
-                            }).format(context.parsed.y)}`;
-                        }
-                        return `${label}: ${context.parsed.y} orders`;
-                    },
-                },
-            },
-        },
-        scales: {
-            y: {
-                type: "linear" as const,
-                display: true,
-                position: "left" as const,
-                title: {
-                    display: true,
-                    text: "Revenue (GHS)",
-                },
-                ticks: {
-                    callback: function (value: any) {
-                        return "GHS " + value.toLocaleString();
-                    },
-                },
-            },
-            y1: {
-                type: "linear" as const,
-                display: true,
-                position: "right" as const,
-                grid: {
-                    drawOnChartArea: false,
-                },
-                title: {
-                    display: true,
-                    text: "Orders",
-                },
-            },
-        },
-    };
+export function SalesChart({ data, currencyCode }: SalesChartProps) {
+  const [metric, setMetric] = useState<SalesMetric>("revenue");
+  const active = chartConfig[metric];
 
-    return (
-        <div className="w-full h-80 mt-4">
-            <Line 
-                options={{
-                    ...options,
-                    responsive: true,
-                    maintainAspectRatio: false,
-                }} 
-                data={data} 
-            />
+  const formatCurrency = (value: number) => `${currencyCode}\u00A0${Number(value || 0).toLocaleString()}`;
+  const formatValue = (value: number) => (metric === "revenue" ? formatCurrency(value) : `${value.toLocaleString()} orders`);
+  const normalizeTooltipValue = (value: number | string | ReadonlyArray<number | string> | undefined) => {
+    if (Array.isArray(value)) return Number(value[0] || 0);
+    return Number(value || 0);
+  };
+
+  return (
+    <div className="mt-6">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-950">{active.label} Trend</p>
+          <p className="mt-1 text-xs text-gray-500">{active.description}</p>
         </div>
-    );
+        <div className="inline-flex rounded-sm border border-gray-200 bg-gray-50 p-1">
+          {(["revenue", "orders"] as const).map((item) => (
+            <button key={item} type="button" onClick={() => setMetric(item)} className={cn("rounded-sm px-3 py-1.5 text-xs font-medium transition-colors", metric === item ? "bg-white text-gray-950" : "text-gray-500 hover:text-gray-900")}>
+              {chartConfig[item].label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="h-80 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data}>
+            <defs>
+              <linearGradient id={active.gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={active.color} stopOpacity={0.22} />
+                <stop offset="95%" stopColor={active.color} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="label" tickLine={false} axisLine={false} />
+            <YAxis
+              width={88}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={metric === "revenue"}
+              tickFormatter={(value) => formatValue(Number(value))}
+            />
+            <Tooltip formatter={(value) => [formatValue(normalizeTooltipValue(value)), active.label]} />
+            <Area type="monotone" dataKey={metric} name={active.label} stroke={active.color} fill={`url(#${active.gradientId})`} strokeWidth={2.5} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
 }

@@ -1,5 +1,4 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "../store";
 import { API_BASE_URL } from "@/lib/config/apiBaseUrl";
 
 export const TAG_TYPES = {
@@ -9,6 +8,7 @@ export const TAG_TYPES = {
   TAGS: "Tags",
   STORE: "Store",
   STORES: "Stores",
+  STORE_SETTINGS: "StoreSettings",
   DISCOUNT: "Discount",
   DISCOUNTS: "Discounts",
   ORDER: "Order",
@@ -24,14 +24,18 @@ export const TAG_TYPES = {
   AUTH: "Auth",
   USER: "User",
   USERS: "Users",
-  PAYMENT_ACCOUNT: "PAYMENT_ACCOUNT",
-  PAYMENT_ACCOUNTS: "PAYMENT_ACCOUNTS",
   SYSTEM: "SYSTEM",
   INVENTORY: "Inventory",
   TRANSACTION: "TRANSACTION",
   TRANSACTIONS: "TRANSACTIONs",
   TAXES: "TAXES",
   TAX: "TAX",
+  PAYMENT_TERMS: "PAYMENT_TERMS",
+  PAYMENT_TERM: "PAYMENT_TERM",
+  PAYMENT_METHODS: "PAYMENT_METHODS",
+  PAYMENT_METHOD: "PAYMENT_METHOD",
+  PRICING_GROUPS: "PRICING_GROUPS",
+  PRICING_GROUP: "PRICING_GROUP",
   PURCHASE: "PURCHASE",
   PURCHASES: "PURCHASES",
   SALE: "SALE",
@@ -44,9 +48,7 @@ export const TAG_TYPES = {
 export const baseApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
-    prepareHeaders: (headers, { getState }) => {
-      // Add  auth headers here
-      //const token = (getState() as RootState).auth.accessToken || localStorage.getItem("accessToken");
+    prepareHeaders: (headers) => {
       const token = localStorage.getItem("accessToken");
 
       if (token) {

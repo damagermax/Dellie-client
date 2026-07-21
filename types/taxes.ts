@@ -6,6 +6,7 @@ export interface TaxRateInput {
 export interface TaxCreateInput {
   description: string;
   items: TaxRateInput[];
+  status?: "active" | "inactive";
 }
 
 export interface TaxUpdateInput extends Partial<TaxCreateInput> {
@@ -22,6 +23,7 @@ export interface Tax {
   id: string;
   description: string;
   items: TaxRate[];
+  status: "active" | "inactive";
   createdAt: string;
   updatedAt: string;
 }

@@ -1,12 +1,14 @@
 "use client";
 
 import { Form } from "antd";
-import { InputFormItem, DatePickerFormItem, SelectFormItem } from "../ui/AppFormItems";
+import { InputFormItem, DatePickerFormItem } from "../ui/AppFormItems";
 import { AppModal, ModalProps } from "../ui/AppModal";
 import { Expense, CreateExpenseInput, UpdateExpenseInput, TransactionType } from "../../types/transaction";
 import { useEffect, useState } from "react";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
+import { ExchangeRateFormItem } from "../system/ExchangeRateFormItem";
 import dayjs from "dayjs";
+import { useSelector } from "react-redux";
 
 import { useCreateExpenseMutation, useUpdateExpenseMutation, useGetTransactionQuery } from "@/lib/redux/services";
 import { SearchableExpenseCategorySelect } from "./SearchableExpenseCategorySelect";
@@ -14,10 +16,10 @@ import useToggle from "@/hooks/UseToggle";
 import { CiReceipt } from "react-icons/ci";
 import { CategoryType } from "@/types/category";
 import CategoriesFormModal from "../categories/CategoriesFormModal";
+import { RootState } from "@/lib/redux/store";
 
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
 import ContactsFormModal from "../contacts/ContactsFormModal";
-import { SearchablePaymentAccountSelect } from "../paymentAccounts/SearchabalePaymentAccountSelect";
 
 interface ExpenseFormModalProps extends ModalProps {
   initialValues?: Expense;
@@ -28,6 +30,8 @@ type ExpenseFormValues = CreateExpenseInput | UpdateExpenseInput;
 export default function ExpenseFormModal({ open, toggle, initialValues }: ExpenseFormModalProps) {
   const [expenseForm] = Form.useForm();
   const storeCurrencyId = JSON.parse(localStorage.getItem("user")!)?.store?.currencyId;
+  const featureSettings = useSelector((state: RootState) => state.currentUser.storeSettings.features);
+  const multiCurrencyEnabled = featureSettings?.multiCurrencyEnabled !== false;
 
   const [selectedImage, setImage] = useState<File>();
   const [preview, setPreview] = useState<string>();
@@ -57,6 +61,7 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
       expenseForm.setFieldsValue({
         ...expenseData,
         date: dayjs(expenseData.date),
+        dueDate: expenseData.dueDate ? dayjs(expenseData.dueDate) : undefined,
         totalAmount: expenseData.amount,
         categoryId: expenseData.category?.id,
         contactId: expenseData.contact?.id,
@@ -74,13 +79,27 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
 
   useEffect(() => {
     if (!initialValues) {
-      expenseForm.setFieldsValue({ currencyId: storeCurrencyId });
+      expenseForm.setFieldsValue({ currencyId: storeCurrencyId, rate: 1 });
     }
 
     if (initialValues) {
-      expenseForm.setFieldsValue({ totalAmount: initialValues.amount });
+      expenseForm.setFieldsValue({
+        totalAmount: initialValues.amount,
+        currencyId: initialValues.currency?.id,
+        rate: initialValues.rate ?? 1,
+        dueDate: initialValues.dueDate ? dayjs(initialValues.dueDate) : undefined,
+      });
     }
-  }, [initialValues]);
+  }, [expenseForm, initialValues, storeCurrencyId]);
+
+  useEffect(() => {
+    if (!multiCurrencyEnabled) {
+      expenseForm.setFieldsValue({
+        currencyId: initialValues?.currency?.id || storeCurrencyId,
+        rate: 1,
+      });
+    }
+  }, [expenseForm, initialValues?.currency?.id, multiCurrencyEnabled, storeCurrencyId]);
 
   useEffect(() => {
     if (!selectedImage) return;
@@ -92,18 +111,16 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
   }, [selectedImage]);
 
   const handleSubmit = async (values: ExpenseFormValues) => {
-    console.log("Form Values:", values);
-
     const formData = new FormData();
     formData.append("type", TransactionType.EXPENSE);
 
     Object.entries(values).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        formData.append(key, value as any);
+        formData.append(key, String(value));
       }
     });
 
-    selectedImage && formData.append("receipt", selectedImage);
+    if (selectedImage) formData.append("receipt", selectedImage);
 
     if (initialValues?.id) {
       await updateExpense({ id: initialValues?.id, ...values, type: TransactionType.EXPENSE } as UpdateExpenseInput);
@@ -151,6 +168,9 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
             ...(initialValues?.date && {
               date: dayjs(initialValues.date),
             }),
+            ...(initialValues?.dueDate && {
+              dueDate: dayjs(initialValues.dueDate),
+            }),
           }}
           layout={"vertical"}
         >
@@ -169,20 +189,23 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
               <SearchableContactSelect onAddContact={toggleContactModal} />
             </Form.Item>
 
-            <Form.Item label="Currency" name="currencyId">
-              <SearchableCurrenciesSelect disabled={canChangeCurrency} />
-            </Form.Item>
+            <DatePickerFormItem name="dueDate" label="Due Date" />
 
-            <InputFormItem label="Exchange Rate" name="rate" />
+            {multiCurrencyEnabled ? (
+              <>
+                <Form.Item label="Currency" name="currencyId">
+                  <SearchableCurrenciesSelect disabled={canChangeCurrency} />
+                </Form.Item>
+
+                <ExchangeRateFormItem name="rate" />
+              </>
+            ) : null}
 
             <InputFormItem addonBefore="GHS" type="number" label="Total Amount (without discount)" name="totalAmount" rules={[{ required: true, message: "Enter amount" }]} />
 
             {!initialValues && (
               <>
                 <InputFormItem addonBefore="GHS" type="number" label="Paid Amount" name="paidAmount" />
-                <Form.Item label="Paid Through" name="accountId" rules={[{ required: paidAmount, message: "Select payment account" }]}>
-                  <SearchablePaymentAccountSelect />
-                </Form.Item>{" "}
                 <div className="  hidden col-span-2 p-3 bg-gray-50 rounded-lg flex   flex-col border-gray-200 border border-solid">
                   {preview && (
                     <div className=" flex gap-x-5 items-center">

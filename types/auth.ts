@@ -1,11 +1,17 @@
+import { CurrentUser } from "./user";
+import { StoreAccess } from "./store-access";
+
 export interface RegisterUserInput {
   email: string;
   password: string;
   name: string;
+  phone: string;
+  storeName: string;
+  currencyId: string;
 }
 
 export interface LoginUserInput {
-  email: string;
+  identifier: string;
   password: string;
 }
 
@@ -20,11 +26,13 @@ export interface RestPasswordInput {
 }
 
 export interface ForgotPasswordInput {
-  email: string;
+  username: string;
 }
 
 export interface AuthResponse {
   accessToken: string;
-  refreshToken: string;
-  user: {};
+  refreshToken?: string;
+  user: CurrentUser;
+  stores?: StoreAccess[];
+  activeStore?: StoreAccess;
 }

@@ -1,6 +1,6 @@
 import { baseApi, TAG_TYPES } from "./baseApi";
 
-import { CreateLocationInput, Location, UpdateLocationInput, LocationsQueryParams, PaginatedResponse } from "../../../types";
+import { CreateLocationInput, Location, UpdateLocationInput, LocationsQueryParams } from "../../../types";
 
 export const locationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,7 +29,7 @@ export const locationsApi = baseApi.injectEndpoints({
     }),
 
     getLocations: builder.query<Location[], LocationsQueryParams>({
-      query: () => "locations",
+      query: (params) => ({ url: "locations", params }),
       providesTags: [TAG_TYPES.LOCATIONS],
     }),
 

@@ -1,13 +1,13 @@
 "use client";
 
 import StoreTeamFormModal from "@/components/team/StoreTeamFormModal";
-import { AddButton } from "@/components/ui/AppButtons";
+import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 
 import StoreTeamTable from "@/components/team/StoreTeamTable";
 import useToggle from "@/hooks/UseToggle";
 
-const page = () => {
+const SettingsTeamPage = () => {
     const [openTeamMemberForm, toggleTeamMemberForm] = useToggle();
     return (
         <div>
@@ -16,14 +16,17 @@ const page = () => {
                     <AppSearch />
                 </div>
                 <div className=" flex gap-x-5 ">
-                    <AddButton onClick={toggleTeamMemberForm} label="Add Member" />
+                    <div className="hidden md:block">
+                        <AddButton onClick={toggleTeamMemberForm} label="Add Member" />
+                    </div>
                 </div>
             </div>
 
             <StoreTeamTable />
             <StoreTeamFormModal toggle={toggleTeamMemberForm} open={openTeamMemberForm} />
+            <FloatingAddButton onClick={toggleTeamMemberForm} label="Add Member" />
         </div>
     );
 };
 
-export default page;
+export default SettingsTeamPage;

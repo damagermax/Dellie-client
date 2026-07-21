@@ -9,16 +9,23 @@ interface Props extends ModalProps {
   selected: { locationId: string; name: string; quantity: number }[];
 }
 
+const getLocationId = (location: Partial<Location> & { _id?: string; value?: string }) => {
+  const rawId = location.id || location._id || location.value;
+  return typeof rawId === "string" ? rawId : "";
+};
+
 export const LocationSelector = ({ toggle, open, selected, toggleSelect }: Props) => {
-  const { data: locations, isLoading, isError } = useGetLocationsQuery({});
+  const { data: locations, isLoading } = useGetLocationsQuery({ status: 'active' });
 
   return (
     <AppModal loading={isLoading} width={600} okText="Select" onOk={toggle} title="All Locations" toggle={toggle} open={open}>
       <div className=" border-t px-5 border-blue-100">
         {locations?.map((location) => {
-          const isSelected = selected?.find((item) => item.locationId == location?.id);
+          const locationId = getLocationId(location);
+          const isSelected = selected?.find((item) => item.locationId === locationId);
           return (
             <div
+              key={locationId || location.name}
               className={`py-3 flex justify-between items-center  px-5 cursor-pointer border-b border-blue-100 `}
               onClick={() => {
                 toggleSelect(location);

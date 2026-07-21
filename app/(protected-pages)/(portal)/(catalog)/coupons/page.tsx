@@ -1,7 +1,7 @@
 "use client";
 
 import CouponsTable from "@/components/coupons/CouponsTable";
-import { AddButton } from "@/components/ui/AppButtons";
+import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 import useToggle from "@/hooks/UseToggle";
 
@@ -16,11 +16,14 @@ export default function CouponsPage() {
                     <AppSearch />
                 </div>
                 <div className=" flex gap-x-5 ">
-                    <AddButton onClick={toggleDiscountForm} label="New Coupon" />
+                    <div className="hidden md:block">
+                        <AddButton onClick={toggleDiscountForm} label="New Coupon" />
+                    </div>
                 </div>
             </div>
 
             <CouponFormModal open={openDiscountForm} toggle={toggleDiscountForm} />
+            <FloatingAddButton onClick={toggleDiscountForm} label="New Coupon" />
 
             <CouponsTable />
         </div>
