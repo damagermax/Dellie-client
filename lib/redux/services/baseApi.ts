@@ -1,6 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4200";
+import { API_BASE_URL } from "@/lib/config/apiBaseUrl";
 
 export const TAG_TYPES = {
   PRODUCT: "Product",
@@ -42,11 +41,13 @@ export const TAG_TYPES = {
   SALE: "SALE",
   SALES: "SALES",
   AUDIT_LOGS: "AUDIT_LOGS",
+  DELIVERY_ZONES: "DELIVERY_ZONES",
+  DELIVERY_ZONE: "DELIVERY_ZONE",
 } as const;
 
 export const baseApi = createApi({
   baseQuery: fetchBaseQuery({
-    baseUrl: BASE_URL,
+    baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
       const token = localStorage.getItem("accessToken");
 

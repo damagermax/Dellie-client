@@ -8,6 +8,7 @@ import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
 
 import { setStoreSettings } from "@/lib/redux/features/userSlice";
+import { API_BASE_URL_NO_TRAILING_SLASH } from "@/lib/config/apiBaseUrl";
 import { useGetStoreSettingsQuery, useUpdateStoreSettingsMutation } from "@/lib/redux/services/storeSettingsApi";
 import type { AppDispatch, RootState } from "@/lib/redux/store";
 import { DEFAULT_INTEGRATIONS_SETTINGS, PaystackIntegrationSettings, StripeIntegrationSettings, UpdateStoreSettingsInput } from "@/types/store-settings";
@@ -49,7 +50,7 @@ const INTEGRATION_COPY: Record<
   },
 };
 
-const WEBHOOK_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4200").replace(/\/+$/, "");
+const WEBHOOK_BASE_URL = API_BASE_URL_NO_TRAILING_SLASH;
 
 function slugifyStoreName(value?: string) {
   return String(value || "")
