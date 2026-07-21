@@ -5,7 +5,7 @@ import ContactsView from "@/components/contacts/contacts-view/ContactsView";
 import { AddButton, FloatingAddButton, ImportExportButton } from "@/components/ui/AppButtons";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 import useToggle from "@/hooks/UseToggle";
-import { ContactQueryParams } from "@/types/contact";
+import { ContactQueryParams, ContactRole } from "@/types/contact";
 
 import { useState } from "react";
 import { ContactsFilterDrawer } from "@/components/contacts/ContactsFilterDrawer";
@@ -25,11 +25,11 @@ export default function ContactsPage() {
   const [draftFilters, setDraftFilters] = useState<ContactQueryParams>({});
   const filterCount = Number(Boolean(contactsQuery.status)) + Number(Boolean(contactsQuery.role));
   const contactsQuickFilter: ContactsQuickFilter | undefined =
-    contactsQuery.role === "customer"
+    contactsQuery.role === ContactRole.CUSTOMER
       ? "customers"
-      : contactsQuery.role === "supplier"
+      : contactsQuery.role === ContactRole.SUPPLIER
         ? "suppliers"
-        : contactsQuery.role === "employee"
+        : contactsQuery.role === ContactRole.EMPLOYEE
           ? "employees"
           : !contactsQuery.role
             ? "all"
@@ -86,7 +86,14 @@ export default function ContactsPage() {
               setContactQuery((prev) => ({
                 ...prev,
                 page: 1,
-                role: value === "customers" ? "customer" : value === "suppliers" ? "supplier" : value === "employees" ? "employee" : undefined,
+                role:
+                  value === "customers"
+                    ? ContactRole.CUSTOMER
+                    : value === "suppliers"
+                      ? ContactRole.SUPPLIER
+                      : value === "employees"
+                        ? ContactRole.EMPLOYEE
+                        : undefined,
               }))
             }
           />
