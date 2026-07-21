@@ -5,6 +5,7 @@ export type PosCustomerMode = "walk_in_default" | "prompt_before_checkout" | "re
 export type PosFulfillmentDefault = "fulfill_now" | "pending";
 export type PosReceiptPaperSize = "compact" | "full_page";
 export type StoreDocumentTemplateKey = "modern" | "minimal" | "bold" | "classic";
+export type OnlineStoreTheme = "minimal" | "modern" | "bold";
 
 export interface StorePricingSettings {
   enableTradePrice: boolean;
@@ -31,6 +32,12 @@ export interface StoreDocumentsSettings {
   salesInvoiceTemplate: StoreDocumentTemplateKey;
   salesReceiptTemplate: StoreDocumentTemplateKey;
   posReceiptTemplate: StoreDocumentTemplateKey;
+}
+
+export interface StoreOnlineSettings {
+  theme: OnlineStoreTheme;
+  fulfillmentLocationIds: string[];
+  fulfillmentMethods?: string[];
 }
 
 export interface PaystackIntegrationSettings {
@@ -72,6 +79,7 @@ export interface StoreSettings {
   pricing: StorePricingSettings;
   features: StoreFeatureSettings;
   documents: StoreDocumentsSettings;
+  onlineStore: StoreOnlineSettings;
   integrations: StoreIntegrationsSettings;
   businessProfile: StoreBusinessProfile;
   canChangeCurrency: boolean;
@@ -141,6 +149,12 @@ export const DEFAULT_DOCUMENTS_SETTINGS: StoreDocumentsSettings = {
   posReceiptTemplate: "minimal",
 };
 
+export const DEFAULT_ONLINE_STORE_SETTINGS: StoreOnlineSettings = {
+  theme: "modern",
+  fulfillmentLocationIds: [],
+  fulfillmentMethods: [],
+};
+
 export const DEFAULT_INTEGRATIONS_SETTINGS: StoreIntegrationsSettings = {
   paystack: {
     connected: false,
@@ -162,6 +176,7 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   pricing: DEFAULT_PRICING_SETTINGS,
   features: DEFAULT_FEATURE_SETTINGS,
   documents: DEFAULT_DOCUMENTS_SETTINGS,
+  onlineStore: DEFAULT_ONLINE_STORE_SETTINGS,
   integrations: DEFAULT_INTEGRATIONS_SETTINGS,
   businessProfile: {
     logo: "",
@@ -184,6 +199,7 @@ export interface UpdateStoreSettingsInput {
   pricing?: Partial<StorePricingSettings>;
   features?: Partial<StoreFeatureSettings>;
   documents?: Partial<StoreDocumentsSettings>;
+  onlineStore?: Partial<StoreOnlineSettings>;
   integrations?: Partial<{
     paystack: Partial<PaystackIntegrationSettings>;
     stripe: Partial<StripeIntegrationSettings>;

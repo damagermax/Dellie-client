@@ -25,3 +25,4 @@ export * from "./inventory-report";
 export * from "./finance-report";
 export * from "./audit-log";
 export * from "./dashboard-overview";
+export * from "./delivery-zone";

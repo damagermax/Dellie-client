@@ -22,3 +22,4 @@ export * from "./financeReportsApi";
 export * from "./storeSettingsApi";
 export * from "./auditLogsApi";
 export * from "./dashboardOverviewApi";
+export * from "./deliveryZonesApi";
