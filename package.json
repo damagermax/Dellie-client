@@ -37,7 +37,7 @@
     "framer-motion": "^12.23.12",
     "libphonenumber-js": "^1.12.40",
     "lucide-react": "^0.479.0",
-    "next": "15.2.1",
+    "next": "15.2.8",
     "nextjs-progressbar": "^0.0.16",
     "nextjs-toploader": "^3.9.17",
     "playwright": "^1.60.0",
