@@ -128,6 +128,11 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   const stockBundleEnabled = featureSettings?.stockBundleEnabled !== false;
   const nonStockBundleEnabled = featureSettings?.nonStockBundleEnabled !== false;
   const bundleFeatureEnabled = itemType === ITEM_TYPE.STOCK ? stockBundleEnabled : itemType === ITEM_TYPE.NON_STOCK ? nonStockBundleEnabled : false;
+  const componentsSectionTitle = itemType === ITEM_TYPE.STOCK ? "Production Components" : "Bundle Components";
+  const componentsSectionHelpText =
+    itemType === ITEM_TYPE.STOCK
+      ? "Used to assemble this product and calculate production cost."
+      : "Used to define what is included when selling this bundle.";
   const itemTypeOptions = useMemo(
     () => (trackQuantityEnabled ? ItemType : ItemType.filter((type) => type.key !== ITEM_TYPE.STOCK)),
     [trackQuantityEnabled],
@@ -671,12 +676,12 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
 
                 <div className="px-5  ">
                   <div className=" flex justify-between items-center">
-                    <h3 className="text-base font-medium text-gray-700">Contains Other Products?</h3>
+                    <h3 className="text-base font-medium text-gray-700">{componentsSectionTitle}</h3>
                     <Form.Item name="containsOtherProducts" valuePropName="checked" className="!mb-0">
                       <Switch />
                     </Form.Item>
                   </div>
-                  <p className="text-xs text-gray-500">This product is made up of other products or ingredients.</p>
+                  <p className="text-xs text-gray-500">{componentsSectionHelpText}</p>
                 </div>
 
                 {containsOtherProducts && (
