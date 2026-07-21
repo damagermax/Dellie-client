@@ -82,10 +82,31 @@ export default function PurchaseDetailPage({ params }: { params: Promise<{ id: s
           toggle={controller.closeItemEditor}
           title={controller.editingItem.kind === "fulfillment" ? "Edit Fulfillment" : "Edit Return"}
           description={state.editingItemName}
-          quantityLabel={`Current quantity: ${Number(controller.editingItem.item.quantity || 0).toLocaleString()}`}
           quantity={Number(controller.editingItem.item.quantity || 0)}
+          imageUrl={
+            "productUrl" in controller.editingItem.item && typeof controller.editingItem.item.productUrl === "string"
+              ? controller.editingItem.item.productUrl
+              : typeof controller.editingItem.item.productId === "string"
+                ? undefined
+                : typeof controller.editingItem.item.productId.media?.[0]?.url === "string"
+                  ? controller.editingItem.item.productId.media[0].url
+                  : undefined
+          }
+          sku={
+            "productSku" in controller.editingItem.item && typeof controller.editingItem.item.productSku === "string"
+              ? controller.editingItem.item.productSku
+              : typeof controller.editingItem.item.productId === "string"
+                ? undefined
+                : typeof controller.editingItem.item.productId.sku === "string"
+                  ? controller.editingItem.item.productId.sku
+                  : undefined
+          }
           dateLabel={controller.editingItem.kind === "fulfillment" ? "Received at" : "Returned at"}
           initialDate={controller.editingItem.kind === "fulfillment" ? controller.editingItem.item.fulfilledAt : controller.editingItem.item.returnedAt}
+          showNote={controller.editingItem.kind === "return"}
+          initialNote={controller.editingItem.kind === "return" ? controller.editingItem.item.reason : undefined}
+          showRestock={controller.editingItem.kind === "return"}
+          initialRestock={controller.editingItem.kind === "return" ? controller.editingItem.item.restock !== false : undefined}
           loading={controller.isUpdatingFulfillment || controller.isUpdatingReturn || controller.isDeletingFulfillment || controller.isDeletingReturn}
           onSubmit={controller.saveItem}
         />
