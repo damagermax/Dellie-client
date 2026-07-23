@@ -1,6 +1,7 @@
 "use client";
 
 import { Divider, Tag } from "antd";
+import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
 
 import { Purchase } from "@/types/index";
 
@@ -17,7 +18,7 @@ export function PurchaseSummaryPanel({ purchase }: { purchase: Purchase }) {
           <h2 className="text-base font-medium text-gray-900">Purchase Summary</h2>
           {!summary.isCancelled ? (
             <Tag className="px-3 !rounded-full capitalize" color={purchase.paymentStatus === "paid" ? "green" : purchase.paymentStatus === "partial" ? "orange" : "blue"}>
-              {purchase.paymentStatus}
+              {paymentStatusLabel(purchase.paymentStatus)}
             </Tag>
           ) : null}
         </div>
@@ -32,6 +33,8 @@ export function PurchaseSummaryPanel({ purchase }: { purchase: Purchase }) {
         <Divider className="my-3" />
         <SummaryRow label="Total" value={money(summary.currency, purchase.amount)} strong />
         <SummaryRow label="Paid" value={money(summary.currency, summary.paid)} />
+        {summary.showRefund ? <SummaryRow label="Refund" value={money(summary.currency, summary.refund)} /> : null}
+        {summary.showWriteOff ? <SummaryRow label="Write-off" value={money(summary.currency, summary.writeOff)} /> : null}
         <Divider className="my-3" />
         <SummaryRow label="Balance" value={money(summary.currency, purchase.balance)} strong />
       </div>

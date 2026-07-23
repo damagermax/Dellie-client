@@ -70,19 +70,13 @@ export default function DashboardPage() {
   return (
     <DashboardPageContainer>
       <div className="space-y-4">
-        <DashboardToolbar className="mb-0">
+        <DashboardToolbar className="mb-5">
           <div />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Select className="min-w-[220px]" value={locationId} onChange={setLocationId} options={locationOptions} />
           </div>
         </DashboardToolbar>
-        <DashboardOverviewMetricsSection
-          currencyCode={data.currencyCode}
-          revenueToday={data.summary.revenueToday}
-          salesToday={data.summary.salesToday}
-          totalProducts={data.summary.totalProducts}
-          totalCustomers={data.summary.totalCustomers}
-        />
+        <DashboardOverviewMetricsSection currencyCode={data.currencyCode} revenueToday={data.summary.revenueToday} salesToday={data.summary.salesToday} totalProducts={data.summary.totalProducts} totalCustomers={data.summary.totalCustomers} />
         {hasWatchlist ? (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <div className="min-w-0">

@@ -23,6 +23,7 @@ interface PurchaseOrderFormModalProps extends ModalProps {
 
 export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: PurchaseOrderFormModalProps) {
   const controller = usePurchaseOrderFormController({ open, toggle, purchase, onSaved });
+  const inputGridClass = controller.multiCurrencyEnabled && controller.paymentTermsEnabled ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3";
 
   const productColumns = buildPurchaseFormColumns({
     currency: controller.currency,
@@ -41,7 +42,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
     <>
       <AppModal open={open} toggle={toggle} title={purchase ? "Edit Purchase" : "New Purchase"} onOk={controller.handleSubmit} width={1000} loading={controller.loading} okText={"Save"}>
         <Form form={controller.form} disabled={controller.cannotEdit || controller.loading} layout="vertical" initialValues={{ date: dayjs(), dueDate: dayjs() }}>
-          <div className="grid grid-cols-1 gap-x-5 gap-y-1 p-5 pb-8 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={`grid grid-cols-1 gap-x-5 gap-y-1 p-5 pb-8 ${inputGridClass}`}>
             <Form.Item name="contactId" label="Contact" rules={[{ required: true, message: "Select contact" }]}>
               <SearchableContactSelect onAddContact={() => {}} />
             </Form.Item>

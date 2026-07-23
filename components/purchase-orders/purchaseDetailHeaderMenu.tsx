@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Dropdown, type MenuProps } from "antd";
-import { Copy, CreditCard, Link as LinkIcon, Lock, MoreHorizontal, PackageCheck, Pencil, Receipt, RotateCcw, Trash2, Truck, Undo2, Unlock } from "lucide-react";
+import { CreditCard, Lock, MoreHorizontal, PackageCheck, Pencil, Receipt, RotateCcw, Trash2, Truck, Undo2, Unlock } from "lucide-react";
 
 import type { Purchase } from "@/types/index";
 
@@ -35,13 +35,6 @@ export type PurchaseDetailHeaderMenuContext = {
   onWriteOff: () => void;
 };
 
-export function buildPurchaseDetailHeaderReadOnlyItems(): MenuItems {
-  return [
-    { key: "copy_number", icon: <Copy size={15} />, label: "Copy Purchase Number" },
-    { key: "copy_link", icon: <LinkIcon size={15} />, label: "Copy Page Link" },
-  ];
-}
-
 export function buildPurchaseDetailHeaderMoreItems(context: PurchaseDetailHeaderMenuContext): MenuItems {
   if (!context.canManage || context.isClosed) {
     return [];
@@ -51,24 +44,13 @@ export function buildPurchaseDetailHeaderMoreItems(context: PurchaseDetailHeader
     { key: "edit", disabled: !context.canEdit, icon: <Pencil size={15} />, label: "Edit Purchase" },
     { key: "landed_cost", disabled: Boolean(context.purchase.locked), icon: <Truck size={15} />, label: "Add Landed Cost" },
     ...(context.returnsEnabled && context.canReturn ? [{ key: "return", icon: <Undo2 size={15} />, label: "Return Items" }] : []),
-    ...(context.refundPaymentsEnabled || context.writeOffPaymentsEnabled ? [{ type: "divider" as const }] : []),
-    ...(context.refundPaymentsEnabled ? [{ key: "refund", icon: <RotateCcw size={15} />, label: "Refund Payment", disabled: !context.canRefundPayment }] : []),
+    ...((context.refundPaymentsEnabled && context.canRefundPayment) || context.writeOffPaymentsEnabled ? [{ type: "divider" as const }] : []),
+    ...(context.refundPaymentsEnabled && context.canRefundPayment ? [{ key: "refund", icon: <RotateCcw size={15} />, label: "Refund Payment" }] : []),
     ...(context.writeOffPaymentsEnabled ? [{ key: "write_off", icon: <Receipt size={15} />, label: "Write Off Balance", disabled: !context.canWriteOffPayment }] : []),
     { key: "close", icon: <Lock size={15} />, label: "Close Purchase" },
     { type: "divider" as const },
     { key: "delete", icon: <Trash2 size={15} />, danger: true, disabled: context.isCancelling, label: "Cancel Purchase" },
   ];
-}
-
-export async function handlePurchaseDetailHeaderReadOnlyClick(key: string, purchase: Purchase) {
-  if (key === "copy_number") {
-    await navigator.clipboard.writeText(purchase.purchaseNumber);
-    return;
-  }
-
-  if (key === "copy_link") {
-    await navigator.clipboard.writeText(window.location.href);
-  }
 }
 
 export function handlePurchaseDetailHeaderMenuClick(key: string, context: PurchaseDetailHeaderMenuContext) {
@@ -121,20 +103,11 @@ export function PurchaseDetailHeaderDropdownButton({ items, onClick }: PurchaseD
 }
 
 export function buildPurchaseDetailHeaderActions(context: PurchaseDetailHeaderMenuContext) {
-  const readOnlyItems = buildPurchaseDetailHeaderReadOnlyItems();
   const moreItems = buildPurchaseDetailHeaderMoreItems(context);
-  const handleReadOnlyClick: MenuProps["onClick"] = ({ key }) => void handlePurchaseDetailHeaderReadOnlyClick(String(key), context.purchase);
-  const dropdownButton = <PurchaseDetailHeaderDropdownButton items={readOnlyItems} onClick={handleReadOnlyClick} />;
-  const combinedMenuItems = [...readOnlyItems, ...(moreItems.length ? [{ type: "divider" as const }, ...moreItems] : [])];
-  const handleCombinedClick: MenuProps["onClick"] = ({ key }) => {
-    const keyValue = String(key);
-    if (keyValue === "copy_number" || keyValue === "copy_link") {
-      void handlePurchaseDetailHeaderReadOnlyClick(keyValue, context.purchase);
-      return;
-    }
-
-    handlePurchaseDetailHeaderMenuClick(keyValue, context);
-  };
+  const dropdownButton =
+    moreItems.length > 0 ? (
+      <PurchaseDetailHeaderDropdownButton items={moreItems} onClick={({ key }) => handlePurchaseDetailHeaderMenuClick(String(key), context)} />
+    ) : null;
 
   return {
     dropdownButton,
@@ -151,7 +124,6 @@ export function buildPurchaseDetailHeaderActions(context: PurchaseDetailHeaderMe
                 Reopen Purchase
               </Button>
             ) : null}
-            <PurchaseDetailHeaderDropdownButton items={readOnlyItems} onClick={handleReadOnlyClick} />
           </>
         ) : context.canManage ? (
           <>
@@ -164,16 +136,16 @@ export function buildPurchaseDetailHeaderActions(context: PurchaseDetailHeaderMe
                 Return
               </Button>
             ) : null}
-            {context.canRefundPayment && context.refundPaymentsEnabled ? (
-              <Button type="primary" className="!shadow-none  !bg-[#f7c855] !text-black !font-semibold" icon={context.canRefundPayment ? <RotateCcw size={15} /> : <CreditCard size={15} />} disabled={Boolean(context.purchase.locked)} onClick={context.canRefundPayment ? context.onRefund : context.onRecordPayment}>
-                {context.canRefundPayment ? "Refund Payment" : "Record Payment"}
-              </Button>
-            ) : context.canRecordPayment ? (
+            {context.canRecordPayment ? (
               <Button type="primary" className="!shadow-none  !bg-[#f7c855] !text-black !font-semibold" icon={<CreditCard size={15} />} disabled={Boolean(context.purchase.locked)} onClick={context.onRecordPayment}>
                 Record Payment
               </Button>
+            ) : context.canRefundPayment && context.refundPaymentsEnabled ? (
+              <Button type="primary" className="!shadow-none  !bg-[#f7c855] !text-black !font-semibold" icon={<RotateCcw size={15} />} disabled={Boolean(context.purchase.locked)} onClick={context.onRefund}>
+                Refund Payment
+              </Button>
             ) : null}
-            <PurchaseDetailHeaderDropdownButton items={combinedMenuItems} onClick={handleCombinedClick} />
+            {dropdownButton}
           </>
         ) : (
           dropdownButton

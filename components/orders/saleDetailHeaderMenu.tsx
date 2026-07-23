@@ -70,7 +70,7 @@ export function buildSaleDetailHeaderMoreItems(context: SaleDetailHeaderMenuCont
     ...(context.canManage
       ? [
           { key: "edit", disabled: !context.canEdit, icon: <Pencil size={15} />, label: "Edit Sale" },
-          ...(context.refundPaymentsEnabled ? [{ key: "refund", icon: <RotateCcw size={15} />, label: "Refund Payment", disabled: !context.canRefundPayment }] : []),
+          ...(context.refundPaymentsEnabled && context.canRefundPayment ? [{ key: "refund", icon: <RotateCcw size={15} />, label: "Refund Payment" }] : []),
           ...(context.returnsEnabled && context.canReturn ? [{ key: "return", icon: <Undo2 size={15} />, label: "Return Items" }] : []),
           ...(context.writeOffPaymentsEnabled ? [{ key: "write_off", icon: <Receipt size={15} />, label: "Write Off Balance", disabled: !context.canWriteOffPayment }] : []),
           { key: "close", icon: <Lock size={15} />, label: "Close Sale" },
@@ -182,7 +182,7 @@ export function SaleDetailHeaderActions(context: SaleDetailHeaderMenuContext) {
                     Record Payment
                   </Button>
                 ) : null}
-                {context.canRefundPayment && context.refundPaymentsEnabled ? (
+                {context.canRefundPayment && context.refundPaymentsEnabled && !context.canRecordPayment ? (
                   <Button type="primary" className="!bg-[#f7c855] !font-semibold !text-black !shadow-none" icon={<RotateCcw size={15} />} disabled={Boolean(context.sale.locked)} onClick={context.onRefund}>
                     Refund Payment
                   </Button>

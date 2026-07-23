@@ -2,13 +2,14 @@
 
 import { Package } from "lucide-react";
 
+import { buildDocumentSettlementSummary } from "@/components/payment/documentSettlementSummary";
 import { ResolvedProductName } from "@/components/products/ResolvedProductName";
 import PreviewImage from "@/components/ui/PreviewImage";
 import { Purchase, PurchaseLineItem } from "@/types/index";
 
 export function buildPurchaseSummary(purchase: Purchase) {
   const currency = purchase.currencyId?.code || "";
-  const paid = Number(purchase.amount) - Number(purchase.balance);
+  const settlement = buildDocumentSettlementSummary(purchase);
   const discountedSubtotal = Math.max(Number(purchase.subTotal) - Number(purchase.discountAmount || 0), 0);
   const taxSummary = Object.entries(
     (purchase.taxes || []).reduce<Record<string, number>>((summary, tax) => {
@@ -20,7 +21,11 @@ export function buildPurchaseSummary(purchase: Purchase) {
 
   return {
     currency,
-    paid,
+    paid: settlement.paidAmount,
+    refund: settlement.refundAmount,
+    writeOff: settlement.writeOffAmount,
+    showRefund: settlement.hasRefundAmount,
+    showWriteOff: settlement.hasWriteOffAmount,
     discountedSubtotal,
     taxSummary,
     isCancelled: Boolean(purchase.isDeleted),

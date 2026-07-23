@@ -1,11 +1,9 @@
 "use client";
 
-import { Form, Input } from "antd";
+import { DatePicker, Form, Input } from "antd";
 import { AppModal } from "@/components/ui/AppModal";
-import { TransactionReturnLineList, type ReturnLine } from "./transactionReturnSections";
+import { TransactionReturnLineList, type ReturnLine, type ReturnSubmissionItem } from "./transactionReturnSections";
 import { useTransactionReturnController } from "./useTransactionReturnController";
-
-const { TextArea } = Input;
 
 interface TransactionReturnModalProps {
   open: boolean;
@@ -13,9 +11,10 @@ interface TransactionReturnModalProps {
   title: string;
   description: string;
   lines: ReturnLine[];
+  showRestock?: boolean;
   loading?: boolean;
   okText?: string;
-  onSubmit: (items: { lineItemId: string; quantity: number; reason?: string }[]) => Promise<void> | void;
+  onSubmit: (payload: { items: ReturnSubmissionItem[]; returnedAt: string }) => Promise<void> | void;
 }
 
 export default function TransactionReturnModal({
@@ -24,30 +23,39 @@ export default function TransactionReturnModal({
   title,
   description,
   lines,
+  showRestock = false,
   loading = false,
   okText = "Return",
   onSubmit,
 }: TransactionReturnModalProps) {
-  const controller = useTransactionReturnController({ open, lines, onSubmit });
+  const controller = useTransactionReturnController({ open, lines, showRestock, onSubmit });
 
   return (
     <AppModal
       open={open}
       toggle={toggle}
       title={title}
+      subtitle={description}
       onOk={controller.submit}
-      width={720}
+      width={840}
       height="auto"
       loading={loading}
       okText={okText}
     >
-      <div className="px-5 py-4">
-        <p className="mb-4 text-sm leading-5 text-gray-500">{description}</p>
+      <div className="pb-4">
         <Form form={controller.form} layout="vertical" disabled={loading}>
-          <Form.Item label="Reason" name="reason" className="!mb-4">
-            <TextArea rows={2} maxLength={240} placeholder="Optional return reason" className="!resize-none" />
-          </Form.Item>
-          <TransactionReturnLineList lines={lines} />
+          <TransactionReturnLineList lines={lines} showRestock={showRestock} />
+          <div className="p-5">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Form.Item label="Returned at" name="returnedAt" className="!mb-0" rules={[{ required: true, message: "Select a returned date" }]}>
+                <DatePicker className="!w-full" style={{ width: "100%" }} />
+              </Form.Item>
+
+              <Form.Item label="Reason" name="reason" className="!mb-0" rules={[{ required: true, message: "Enter a reason" }]}>
+                <Input placeholder="Enter reason" />
+              </Form.Item>
+            </div>
+          </div>
         </Form>
       </div>
     </AppModal>

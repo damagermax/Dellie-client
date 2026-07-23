@@ -19,13 +19,16 @@ export function receiptStatusColor(status?: string) {
   return "blue";
 }
 
-export function formatMoney(value: unknown) {
+export function formatMoney(value: unknown, currencyCode = "GHS") {
   const amount = Number(value || 0);
-  return new Intl.NumberFormat("en-GH", {
-    style: "currency",
-    currency: "GHS",
-    maximumFractionDigits: 2,
-  }).format(amount);
+  const formattedAmount = Number.isFinite(amount)
+    ? amount.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : "0.00";
+
+  return currencyCode ? `${currencyCode} ${formattedAmount}` : formattedAmount;
 }
 
 export function getRequiredPriceTiers(tiers?: ProductPriceTier[], enableTradePrice = true) {

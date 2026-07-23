@@ -5,6 +5,7 @@ import { message } from "antd";
 
 import { useReturnSaleMutation } from "@/lib/redux/services";
 import { Sale } from "@/types/index";
+import { ReturnSubmissionItem } from "@/components/transactions/transactionReturnSections";
 
 import { useSaleReturnLines } from "./saleReturnOperationSections";
 import { saleApiError } from "./saleUtils";
@@ -20,9 +21,9 @@ export function useSaleReturnOperationController({ sale, onSaved, toggle }: UseS
   const lines = useSaleReturnLines(sale);
 
   const submit = useCallback(
-    async (items: { lineItemId: string; quantity: number; reason?: string }[]) => {
+    async ({ items, returnedAt }: { items: ReturnSubmissionItem[]; returnedAt: string }) => {
       try {
-        await returnSale({ id: sale.id, items }).unwrap();
+        await returnSale({ id: sale.id, items, returnedAt }).unwrap();
         message.success("Return recorded.");
         onSaved();
         toggle();

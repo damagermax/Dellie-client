@@ -96,7 +96,7 @@ export function SalesFilterDrawer({ open, filters, onChange, onClose, onApply, o
           options={[
             { value: "", label: "All" },
             { value: "unpaid", label: "Unpaid" },
-            { value: "partial", label: "Partial" },
+            { value: "partial", label: "Partial Payment" },
             { value: "paid", label: "Paid" },
           ]}
         />

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Drawer, Tag } from "antd";
+import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
 import type { Sale } from "@/types/index";
 import type { SavedPosCart } from "./types";
 import { POS_MODAL_OVERLAY_STYLE, formatHistoryTime, formatMoney, getSavedCartItemCount, getSavedCartTotal } from "./utils";
@@ -108,7 +109,7 @@ export default function PosHistoryDrawer({
                       </p>
                     </div>
                     <Tag color={sale.paymentStatus === "paid" ? "green" : sale.paymentStatus === "partial" ? "orange" : "default"} className="!mr-0 !rounded-full">
-                      {sale.paymentStatus || "unpaid"}
+                      {paymentStatusLabel(sale.paymentStatus)}
                     </Tag>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3 text-sm">

@@ -12,7 +12,7 @@ export function CostBreakdownModal({ open, onClose, purchase, currency }: { open
   const columns = buildCostBreakdownColumns(currency);
 
   return (
-    <Modal open={open} onCancel={onClose} footer={null} width={1080} title="Cost Breakdown" className="purchase-cost-breakdown-modal">
+    <Modal open={open} onCancel={onClose} footer={null} width={1250} title="Cost Breakdown" className="purchase-cost-breakdown-modal">
       <div className="space-y-4 p-5">
         <p className="text-sm text-gray-500">All amounts shown in {currency} base currency.</p>
         <div className="grid grid-cols-1 gap-2 pb-5 sm:grid-cols-3">

@@ -115,6 +115,7 @@ function hasReportData(report: InventoryReportResponse) {
     report.summary.lowStockSkus !== 0 ||
     report.summary.outOfStockSkus !== 0 ||
     (report.expiryEnabled && report.summary.expiringSoonBatches !== 0) ||
+    report.criticalStock.length > 0 ||
     report.movementTrend.some((item) => item.stockIn !== 0 || item.stockOut !== 0) ||
     report.returns.length > 0
   );

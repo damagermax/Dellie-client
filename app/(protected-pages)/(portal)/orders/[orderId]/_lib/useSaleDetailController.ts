@@ -158,14 +158,21 @@ export function useSaleDetailController() {
     }
   };
 
-  const saveItem = async (values: { quantity: number; date: string }) => {
+  const saveItem = async (values: { quantity: number; date: string; note?: string; restock?: boolean }) => {
     if (!sale || !editingItem) return;
 
     try {
       if (editingItem.kind === "fulfillment") {
-        await updateSaleFulfillment({ id: sale.id, fulfillmentId: editingItem.item.id, ...values }).unwrap();
+        await updateSaleFulfillment({ id: sale.id, fulfillmentId: editingItem.item.id, quantity: values.quantity, date: values.date }).unwrap();
       } else {
-        await updateSaleReturn({ id: sale.id, returnId: editingItem.item.id, ...values }).unwrap();
+        await updateSaleReturn({
+          id: sale.id,
+          returnId: editingItem.item.id,
+          quantity: values.quantity,
+          date: values.date,
+          reason: values.note,
+          restock: values.restock,
+        }).unwrap();
       }
       message.success("Item updated.");
       closeItemEditor();

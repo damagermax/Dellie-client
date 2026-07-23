@@ -4,6 +4,7 @@ import React from "react";
 import { Empty, Segmented, Tabs } from "antd";
 import { useSelector } from "react-redux";
 import AppTable from "@/components/ui/AppTable";
+import { buildDocumentSettlementSummary } from "@/components/payment/documentSettlementSummary";
 import { CostBreakdownModal } from "./PurchaseOrderSummary";
 import { useGetCurrencyQuery, useGetStoreSettingsQuery } from "@/lib/redux/services";
 import { RootState } from "@/lib/store";
@@ -89,7 +90,7 @@ export default function PurchaseOrderDetailTables({
   });
   const current = tables[view];
   const discountedSubtotal = Math.max(Number(purchase.subTotal) - Number(purchase.discountAmount || 0), 0);
-  const paidAmount = Number(purchase.amount) - Number(purchase.balance);
+  const settlement = buildDocumentSettlementSummary(purchase);
   const taxSummary = Object.entries(
     (purchase.taxes || []).reduce<Record<string, number>>((summary, tax) => {
       const name = purchase.taxId ? `${tax.name} @${tax.value}%` : tax.name;
@@ -171,7 +172,11 @@ export default function PurchaseOrderDetailTables({
                 discountAmount={Number(purchase.discountAmount || 0)}
                 discountedSubtotal={discountedSubtotal}
                 total={Number(purchase.amount || 0)}
-                paid={paidAmount}
+                paid={settlement.paidAmount}
+                refund={settlement.refundAmount}
+                writeOff={settlement.writeOffAmount}
+                showRefund={settlement.hasRefundAmount}
+                showWriteOff={settlement.hasWriteOffAmount}
                 balance={Number(purchase.balance || 0)}
                 taxSummary={taxSummary}
                 taxAmount={Number(purchase.taxAmount || 0)}

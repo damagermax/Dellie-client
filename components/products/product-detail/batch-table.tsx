@@ -10,6 +10,7 @@ import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdow
 import AppTable from "@/components/ui/AppTable";
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
 import useToggle from "@/hooks/UseToggle";
+import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 import { RootState } from "@/lib/store";
 import { hasBundleComponents } from "@/lib/products/type-label";
 
@@ -30,6 +31,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
   const canDisassemble = product.type === ITEM_TYPE.STOCK && hasBundleComponents(product);
   const canMutateBatches = canManageInventory && product.status !== "archived";
   const expiryEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.expiryEnabled !== false);
+  const storeCurrencyCode = useStoreCurrencyCode();
 
   const locationOptions = useMemo(
     () =>
@@ -205,11 +207,16 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
         </div>
       ),
     },
+    {
+      title: "Location",
+      key: "locationName",
+      render: (_, batch) => batch.locationName || "No location",
+    },
     { title: "Date", key: "sourceDate", render: (_, batch) => formatDate(batch.sourceDate) },
     { title: "Quantity", key: "quantity", render: (_, batch) => formatQuantity(batch.quantity) },
     { title: "Remaining", key: "remainingQuantity", render: (_, batch) => formatQuantity(batch.remainingQuantity) },
     { title: "Source", key: "source", render: (_, batch) => formatBatchSource(batch.source) },
-    { title: "Unit Cost", key: "unitCost", render: (_, batch) => formatMoney(batch.unitCost) },
+    { title: "Unit Cost", key: "unitCost", render: (_, batch) => formatMoney(batch.unitCost, storeCurrencyCode) },
     ...(expiryEnabled ? [{ title: "Expiry", key: "expiryDate", render: (_: unknown, batch: InventoryBatch) => formatDate(batch.expiryDate) }] : []),
     ...(canMutateBatches
       ? [
@@ -277,19 +284,24 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
                 {batch.locationName || "No location"} · {formatBatchSource(batch.source)}
               </p>
 
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-gray-500">
-                  {formatDate(batch.sourceDate)}
-                  {expiryEnabled ? (
-                    <>
-                      {" "}
-                      · Expires {formatDate(batch.expiryDate)}
-                      {isExpiredBatch(batch) ? <span className="ml-2 text-red-600">Expired</span> : null}
-                      {!isExpiredBatch(batch) && isExpiringSoonBatch(batch) ? <span className="ml-2 text-amber-600">Expiring soon</span> : null}
-                    </>
-                  ) : null}
-                </p>
-                <div className="shrink-0 text-right" onClick={(event) => event.stopPropagation()}>{canMutateBatches ? <ActionDropdown isTransparent menu={{ items: actionItemsForBatch(batch) }} /> : null}</div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500">
+                    {formatDate(batch.sourceDate)}
+                    {expiryEnabled ? (
+                      <>
+                        {" "}
+                        · Expires {formatDate(batch.expiryDate)}
+                        {isExpiredBatch(batch) ? <span className="ml-2 text-red-600">Expired</span> : null}
+                        {!isExpiredBatch(batch) && isExpiringSoonBatch(batch) ? <span className="ml-2 text-amber-600">Expiring soon</span> : null}
+                      </>
+                    ) : null}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-gray-700">Unit Cost: {formatMoney(batch.unitCost, storeCurrencyCode)}</p>
+                </div>
+                <div className="shrink-0 text-right" onClick={(event) => event.stopPropagation()}>
+                  {canMutateBatches ? <ActionDropdown isTransparent menu={{ items: actionItemsForBatch(batch) }} /> : null}
+                </div>
               </div>
             </div>
           ))
@@ -300,14 +312,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
 
       <div className="hidden md:block">
         <AppTable<InventoryBatch>
-          columns={[
-            {
-              title: "Location",
-              key: "locationName",
-              render: (_, batch) => batch.locationName || "No location",
-            },
-            ...columns,
-          ]}
+          columns={[...columns]}
           dataSource={filteredBatches}
           rowKey={(batch) => batch.id || batch.batchNumber || `${batch.locationId}-${batch.sourceDate}`}
           onRow={(batch) => ({
@@ -386,7 +391,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
 
       {selectedBatch ? (
         <>
-          <ProductionBatchDetailModal batch={selectedBatch} open={activeBatchModal === "production"} toggle={closeBatchModal} />
+        <ProductionBatchDetailModal batch={selectedBatch} open={activeBatchModal === "production"} toggle={closeBatchModal} currencyCode={storeCurrencyCode} />
           <BatchAdjustmentModal batch={selectedBatch} open={activeBatchModal === "adjust"} toggle={closeBatchModal} onSaved={onBatchChanged} />
           <BatchTransferModal batch={selectedBatch} open={activeBatchModal === "transfer"} toggle={closeBatchModal} onSaved={onBatchChanged} />
           <BatchDisassembleModal batch={selectedBatch} product={product} open={activeBatchModal === "disassemble"} toggle={closeBatchModal} onSaved={onBatchChanged} />

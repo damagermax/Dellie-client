@@ -1,3 +1,3 @@
 "use client";
 
-export { computeSaleRefundPreview as computePurchaseRefundPreview, getRemainingRefundablePaidAmount, getSaleRefundableLines as getPurchaseRefundableLines } from "./saleRefundMath";
+export { computeRefundPreview as computePurchaseRefundPreview, getRemainingRefundablePaidAmount, getRefundableLines as getPurchaseRefundableLines } from "./saleRefundMath";

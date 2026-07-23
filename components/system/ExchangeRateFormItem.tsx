@@ -11,6 +11,7 @@ interface ExchangeRateFormItemProps {
   currencyFieldName?: string;
   rules?: AntFormItemProps["rules"];
   min?: number;
+  disabled?: boolean;
 }
 
 export function ExchangeRateFormItem({
@@ -20,6 +21,7 @@ export function ExchangeRateFormItem({
   currencyFieldName = "currencyId",
   rules,
   min = 0.000001,
+  disabled = false,
 }: ExchangeRateFormItemProps) {
   const form = Form.useFormInstance();
   const selectedCurrencyId = Form.useWatch(currencyFieldName, form) as string | undefined;
@@ -56,7 +58,7 @@ export function ExchangeRateFormItem({
         className="!w-full"
         min={min}
         controls={false}
-        disabled={isStoreCurrency}
+        disabled={disabled || isStoreCurrency}
         prefix={`1 ${selectedCurrencyCode || storeCurrencyCode} =`}
         suffix={storeCurrencyCode || selectedCurrencyCode}
         placeholder="1"

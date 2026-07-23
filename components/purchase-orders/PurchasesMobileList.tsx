@@ -3,6 +3,7 @@
 import { Tag } from "antd";
 import Link from "next/link";
 import { formatDate } from "@/lib/dateUtils";
+import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
 import { Purchase } from "@/types/purchase";
 
 interface PurchasesMobileListProps {
@@ -33,7 +34,7 @@ export default function PurchasesMobileList({ purchases }: PurchasesMobileListPr
                     <p className="truncate text-[15px] font-semibold text-gray-900">{purchase.purchaseNumber}</p>
 
                     <Tag className={`${mobileTagClassName} capitalize`} color={statusColor(purchase.paymentStatus)}>
-                      {purchase.paymentStatus}
+                      {paymentStatusLabel(purchase.paymentStatus)}
                     </Tag>
                     <Tag className={`${mobileTagClassName} capitalize`} color={statusColor(purchase.receiptStatus)}>
                       {purchase.receiptStatus?.replaceAll("_", " ")}

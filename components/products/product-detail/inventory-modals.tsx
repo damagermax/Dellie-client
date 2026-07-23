@@ -9,6 +9,7 @@ import { AppModal } from "@/components/ui/AppModal";
 import PreviewImage from "@/components/ui/PreviewImage";
 import { BatchContextCard } from "@/components/products/product-detail/shared";
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
+import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 import { useAdjustBatchMutation, useDisassembleBatchByBatchIdMutation, useGetLocationsQuery, useRestockProductMutation, useTransferBatchByBatchIdMutation } from "@/lib/redux/services";
 import { RootState } from "@/lib/store";
 import { getProductTypeLabel, hasBundleComponents } from "@/lib/products/type-label";
@@ -52,6 +53,7 @@ export function RestockProductModal({ open, toggle, product, onSaved }: { open: 
   const { data: locations = [], isLoading: locationsLoading } = useGetLocationsQuery({}, { skip: !open });
   const isProduction = product.type === ITEM_TYPE.STOCK && hasBundleComponents(product);
   const expiryEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.expiryEnabled !== false);
+  const storeCurrencyCode = useStoreCurrencyCode();
   const selectedLocationId = Form.useWatch("locationId", form);
   const finishedQuantity = Number(Form.useWatch("quantity", form) || 0);
 
@@ -173,14 +175,18 @@ export function RestockProductModal({ open, toggle, product, onSaved }: { open: 
     <AppModal
       open={open}
       toggle={toggle}
-      title={<p className="line-clamp-1 pr-5">{isProduction ? "Production" : "Restock"} {product.name}</p>}
+      title={
+        <p className="line-clamp-1 pr-5">
+          {isProduction ? "Production" : "Restock"} {product.name}
+        </p>
+      }
       onOk={handleSubmit}
       loading={isLoading}
       okText={isProduction ? "Save production" : "Restock"}
       width={700}
       height="75vh"
       footer={
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 p-5">
           <Button onClick={toggle} disabled={isLoading}>
             Cancel
           </Button>
@@ -241,7 +247,7 @@ export function RestockProductModal({ open, toggle, product, onSaved }: { open: 
                     ]
               }
             >
-              <InputNumber className="!w-full" min={0} disabled={isProduction} />
+              <InputNumber className="!w-full" min={0} disabled={isProduction} prefix={storeCurrencyCode || undefined} />
             </Form.Item>
             <Form.Item label="Received date" name="receivedDate" rules={[{ required: true, message: "Select received date" }]}>
               <DatePicker className="!w-full" />
@@ -269,9 +275,7 @@ export function RestockProductModal({ open, toggle, product, onSaved }: { open: 
                       <p className="mt-1 text-xs text-gray-500">
                         {component.sku || "No SKU"} · Default {formatQuantity(component.quantityRequired * finishedQuantity)}
                       </p>
-                      <p className={`mt-1 text-xs ${component.shortage > 0 ? "text-red-600" : "text-gray-500"}`}>
-                        Available at this location: {selectedLocationId ? formatQuantity(component.available) : "-"}
-                      </p>
+                      <p className={`mt-1 text-xs ${component.shortage > 0 ? "text-red-600" : "text-gray-500"}`}>Available at this location: {selectedLocationId ? formatQuantity(component.available) : "-"}</p>
                     </div>
                     <div className="w-[118px] shrink-0">
                       <InputNumber className="!w-full" min={0.000001} value={component.quantity} onChange={(value) => updateComponentQuantity(component.productId, value)} />
@@ -281,9 +285,7 @@ export function RestockProductModal({ open, toggle, product, onSaved }: { open: 
               </div>
 
               {componentShortages.length ? (
-                <div className="mt-3 rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {componentShortages.map((component) => `${component.productName}: short ${formatQuantity(component.shortage)}`).join(" · ")}
-                </div>
+                <div className="mt-3 rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{componentShortages.map((component) => `${component.productName}: short ${formatQuantity(component.shortage)}`).join(" · ")}</div>
               ) : null}
             </div>
           ) : null}
@@ -293,11 +295,8 @@ export function RestockProductModal({ open, toggle, product, onSaved }: { open: 
   );
 }
 
-export function ProductionBatchDetailModal({ batch, open, toggle }: { batch: InventoryBatch; open: boolean; toggle: () => void }) {
-  const components = useMemo(
-    () => (batch.assemblyComponents || []).filter((component) => Number(component.quantity || 0) > 0),
-    [batch.assemblyComponents],
-  );
+export function ProductionBatchDetailModal({ batch, open, toggle, currencyCode }: { batch: InventoryBatch; open: boolean; toggle: () => void; currencyCode: string }) {
+  const components = useMemo(() => (batch.assemblyComponents || []).filter((component) => Number(component.quantity || 0) > 0), [batch.assemblyComponents]);
 
   return (
     <AppModal open={open} toggle={toggle} title={`Production ${batch.batchNumber || "batch"}`} footer={null} width={640} height="70vh">
@@ -309,7 +308,7 @@ export function ProductionBatchDetailModal({ batch, open, toggle }: { batch: Inv
             { label: "Produced", value: formatQuantity(batch.quantity) },
             { label: "Remaining", value: formatQuantity(batch.remainingQuantity) },
             { label: "Date", value: formatDate(batch.sourceDate) },
-            { label: "Unit Cost", value: formatMoney(batch.unitCost) },
+            { label: "Unit Cost", value: formatMoney(batch.unitCost, currencyCode) },
           ]}
         />
 
@@ -326,7 +325,7 @@ export function ProductionBatchDetailModal({ batch, open, toggle }: { batch: Inv
                   </div>
                   <div className="text-right text-sm">
                     <p className="font-medium text-gray-900">{formatQuantity(component.quantity)}</p>
-                    <p className="mt-1 text-xs text-gray-500">{formatMoney(component.totalCost)}</p>
+                    <p className="mt-1 text-xs text-gray-500">{formatMoney(component.totalCost, currencyCode)}</p>
                   </div>
                 </div>
               ))}
@@ -385,7 +384,7 @@ export function BatchAdjustmentModal({ batch, open, toggle, onSaved }: { batch: 
       width={560}
       height="auto"
       footer={
-        <div className="grid grid-cols-2 gap-2 pb-2">
+        <div className="grid grid-cols-2 gap-2 pb-2 p-5">
           <Button onClick={toggle} disabled={isLoading}>
             Cancel
           </Button>
@@ -495,11 +494,11 @@ export function BatchTransferModal({ batch, open, toggle, onSaved }: { batch: In
       width={560}
       height="auto"
       footer={
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2  p-5">
           <Button onClick={toggle} disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="primary" onClick={handleSubmit} loading={isLoading}>
+          <Button type="primary" className=" !border-0 shadow-none" onClick={handleSubmit} loading={isLoading}>
             Transfer batch
           </Button>
         </div>
@@ -564,9 +563,7 @@ export function BatchDisassembleModal({ batch, product, open, toggle, onSaved }:
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const componentSummary = useMemo(() => {
-    const sourceComponents =
-      (batch.assemblyComponents || []).filter((component) => Number(component.quantity || 0) > 0) ||
-      [];
+    const sourceComponents = (batch.assemblyComponents || []).filter((component) => Number(component.quantity || 0) > 0) || [];
 
     if (sourceComponents.length) {
       return sourceComponents.map((component) => `${formatQuantity(component.quantity)} × ${component.productName || "Component"}`).join(" · ");
@@ -623,7 +620,7 @@ export function BatchDisassembleModal({ batch, product, open, toggle, onSaved }:
       width={560}
       height="auto"
       footer={
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 p-5">
           <Button onClick={toggle} disabled={isLoading}>
             Cancel
           </Button>

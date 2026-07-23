@@ -20,9 +20,11 @@ export const landedCostScopeOptions = [
 export function buildLandedCostProductColumns({
   purchase,
   onUpdateLineWeight,
+  amountCurrencyCode,
 }: {
   purchase: Purchase;
   onUpdateLineWeight: (lineId: string, weight: number) => void;
+  amountCurrencyCode: string;
 }): TableProps<PurchaseLineItem>["columns"] {
   return [
     { title: "Product", dataIndex: "productName", key: "productName" },
@@ -33,7 +35,7 @@ export function buildLandedCostProductColumns({
       width: 120,
       render: (_, line) => <InputNumber className="!w-full" controls={false} min={0} suffix="kg" value={Number(line.weight || 0)} onChange={(value) => onUpdateLineWeight(line.id, Number(value || 0))} />,
     },
-    { title: "Value", key: "total", width: 115, render: (_, line) => `${purchase.currencyId?.code || ""} ${Number(line.total).toFixed(2)}` },
+    { title: "Value", key: "total", width: 115, render: (_, line) => `${amountCurrencyCode || purchase.currencyId?.code || ""} ${Number(line.total).toFixed(2)}`.trim() },
   ];
 }
 

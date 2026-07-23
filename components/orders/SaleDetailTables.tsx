@@ -6,6 +6,7 @@ import { useSelector } from "react-redux";
 import AppTable from "@/components/ui/AppTable";
 import { RootState } from "@/lib/store";
 import { Sale, Payment, PurchaseReturnEvent, PurchaseStockEvent } from "@/types/index";
+import { buildDocumentSettlementSummary } from "@/components/payment/documentSettlementSummary";
 import { buildSaleTables, MobileSaleList, SaleItemsTotalsCard, SaleTableView, saleTableOptions } from "./saleDetailTableSections";
 
 interface SaleDetailTablesProps {
@@ -52,7 +53,7 @@ export default function SaleDetailTables({ sale, currency, canManage = false, is
   });
   const current = tables[view];
   const discountedSubtotal = Math.max(Number(sale.subTotal) - Number(sale.discountAmount || 0), 0);
-  const paidAmount = Number(sale.amount || 0) - Number(sale.balance || 0);
+  const settlement = buildDocumentSettlementSummary(sale);
   const taxSummary = Object.entries(
     (sale.taxes || []).reduce<Record<string, number>>((summary, tax) => {
       const name = sale.taxId ? `${tax.name} @${tax.value}%` : tax.name;
@@ -113,7 +114,11 @@ export default function SaleDetailTables({ sale, currency, canManage = false, is
                 deliveryFee={Number(sale.deliveryFee || 0)}
                 showDeliveryFee={sale.fulfillmentMethod !== "pickup"}
                 total={Number(sale.amount || 0)}
-                paid={paidAmount}
+                paid={settlement.paidAmount}
+                refund={settlement.refundAmount}
+                writeOff={settlement.writeOffAmount}
+                showRefund={settlement.hasRefundAmount}
+                showWriteOff={settlement.hasWriteOffAmount}
                 balance={Number(sale.balance || 0)}
                 taxSummary={taxSummary}
                 taxAmount={Number(sale.taxAmount || 0)}

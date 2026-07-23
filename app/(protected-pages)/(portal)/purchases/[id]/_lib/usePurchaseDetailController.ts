@@ -170,14 +170,21 @@ export function usePurchaseDetailController(id: string) {
     }
   };
 
-  const saveItem = async (values: { quantity: number; date: string }) => {
+  const saveItem = async (values: { quantity: number; date: string; note?: string; restock?: boolean }) => {
     if (!purchase || !editingItem) return;
 
     try {
       if (editingItem.kind === "fulfillment") {
-        await updatePurchaseFulfillment({ id: purchase.id, fulfillmentId: editingItem.item.id, ...values }).unwrap();
+        await updatePurchaseFulfillment({ id: purchase.id, fulfillmentId: editingItem.item.id, quantity: values.quantity, date: values.date }).unwrap();
       } else {
-        await updatePurchaseReturn({ id: purchase.id, returnId: editingItem.item.id, ...values }).unwrap();
+        await updatePurchaseReturn({
+          id: purchase.id,
+          returnId: editingItem.item.id,
+          quantity: values.quantity,
+          date: values.date,
+          reason: values.note,
+          restock: values.restock,
+        }).unwrap();
       }
       message.success("Item updated.");
       closeItemEditor();

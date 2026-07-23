@@ -21,6 +21,7 @@ export default function SaleReturnOperationModal({ open, toggle, sale, onSaved }
       title="Return Items"
       description={`Record returned items from ${sale.locationId?.name || "the sale location"}.`}
       lines={controller.lines}
+      showRestock
       loading={controller.isLoading}
       okText="Save return"
       onSubmit={controller.submit}

@@ -84,6 +84,12 @@ export function MobileEvent({ title, detail, date, value, action }: { title: Rea
   );
 }
 
+export function SaleReturnRestockIndicator({ restock }: { restock?: boolean }) {
+  const isRestocked = restock !== false;
+
+  return <span className="text-sm font-medium text-gray-700">{isRestocked ? "Yes" : "No"}</span>;
+}
+
 export function money(currency: string, value: number | undefined) {
   const amount = Number(value || 0);
   const prefix = amount < 0 ? "-" : "";

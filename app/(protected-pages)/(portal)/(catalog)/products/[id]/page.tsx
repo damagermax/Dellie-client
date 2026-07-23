@@ -258,7 +258,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                   },
                   {
                     label: "Weight",
-                    value: product.weight ? `${product.weight}` : "-",
+                    value:
+                      product.weight !== null && product.weight !== undefined
+                        ? `${product.weight} kg`
+                        : "-",
                   },
                 ]}
               />

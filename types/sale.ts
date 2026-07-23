@@ -101,10 +101,12 @@ export interface FulfillSaleInput {
 
 export interface ReturnSaleLineItemInput extends SaleOperationItemInput {
   reason?: string;
+  restock?: boolean;
 }
 
 export interface ReturnSaleInput {
   id: string;
+  returnedAt?: string;
   items: ReturnSaleLineItemInput[];
 }
 
@@ -120,4 +122,6 @@ export interface UpdateSaleReturnInput {
   returnId: string;
   quantity: number;
   date: string;
+  reason?: string;
+  restock?: boolean;
 }

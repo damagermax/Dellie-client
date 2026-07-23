@@ -29,6 +29,10 @@ export function PurchaseItemsTotalsCard({
   discountedSubtotal,
   total,
   paid,
+  refund,
+  writeOff,
+  showRefund,
+  showWriteOff,
   balance,
   taxSummary,
   taxAmount,
@@ -40,6 +44,10 @@ export function PurchaseItemsTotalsCard({
   discountedSubtotal: number;
   total: number;
   paid: number;
+  refund: number;
+  writeOff: number;
+  showRefund: boolean;
+  showWriteOff: boolean;
   balance: number;
   taxSummary: Array<{ name: string; amount: number }>;
   taxAmount: number;
@@ -57,6 +65,8 @@ export function PurchaseItemsTotalsCard({
             <InlineSummaryRow label="Total" value={money(currency, total)} strong />
           </div>
           <InlineSummaryRow label="Paid" value={money(currency, paid)} />
+          {showRefund ? <InlineSummaryRow label="Refund" value={money(currency, refund)} /> : null}
+          {showWriteOff ? <InlineSummaryRow label="Write-off" value={money(currency, writeOff)} /> : null}
           <div className="border-t border-gray-300 pt-4">
             <InlineSummaryRow label="Balance" value={money(currency, balance)} strong />
           </div>

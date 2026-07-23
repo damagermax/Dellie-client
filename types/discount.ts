@@ -8,11 +8,18 @@ export enum DiscountStatus {
 export enum DiscountType {
   FIXED = "fixed amount",
   PERCENT = "percentage",
+  FREE_SHIPPING = "free shipping",
 }
 
 export enum DiscountMethod {
   CODE = "code",
   AUTO = "automatic",
+}
+
+export enum DiscountAppliesTo {
+  STOREFRONT = "storefront",
+  POS = "pos",
+  BOTH = "both",
 }
 
 export interface Discount {
@@ -28,6 +35,9 @@ export interface Discount {
   usageLimit: number;
   minAmount: number;
   promoteDiscount: boolean;
+  freeShippingMinAmount?: number;
+  appliesTo?: DiscountAppliesTo;
+  applicableProductIds?: string[];
 }
 
 export interface DiscountCreateInput extends Partial<Omit<Discount, "id">> {

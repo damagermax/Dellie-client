@@ -8,7 +8,7 @@ import { canMutatePayment } from "@/lib/paymentMutationWindow";
 import { canMutateStockEvent } from "@/lib/stockMutationWindow";
 import { Payment, PurchaseLineItem, PurchaseReturnEvent, PurchaseStockEvent, Sale } from "@/types/index";
 
-import { money, ProductCell, productImage, productName, productSku, SaleTableRow, SaleTableSectionHandlers, SaleTableView } from "./saleDetailTableShared";
+import { money, ProductCell, productImage, productName, productSku, SaleReturnRestockIndicator, SaleTableRow, SaleTableSectionHandlers, SaleTableView } from "./saleDetailTableShared";
 
 interface BuildSaleTablesParams extends SaleTableSectionHandlers {
   sale: Sale;
@@ -55,7 +55,7 @@ export function buildSaleTables({
   ];
 
   const fulfillmentColumns: TableProps<PurchaseStockEvent>["columns"] = [
-    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
+    { title: "Product", key: "product", className: "!pl-8", width: "40%", render: (_, event) => <ProductCell name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
     { title: "Fulfilled Qty", dataIndex: "quantity", key: "quantity" },
     { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.fulfilledAt) },
     ...(showFulfillmentActionColumn
@@ -75,10 +75,11 @@ export function buildSaleTables({
   ];
 
   const returnColumns: TableProps<PurchaseReturnEvent>["columns"] = [
-    { title: "Product", key: "product", className: "!pl-8", render: (_, event) => <ProductCell name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
-    { title: "Returned Qty", dataIndex: "quantity", key: "quantity" },
+    { title: "Product", key: "product", className: "!pl-8", width: "48%", render: (_, event) => <ProductCell name={productName(event.productId)} product={event.productId} sku={productSku(event.productId)} imageUrl={productImage(event.productId)} /> },
+    { title: "Qty", dataIndex: "quantity", key: "quantity" },
     { title: "Reason", key: "reason", render: (_, event) => event.reason || "-" },
     { title: "Date", key: "date", className: "!pr-8", render: (_, event) => formatDate(event.returnedAt) },
+    { title: "Restock", key: "restock", align: "center", width: 96, render: (_, event) => <SaleReturnRestockIndicator restock={event.restock} /> },
     ...(showReturnActionColumn
       ? [
           {
