@@ -24,6 +24,7 @@ interface SaleFormModalProps extends ModalProps {
 export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormModalProps) {
   const controller = useSaleFormController({ open, toggle, sale, onSaved });
   const quotesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.quotesEnabled !== false);
+  const inputGridClass = controller.multiCurrencyEnabled && controller.paymentTermsEnabled ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3";
   const columns = buildSaleFormColumns({
     currency: controller.currency,
     differentProductTax: controller.differentProductTax,
@@ -73,7 +74,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
               </div>
             </div>
           )}
-          <div className="grid grid-cols-1 gap-x-5 gap-y-1 px-5 pb-8 pt-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={`grid grid-cols-1 gap-x-5 gap-y-1 px-5 pb-8 pt-4 ${inputGridClass}`}>
             <Form.Item name="contactId" label="Contact" rules={[{ required: true, message: "Select contact" }]}>
               <SearchableContactSelect onAddContact={() => {}} />
             </Form.Item>

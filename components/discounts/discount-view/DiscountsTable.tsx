@@ -3,13 +3,20 @@ import type { TableProps } from "antd/es/table";
 import AppTag from "../../ui/AppTag";
 
 import AppTable from "@/components/ui/AppTable";
-import { Discount, DiscountMethod, DiscountType } from "@/types/discount";
+import { Discount, DiscountMethod, DiscountType, DiscountAppliesTo } from "@/types/discount";
 import { DiscountViewItemAction } from "./DiscountView";
 import { ActionDropdown } from "@/components/ui/ActionDropdown";
 import { LuCopy } from "react-icons/lu";
 
 interface DiscountsTableProps extends DiscountViewItemAction {
   discounts: Discount[];
+}
+
+function discountValueLabel(discount: Discount): string {
+  if (discount.type === DiscountType.FREE_SHIPPING) {
+    return discount.freeShippingMinAmount ? `Free ship over GHS ${discount.freeShippingMinAmount}` : "Free shipping";
+  }
+  return discount.type === DiscountType.PERCENT ? `${discount.value}%` : `GHS ${discount.value}`;
 }
 
 export default function DiscountsTable({ discounts, onActivate, onDeactivate, onDelete, openEditModal }: DiscountsTableProps) {
@@ -21,7 +28,7 @@ export default function DiscountsTable({ discounts, onActivate, onDeactivate, on
       className: "!pl-8",
       width: "22%",
       render: (value, discount) => (
-        <p className="flex  items-center gap-x-3">
+        <p className="flex items-center gap-x-3">
           {value} {discount.method == DiscountMethod.CODE && <LuCopy className="bg-gray-100 cursor-pointer p-1 text-lg rounded-xs" />}
         </p>
       ),
@@ -29,10 +36,9 @@ export default function DiscountsTable({ discounts, onActivate, onDeactivate, on
 
     {
       title: "Value",
-      dataIndex: "value",
       key: "value",
-      width: "10%",
-      render: (value, discount) => (discount.type == DiscountType.PERCENT ? value + "%" : "GHS" + value),
+      width: "18%",
+      render: (_, discount) => <span className="text-sm font-medium">{discountValueLabel(discount)}</span>,
     },
     {
       title: "Date",
@@ -52,19 +58,29 @@ export default function DiscountsTable({ discounts, onActivate, onDeactivate, on
     },
 
     {
-      title: "Products",
-      dataIndex: "products",
-      key: "products",
-      align: "center",
-      render: (products) => products | 0,
+      title: "Type",
+      dataIndex: "type",
+      key: "type",
+      render: (type: DiscountType) => (
+        <span className="capitalize text-sm text-gray-600">{type}</span>
+      ),
     },
 
     {
-      title: "Categories",
-      dataIndex: "categories",
-      key: "categories",
-      align: "center",
-      render: (categories) => categories | 0,
+      title: "Applies to",
+      dataIndex: "appliesTo",
+      key: "appliesTo",
+      render: (appliesTo: DiscountAppliesTo) => (
+        <span className="capitalize text-sm text-gray-600">{appliesTo || "both"}</span>
+      ),
+    },
+
+    {
+      title: "Products",
+      key: "products",
+      render: (_, discount) => (
+        <span className="text-sm text-gray-600">{discount.applicableProductIds?.length || 0}</span>
+      ),
     },
 
     {

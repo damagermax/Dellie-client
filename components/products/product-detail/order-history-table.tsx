@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { Empty, Tag } from "antd";
 import type { TableProps } from "antd/es/table";
+import { useSelector } from "react-redux";
 
 import AppTable from "@/components/ui/AppTable";
+import { RootState } from "@/lib/store";
 
 import type { ProductOrderHistoryItem } from "./types";
 import { formatDate, formatMoney, formatQuantity, receiptStatusColor, saleSourceColor } from "./utils";
 
 export function OrderHistoryTable({ orderHistory }: { orderHistory: ProductOrderHistoryItem[] }) {
+  const storeCurrencyCode = useSelector((state: RootState) => state.currentStore?.currency?.code || state.currentUser?.store?.currency?.code || state.currentUser?.store?.currencyCode || "");
+
   const columns: TableProps<ProductOrderHistoryItem>["columns"] = [
     {
       title: "# Number",
@@ -54,8 +58,8 @@ export function OrderHistoryTable({ orderHistory }: { orderHistory: ProductOrder
     { title: "Date", key: "date", render: (_, order) => formatDate(order.date) },
     { title: "Location", key: "location", render: (_, order) => order.locationId?.name || "-" },
     { title: "Quantity", key: "quantity", render: (_, order) => formatQuantity(order.quantity) },
-    { title: "Total Amount", key: "amount", render: (_, order) => order.formattedTotal || formatMoney(order.amount) },
-    { title: "Balance", key: "balance", render: (_, order) => order.formattedBalance || formatMoney(order.balance) },
+    { title: "Total Amount", key: "amount", render: (_, order) => order.formattedTotal || formatMoney(order.amount, storeCurrencyCode) },
+    { title: "Balance", key: "balance", render: (_, order) => order.formattedBalance || formatMoney(order.balance, storeCurrencyCode) },
   ];
 
   const emptyText = "No sales or purchases have been recorded for this product yet.";
@@ -69,7 +73,7 @@ export function OrderHistoryTable({ orderHistory }: { orderHistory: ProductOrder
               <div>
                 <p className="font-medium text-gray-950">{order.documentNumber || "-"}</p>
               </div>
-              <p className="font-semibold text-gray-950">{order.formattedTotal || formatMoney(order.amount)}</p>
+              <p className="font-semibold text-gray-950">{order.formattedTotal || formatMoney(order.amount, storeCurrencyCode)}</p>
             </div>
             <div className="mt-1.5 flex justify-between text-xs text-gray-500">
               <p className="  text-gray-500">

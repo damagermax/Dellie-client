@@ -4,8 +4,10 @@ import type { Key } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Form, message } from "antd";
 import dayjs from "dayjs";
+import { useSelector } from "react-redux";
 
-import { useAddPurchaseLandedCostMutation, useGetCurrencyQuery, useUpdatePurchaseLandedCostMutation } from "@/lib/redux/services";
+import { useAddPurchaseLandedCostMutation, useUpdatePurchaseLandedCostMutation } from "@/lib/redux/services";
+import { RootState } from "@/lib/store";
 import { Purchase, PurchaseLandedCost, PurchaseLandedCostAllocation, PurchaseLandedCostScope, PurchaseLineItem } from "@/types/index";
 
 import { purchaseApiError } from "./purchaseDetailUtils";
@@ -24,13 +26,12 @@ export function usePurchaseLandedCostController({ open, purchase, onSaved, toggl
   const [updateLandedCost, { isLoading: isUpdating }] = useUpdatePurchaseLandedCostMutation();
   const appliesTo = Form.useWatch("appliesTo", form) as PurchaseLandedCostScope | undefined;
   const allocationMethod = Form.useWatch("allocationMethod", form) as PurchaseLandedCostAllocation | undefined;
-  const selectedCurrencyId = Form.useWatch("currencyId", form) as string | undefined;
   const [selectedLineItemIds, setSelectedLineItemIds] = useState<Key[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [selectionError, setSelectionError] = useState(false);
   const [editableLineItems, setEditableLineItems] = useState<PurchaseLineItem[]>(purchase.lineItems);
   const storeCurrencyId = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}")?.store?.currencyId : undefined;
-  const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId as string, { skip: !selectedCurrencyId });
+  const storeCurrencyCode = useSelector((state: RootState) => state.currentStore?.currency?.code || state.currentUser?.store?.currency?.code || state.currentUser?.store?.currencyCode || "");
 
   useEffect(() => {
     setEditableLineItems(purchase.lineItems.map((line) => ({ ...line })));
@@ -51,7 +52,7 @@ export function usePurchaseLandedCostController({ open, purchase, onSaved, toggl
     [allocationLines, allocationMethod],
   );
 
-  const amountCurrencyCode = selectedCurrency?.code || initialValues?.currencyCode || purchase.currencyId?.code || "";
+  const amountCurrencyCode = purchase.currencyId?.code || storeCurrencyCode || "";
 
   const updateLineWeight = useCallback((lineId: string, weight: number) => {
     setEditableLineItems((current) => current.map((line) => (line.id === lineId ? { ...line, weight } : line)));

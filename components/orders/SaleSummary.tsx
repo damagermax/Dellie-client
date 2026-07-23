@@ -2,6 +2,8 @@
 
 import { Divider, Tag } from "antd";
 import { Sale } from "@/types/index";
+import { buildDocumentSettlementSummary } from "@/components/payment/documentSettlementSummary";
+import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
 
 interface SaleSummaryProps {
   sale: Sale;
@@ -11,7 +13,7 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
   const isCancelled = Boolean(sale.isDeleted);
   const isQuote = sale.status === "draft" && !isCancelled;
   const currency = sale.currencyId?.code || "";
-  const paid = Number(sale.amount) - Number(sale.balance);
+  const settlement = buildDocumentSettlementSummary(sale);
   const discountedSubtotal = Math.max(Number(sale.subTotal) - Number(sale.discountAmount || 0), 0);
   const taxSummary = Object.entries(
     (sale.taxes || []).reduce<Record<string, number>>((summary, tax) => {
@@ -29,7 +31,7 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
           <div className="flex items-center gap-2">
             {!isCancelled && !isQuote && (
               <Tag className="px-3 !rounded-full capitalize" color={sale.paymentStatus === "paid" ? "green" : sale.paymentStatus === "partial" ? "orange" : "blue"}>
-                {sale.paymentStatus}
+                {paymentStatusLabel(sale.paymentStatus)}
               </Tag>
             )}
             {!isCancelled && isQuote && (
@@ -51,7 +53,9 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
         <Divider className="my-3" />
         <Summary label="Total" value={money(currency, Number(sale.amount))} strong />
         <Divider className="my-3" />
-        <Summary label="Paid" value={money(currency, paid)} />
+        <Summary label="Paid" value={money(currency, settlement.paidAmount)} />
+        {settlement.hasRefundAmount ? <Summary label="Refund" value={money(currency, settlement.refundAmount)} /> : null}
+        {settlement.hasWriteOffAmount ? <Summary label="Write-off" value={money(currency, settlement.writeOffAmount)} /> : null}
         <Summary label="Balance" value={money(currency, Number(sale.balance))} strong />
       </div>
     </aside>

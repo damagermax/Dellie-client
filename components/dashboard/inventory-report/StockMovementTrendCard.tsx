@@ -60,7 +60,7 @@ export function StockMovementTrendCard({ report }: { report: InventoryReportResp
       <div className="mt-6">
         <p className="text-sm font-medium text-gray-950">Stock Movement Trend</p>
         <p className="mt-1 text-xs text-gray-500">
-          Compare stock received and returned with stock sold or sent back to suppliers.
+          Store totals exclude internal transfers. Location view includes transfers in and out.
         </p>
       </div>
 

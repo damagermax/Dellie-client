@@ -15,13 +15,27 @@ export type AppModalProps = {
   width?: number;
   height?: number | string;
   title: string | ReactNode;
+  subtitle?: ReactNode;
   okText?: string;
   loading?: boolean;
   footer?: ReactNode | null;
   overlayClassName?: string;
 } & ModalProps;
 
-export function AppModal({ open, title, footer, toggle, children, width = 900, height = "60vh", onOk, okText, loading = false, overlayClassName }: AppModalProps) {
+export function AppModal({
+  open,
+  title,
+  subtitle,
+  footer,
+  toggle,
+  children,
+  width = 900,
+  height = "60vh",
+  onOk,
+  okText,
+  loading = false,
+  overlayClassName,
+}: AppModalProps) {
   const screens = Grid.useBreakpoint();
   const fullScreen = !screens.lg;
 
@@ -31,6 +45,7 @@ export function AppModal({ open, title, footer, toggle, children, width = 900, h
       title={
         <div>
           <h3 className="text-lg">{title}</h3>
+          {subtitle ? <p className="mt-1 text-sm font-normal text-gray-500">{subtitle}</p> : null}
         </div>
       }
       wrapClassName={overlayClassName || "bg-black/60 backdrop-blur-xs"}

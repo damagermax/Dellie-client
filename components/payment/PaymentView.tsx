@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import PaymentTable from "./PaymentTable";
-import { Payment } from "@/types/transaction";
+import { Payment, TransactionType } from "@/types/transaction";
 import useToggle from "@/hooks/UseToggle";
 import PaymentFormModal from "./PaymentFormModel";
 import { useDeleteTransactionActionMutation } from "@/lib/redux/services";
@@ -17,9 +17,15 @@ export interface PaymentViewItemAction {
 interface PaymentsViewProps {
   payments?: Payment[];
   canManage?: boolean;
+  linkTransaction?: {
+    id: string;
+    rate: number;
+    currencyId: string;
+    type?: TransactionType;
+  };
 }
 
-const PaymentView = ({ payments, canManage = true }: PaymentsViewProps) => {
+const PaymentView = ({ payments, canManage = true, linkTransaction }: PaymentsViewProps) => {
   const [deletePayment] = useDeleteTransactionActionMutation();
 
   const [selectedPayment, setSelectedPayment] = useState<Payment>();
@@ -36,7 +42,7 @@ const PaymentView = ({ payments, canManage = true }: PaymentsViewProps) => {
 
   return (
     <div>
-      {openPaymentModal && <PaymentFormModal initialValues={selectedPayment} open={openPaymentModal} toggle={togglePaymentModal} />}
+      {openPaymentModal && <PaymentFormModal initialValues={selectedPayment} open={openPaymentModal} toggle={togglePaymentModal} linkTransaction={linkTransaction} />}
       {payments?.length ? (
         <div className="divide-y divide-gray-200 border-y border-gray-200 md:hidden">
           {payments.map((payment) => (

@@ -2,20 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import { Empty, Form, InputNumber, Tabs, message } from "antd";
+import { Form, InputNumber, Segmented, message } from "antd";
+import type { TableProps } from "antd/es/table";
 import { useSelector } from "react-redux";
 
-import { useCreateTransactionActionMutation, useGetPurchaseQuery, useGetSaleQuery, useGetTransactionQuery, useUpdateTransactionActionMutation } from "@/lib/redux/services";
+import { useCreateTransactionActionMutation, useGetCurrencyQuery, useGetPurchaseQuery, useGetSaleQuery, useGetTransactionQuery, useUpdateTransactionActionMutation } from "@/lib/redux/services";
 import { RootState } from "@/lib/redux/store";
+import { ResolvedProductName } from "@/components/products/ResolvedProductName";
+import AppTable from "@/components/ui/AppTable";
+import PreviewImage from "@/components/ui/PreviewImage";
 import type { Purchase } from "@/types/purchase";
 import type { Sale } from "@/types/sale";
 import { ApplyPaymentInput, Payment, RefundItemInput, RefundMode, TransactionType, UpdateAppliedPaymentInput } from "@/types/transaction";
 
-import { computeSaleRefundPreview, getRemainingRefundablePaidAmount, getSaleRefundableLines } from "./saleRefundMath";
+import { computeRefundPreview, getRemainingRefundablePaidAmount, getRefundableLines } from "./saleRefundMath";
 import { SearchablePaymentMethodSelect } from "../paymentMethods/SearchablePaymentMethodSelect";
 import { ExchangeRateFormItem } from "../system/ExchangeRateFormItem";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
-import { DatePickerFormItem, InputFormItem, TextAreaFormItem } from "../ui/AppFormItems";
+import { DatePickerFormItem, TextAreaFormItem } from "../ui/AppFormItems";
 import { AppModal, ModalProps } from "../ui/AppModal";
 
 interface PaymentFormModalProps extends ModalProps {
@@ -60,12 +64,25 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
   const linkedSaleId = linkedSale?.id;
   const linkedPurchaseId = linkedPurchase?.id;
   const linkedRefundDocument = linkedSale || linkedPurchase;
+  const linkedDocumentCurrencyId =
+    linkedSale?.currencyId?.id ||
+    linkedPurchase?.currencyId?.id ||
+    linkTransaction?.currencyId ||
+    initialValues?.currency?.id ||
+    "";
+  const { data: linkedDocumentCurrency } = useGetCurrencyQuery(linkedDocumentCurrencyId, { skip: !linkedDocumentCurrencyId });
+  const hasLinkedDocument = Boolean(linkedSaleId || linkedPurchaseId || linkTransaction?.id || initialValues?.linkedTransactionId || initialValues?.linkedDocumentSnapshot);
+  const currencyDiffersFromStore = Boolean(linkedDocumentCurrencyId && storeCurrencyId && linkedDocumentCurrencyId !== storeCurrencyId);
+  const lockExchangeRate = hasLinkedDocument && currencyDiffersFromStore;
   const defaultManualRefundAmount = useMemo(() => {
     if (transactionType !== TransactionType.REFUND || !linkedRefundDocument) return undefined;
     return getRemainingRefundablePaidAmount(linkedRefundDocument.payments || [], initialValues?.id);
   }, [initialValues?.id, linkedRefundDocument, transactionType]);
   const { data: paymentData, isSuccess: paymentLoaded } = useGetTransactionQuery(initialValues?.id || "", { skip: !initialValues?.id, refetchOnMountOrArgChange: true });
   const amountCurrencyCode =
+    linkedSale?.currencyId?.code ||
+    linkedPurchase?.currencyId?.code ||
+    linkedDocumentCurrency?.code ||
     linkedRefundDocument?.currencyId?.code ||
     initialValues?.currency?.code ||
     paymentData?.currency?.code ||
@@ -74,7 +91,7 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
   const [createPayment, { isLoading: isCreating, isSuccess: createSuccess }] = useCreateTransactionActionMutation();
   const [updatePayment, { isLoading: isUpdating, isSuccess: updateSuccess }] = useUpdateTransactionActionMutation();
 
-  const refundableLines = useMemo(() => getSaleRefundableLines(linkedRefundDocument, initialValues?.id), [initialValues?.id, linkedRefundDocument]);
+  const refundableLines = useMemo(() => getRefundableLines(linkedRefundDocument, initialValues?.id), [initialValues?.id, linkedRefundDocument]);
   const hasRefundableLines = refundableLines.length > 0;
   const selectedRefundItems = useMemo<RefundItemInput[]>(
     () =>
@@ -83,9 +100,81 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
         .filter((item) => Number(item.quantity || 0) > 0),
     [refundQuantities],
   );
-  const refundPreview = useMemo(() => computeSaleRefundPreview(linkedRefundDocument, selectedRefundItems, initialValues?.id), [initialValues?.id, linkedRefundDocument, selectedRefundItems]);
+  const refundPreview = useMemo(() => computeRefundPreview(linkedRefundDocument, selectedRefundItems, initialValues?.id), [initialValues?.id, linkedRefundDocument, selectedRefundItems]);
   const showPaymentFields = transactionType === TransactionType.PAYMENT || transactionType === TransactionType.REFUND;
   const formLoading = isCreating || isUpdating;
+  const refundItemColumns = useMemo<TableProps<(typeof refundableLines)[number]>["columns"]>(
+    () => [
+      {
+        title: "Product",
+        dataIndex: "productName",
+        key: "productName",
+        className: "!pl-8",
+        width: "55%",
+        render: (_: unknown, line) => {
+          const linkedLine = linkedRefundDocument?.lineItems.find((item) => String(item.id) === line.lineItemId);
+          const imageUrl =
+            linkedLine?.productUrl ||
+            (typeof linkedLine?.productId === "string" ? undefined : linkedLine?.productId?.media?.[0]?.url);
+
+          return (
+            <div className="flex items-center gap-x-2">
+              <PreviewImage width={28} height={28} src={imageUrl} />
+              <div className="min-w-0">
+                <ResolvedProductName
+                  name={line.productName}
+                  product={typeof linkedLine?.productId === "string" ? linkedLine?.productId : linkedLine?.productId}
+                  className="line-clamp-1"
+                />
+                <p className="text-xs text-gray-500">
+                  {line.productSku || "No SKU"} | Available {Number(line.availableRefundableQuantity || 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        title: "Qty",
+        dataIndex: "lineItemId",
+        key: "quantity",
+        width: "20%",
+        render: (_: unknown, line) => (
+          <div className="flex flex-col items-start gap-1">
+            <InputNumber
+              className={quantityInputClass}
+              variant="underlined"
+              min={0}
+              max={line.availableRefundableQuantity}
+              step={1}
+              precision={0}
+              controls={false}
+              value={Number(refundQuantities[line.lineItemId] || 0)}
+              onChange={(value) =>
+                setRefundQuantities((prev) => ({
+                  ...prev,
+                  [line.lineItemId]: Math.max(0, Math.floor(Number(value || 0))),
+                }))
+              }
+            />
+          </div>
+        ),
+      },
+      {
+        title: "Preview",
+        dataIndex: "lineItemId",
+        key: "preview",
+        align: "end",
+        className: "!pr-8",
+        width: "25%",
+        render: (_: unknown, line) => {
+          const previewItem = refundPreview.items.find((item) => item.lineItemId === line.lineItemId);
+          return previewItem ? `${linkedRefundDocument?.currencyId?.code || ""} ${Number(previewItem.computedRefundAmount || 0).toFixed(2)}` : "-";
+        },
+      },
+    ],
+    [linkedRefundDocument?.currencyId?.code, linkedRefundDocument?.lineItems, refundPreview.items, refundQuantities],
+  );
 
   useEffect(() => {
     if (paymentData && paymentLoaded) {
@@ -116,7 +205,7 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
 
     if (!initialValues) {
       paymentForm.setFieldsValue({
-        currencyId: linkTransaction?.currencyId || storeCurrencyId,
+        currencyId: linkedDocumentCurrencyId || linkTransaction?.currencyId || storeCurrencyId,
         rate: linkTransaction?.rate || 1,
         amount: transactionType === TransactionType.REFUND ? defaultManualRefundAmount : undefined,
       });
@@ -124,7 +213,7 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
 
     if (initialValues) {
       paymentForm.setFieldsValue({
-        currencyId: initialValues.currency?.id,
+        currencyId: linkedDocumentCurrencyId || initialValues.currency?.id,
         rate: initialValues.rate ?? 1,
         paymentMethodId: initialValues.paymentMethod?.id,
         note: initialValues.note,
@@ -142,13 +231,13 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
     } else {
       setRefundQuantities({});
     }
-  }, [defaultManualRefundAmount, hasRefundableLines, initialValues, isItemRefund, linkTransaction?.currencyId, linkTransaction?.rate, open, paymentForm, storeCurrencyId, transactionType]);
+  }, [defaultManualRefundAmount, hasRefundableLines, initialValues, isItemRefund, linkedDocumentCurrencyId, linkTransaction?.currencyId, linkTransaction?.rate, open, paymentForm, storeCurrencyId, transactionType]);
 
   useEffect(() => {
     if (linkTransaction) {
-      paymentForm.setFieldsValue({ currencyId: linkTransaction.currencyId, rate: linkTransaction.rate });
+      paymentForm.setFieldsValue({ currencyId: linkedDocumentCurrencyId || linkTransaction.currencyId, rate: linkTransaction.rate });
     }
-  }, [linkTransaction, paymentForm]);
+  }, [linkedDocumentCurrencyId, linkTransaction, paymentForm]);
 
   useEffect(() => {
     if (!multiCurrencyEnabled) {
@@ -237,7 +326,7 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
       height="70vh"
       title={initialValues ? editTitle(transactionType) : createTitle(transactionType)}
       onOk={paymentForm.submit}
-      width={isSaleRefund ? 840 : 600}
+      width={isItemRefund && refundMode === "items" ? 840 : 560}
       okText={formLoading ? "Saving.." : "Save"}
       open={open}
       toggle={toggle}
@@ -254,115 +343,61 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
         layout="vertical"
       >
         {isItemRefund ? (
-          <div className="px-5 py-4">
+          <div className="pb-4">
             {hasRefundableLines ? (
-              <Tabs
-                activeKey={refundMode}
-                onChange={(key) => setRefundMode(key as RefundMode)}
-                items={[
-                  {
-                    key: "items",
-                    label: "Items",
-                    children: (
-                      <div className="space-y-4">
-                        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-                          <div className="hidden grid-cols-[minmax(0,1.8fr)_140px_120px] gap-3 border-b border-gray-100 px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 md:grid">
-                            <span>Item</span>
-                            <span>Refund Qty</span>
-                            <span>Preview</span>
-                          </div>
-                          <div className="divide-y divide-gray-100">
-                            {refundableLines.map((line) => {
-                              const previewItem = refundPreview.items.find((item) => item.lineItemId === line.lineItemId);
-                              const currentQuantity = Number(refundQuantities[line.lineItemId] || 0);
-                              const linkedLine = linkedRefundDocument?.lineItems.find((item) => String(item.id) === line.lineItemId);
-                              const imageUrl =
-                                linkedLine?.productUrl ||
-                                (typeof linkedLine?.productId === "string" ? undefined : linkedLine?.productId?.media?.[0]?.url);
+              <>
+                <div className="mb-6 flex justify-center px-5">
+                  <Segmented
+                    shape="round"
+                    options={[
+                      { label: "Items", value: "items" },
+                      { label: "Manual", value: "manual" },
+                    ]}
+                    value={refundMode}
+                    onChange={(value) => setRefundMode(value as RefundMode)}
+                    className="[&_.ant-segmented-item-selected]:!bg-[#2d837d] [&_.ant-segmented-item-selected]:!text-white"
+                    style={{ backgroundColor: "#ebebeb", padding: "5px" }}
+                  />
+                </div>
+                {refundMode === "items" ? (
+                  <div>
+                    <AppTable columns={refundItemColumns} dataSource={refundableLines} rowKey={(line) => line.lineItemId} pagination={false} scrollX={720} />
 
-                              return (
-                                <div key={line.lineItemId} className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,1.8fr)_140px_120px] md:items-center">
-                                  <div className="flex min-w-0 items-center gap-3">
-                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                                      {imageUrl ? (
-                                        // Product media is optional; fall back to a compact placeholder when absent.
-                                        <img src={imageUrl} alt={line.productName} className="h-full w-full object-cover" />
-                                      ) : (
-                                        <span className="text-xs font-medium uppercase text-gray-400">No image</span>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-medium text-gray-900">{line.productName}</p>
-                                      <p className="mt-1 text-xs text-gray-500">{line.productSku || "No SKU"}</p>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <InputNumber
-                                      className={quantityInputClass}
-                                      min={0}
-                                      max={line.availableRefundableQuantity}
-                                      step={1}
-                                      precision={0}
-                                      value={currentQuantity}
-                                      onChange={(value) =>
-                                        setRefundQuantities((prev) => ({
-                                          ...prev,
-                                          [line.lineItemId]: Math.max(0, Math.floor(Number(value || 0))),
-                                        }))
-                                      }
-                                    />
-                                  </div>
-                                  <div className="text-sm font-semibold text-gray-900">
-                                    {previewItem ? `${linkedRefundDocument?.currencyId?.code || ""} ${Number(previewItem.computedRefundAmount || 0).toFixed(2)}` : "-"}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <span>Refund preview</span>
-                            <span className="font-semibold">
-                              {linkedRefundDocument?.currencyId?.code || ""} {refundPreview.totalRefundAmount.toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-800">
-                            <span>Refundable paid amount: {linkedRefundDocument?.currencyId?.code || ""} {refundPreview.remainingRetainedPaidAmount.toFixed(2)}</span>
-                            <span>Paid ratio: {(refundPreview.paidRatio * 100).toFixed(2)}%</span>
-                          </div>
-                        </div>
+                    <div className="border-y border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <span>Refund preview</span>
+                        <span className="font-semibold">
+                          {linkedRefundDocument?.currencyId?.code || ""} {refundPreview.totalRefundAmount.toFixed(2)}
+                        </span>
                       </div>
-                    ),
-                  },
-                  {
-                    key: "manual",
-                    label: "Manual",
-                    children: (
-                      <div className="grid gap-x-5 gap-y-1 pt-2 md:grid-cols-2">
-                        {renderAmountField("Enter refund amount", refundMode === "manual")}
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-800">
+                        <span>Refundable paid amount: {linkedRefundDocument?.currencyId?.code || ""} {refundPreview.remainingRetainedPaidAmount.toFixed(2)}</span>
+                        <span>Paid ratio: {(refundPreview.paidRatio * 100).toFixed(2)}%</span>
                       </div>
-                    ),
-                  },
-                ]}
-              />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-5 pt-2">
+                    {renderAmountField("Enter refund amount", refundMode === "manual")}
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="grid gap-x-5 gap-y-1 pt-2 md:grid-cols-2">
+              <div className="px-5 pt-2">
                 {renderAmountField("Enter refund amount")}
               </div>
             )}
 
-            <div className="mt-2 grid gap-x-5 md:grid-cols-2">
+            <div className="mt-2 grid gap-x-5 px-5 md:grid-cols-2">
               <DatePickerFormItem name="date" label="Date" />
 
-              {multiCurrencyEnabled ? (
+              {multiCurrencyEnabled && !hasLinkedDocument ? (
                 <>
                   <Form.Item label="Currency" name="currencyId">
-                    <SearchableCurrenciesSelect />
+                    <SearchableCurrenciesSelect disabled={hasLinkedDocument} />
                   </Form.Item>
 
-                  <ExchangeRateFormItem name="rate" />
+                  <ExchangeRateFormItem name="rate" disabled={lockExchangeRate} />
                 </>
               ) : null}
 
@@ -381,13 +416,13 @@ export default function PaymentFormModal({ open, toggle, initialValues, linkTran
           <div className="grid gap-x-5 px-5 py-4 md:grid-cols-2">
             <DatePickerFormItem name="date" label="Date" />
 
-            {multiCurrencyEnabled ? (
+            {multiCurrencyEnabled && !hasLinkedDocument ? (
               <>
                 <Form.Item label="Currency" name="currencyId">
-                  <SearchableCurrenciesSelect />
+                  <SearchableCurrenciesSelect disabled={hasLinkedDocument} />
                 </Form.Item>
 
-                <ExchangeRateFormItem name="rate" />
+                <ExchangeRateFormItem name="rate" disabled={lockExchangeRate} />
               </>
             ) : null}
 

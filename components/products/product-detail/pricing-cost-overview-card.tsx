@@ -3,6 +3,7 @@
 import { Pencil } from "lucide-react";
 
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
+import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 import type { ProductPriceTier } from "@/lib/products/pricing";
 
 import type { ProductDetail } from "./types";
@@ -11,6 +12,7 @@ import { formatMargin, formatMoney, formatQuantity, getRequiredPriceTiers, price
 export function PricingCostOverviewCard({ product, canManageProduct, onEditProduct, enableTradePrice }: { product: ProductDetail; canManageProduct: boolean; onEditProduct: () => void; enableTradePrice: boolean }) {
   const summary = product.inventory?.summary || {};
   const tiers = getRequiredPriceTiers(product.priceTiers, enableTradePrice);
+  const storeCurrencyCode = useStoreCurrencyCode();
 
   return (
     <section className="overflow-hidden border-b border-gray-200 bg-[#f3f3f3] md:border-b-0 md:border-r">
@@ -20,18 +22,18 @@ export function PricingCostOverviewCard({ product, canManageProduct, onEditProdu
       <div className="mx-4 border-t border-gray-300" />
       <div className="grid gap-3 px-2 py-4">
         {tiers.map((tier, index) => (
-          <PriceTierCard key={tier.name} tier={tier} costPrice={product.costPrice} isNormal={index === 0} canEdit={canManageProduct} onEdit={onEditProduct} />
+          <PriceTierCard key={tier.name} tier={tier} costPrice={product.costPrice} isNormal={index === 0} canEdit={canManageProduct} onEdit={onEditProduct} currencyCode={storeCurrencyCode} />
         ))}
       </div>
       <div className={`mx-4 grid gap-2.5 py-4 ${product.type === ITEM_TYPE.STOCK ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
-        <CostMetric label="Cost" value={formatMoney(product.costPrice)} />
-        {product.type === ITEM_TYPE.STOCK ? <CostMetric label="Inventory Value" value={formatMoney(summary.inventoryValue)} /> : null}
+        <CostMetric label="Cost" value={formatMoney(product.costPrice, storeCurrencyCode)} />
+        {product.type === ITEM_TYPE.STOCK ? <CostMetric label="Inventory Value" value={formatMoney(summary.inventoryValue, storeCurrencyCode)} /> : null}
       </div>
     </section>
   );
 }
 
-function PriceTierCard({ tier, costPrice, isNormal, canEdit, onEdit }: { tier: ProductPriceTier; costPrice?: number; isNormal: boolean; canEdit: boolean; onEdit: () => void }) {
+function PriceTierCard({ tier, costPrice, isNormal, canEdit, onEdit, currencyCode }: { tier: ProductPriceTier; costPrice?: number; isNormal: boolean; canEdit: boolean; onEdit: () => void; currencyCode: string }) {
   return (
     <article className="overflow-hidden">
       <div className="flex gap-3 p-3">
@@ -42,7 +44,7 @@ function PriceTierCard({ tier, costPrice, isNormal, canEdit, onEdit }: { tier: P
               <p className="mt-0.5 text-xs text-gray-500">{priceTierDescription(tier.name, isNormal)}</p>
             </div>
             <div className="flex items-start gap-2">
-              <p className="text-right text-lg font-medium tracking-normal text-gray-950">{formatMoney(tier.price)}</p>
+              <p className="text-right text-lg font-medium tracking-normal text-gray-950">{formatMoney(tier.price, currencyCode)}</p>
               {canEdit ? (
                 <button type="button" aria-label={`Edit ${tier.name}`} onClick={onEdit} className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200 hover:text-gray-900">
                   <Pencil size={13} />

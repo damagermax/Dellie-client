@@ -22,8 +22,8 @@ interface PurchaseOrderLandedCostModalProps {
 export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, onSaved, initialValues }: PurchaseOrderLandedCostModalProps) {
   const controller = usePurchaseLandedCostController({ open, purchase, onSaved, toggle, initialValues });
   const productColumns = React.useMemo(
-    () => buildLandedCostProductColumns({ purchase, onUpdateLineWeight: controller.updateLineWeight }),
-    [controller.updateLineWeight, purchase],
+    () => buildLandedCostProductColumns({ purchase, onUpdateLineWeight: controller.updateLineWeight, amountCurrencyCode: controller.amountCurrencyCode }),
+    [controller.amountCurrencyCode, controller.updateLineWeight, purchase],
   );
 
   return (
@@ -60,7 +60,7 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
             ]}
           />
           <Form.Item className="!mb-3" name="amount" label={`Amount (${controller.amountCurrencyCode})`} rules={[{ required: true, message: "Enter an amount" }]}>
-            <InputNumber className="!w-full" min={0.01} controls={false} />
+            <InputNumber className="!w-full" min={0.01} controls={false} prefix={controller.amountCurrencyCode || undefined} />
           </Form.Item>
           <Form.Item className="!mb-3" name="allocationMethod" label="Allocate Cost By" rules={[{ required: true }]}>
             <Select options={landedCostAllocationOptions as unknown as { value: string; label: string }[]} />

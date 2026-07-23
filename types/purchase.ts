@@ -144,6 +144,7 @@ export interface ReturnPurchaseLineItemInput extends PurchaseOperationItemInput 
 
 export interface ReturnPurchaseInput {
   id: string;
+  returnedAt?: string;
   items: ReturnPurchaseLineItemInput[];
 }
 
@@ -159,6 +160,8 @@ export interface UpdatePurchaseReturnInput {
   returnId: string;
   quantity: number;
   date: string;
+  reason?: string;
+  restock?: boolean;
 }
 
 export type PurchaseLandedCostAllocation = "BUY_VALUE" | "QUANTITY" | "WEIGHT";
@@ -194,6 +197,7 @@ export interface PurchaseStockEvent {
 export interface PurchaseReturnEvent extends Omit<PurchaseStockEvent, "fulfilledAt"> {
   returnedAt: string;
   reason?: string;
+  restock?: boolean;
 }
 
 export interface PurchaseLandedCost {

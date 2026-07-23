@@ -1,12 +1,12 @@
-import { Form, DatePicker, Segmented, Switch } from "antd";
+import { Form, DatePicker, Segmented } from "antd";
 import { InputFormItem, SelectFormItem } from "../ui/AppFormItems";
 import { AppModal, ModalProps } from "../ui/AppModal";
-import { Discount, DiscountCreateInput, DiscountUpdateInput, DiscountType, DiscountMethod } from "../../types";
+import { Discount, DiscountCreateInput, DiscountUpdateInput, DiscountType, DiscountMethod, DiscountAppliesTo } from "../../types";
 import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 
 import { useGetDiscountQuery, useUpdateDiscountMutation, useCreateDiscountMutation } from "@/lib/redux/services";
-import { BannerImageUpload } from "../ui/BannerImageUpload";
+import ProductPicker from "./ProductPicker";
 
 interface DiscountsFormModalProps extends ModalProps {
   initialValues?: Discount;
@@ -14,20 +14,20 @@ interface DiscountsFormModalProps extends ModalProps {
 
 type DiscountsFormValues = DiscountCreateInput | DiscountUpdateInput;
 
+const isValueType = (type: DiscountType) => type === DiscountType.PERCENT || type === DiscountType.FIXED;
+
 export default function DiscountFormModal({ open, toggle, initialValues }: DiscountsFormModalProps) {
   const [discountForm] = Form.useForm();
   const [discountType, setDiscountType] = useState(initialValues?.type || DiscountType.PERCENT);
   const [discountMethod, setDiscountMethod] = useState(initialValues?.method || DiscountMethod.CODE);
 
   const { data: discountData, isSuccess } = useGetDiscountQuery(initialValues?.id || "", { skip: !initialValues?.id, refetchOnMountOrArgChange: true });
-  const [createDiscount, { isLoading: isCreating, isSuccess: createSuccess, reset: resetCreate }] = useCreateDiscountMutation();
-  const [updateDiscount, { isLoading: isUpdating, isSuccess: updateSuccess, reset: resetUpdate }] = useUpdateDiscountMutation();
+  const [createDiscount, { isLoading: isCreating, isSuccess: createSuccess }] = useCreateDiscountMutation();
+  const [updateDiscount, { isLoading: isUpdating, isSuccess: updateSuccess }] = useUpdateDiscountMutation();
 
   const isCode = discountMethod == DiscountMethod.CODE || initialValues?.method == DiscountMethod.CODE;
   const isAuto = discountMethod == DiscountMethod.AUTO || initialValues?.method == DiscountMethod.AUTO;
   const disableCodeInput = isCode && !!initialValues?.id;
-
-  const promoteDiscount = Form.useWatch("promoteDiscount", discountForm);
 
   useEffect(() => {
     if (discountData && isSuccess) {
@@ -40,6 +40,7 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
       });
 
       setDiscountMethod(discountData.method);
+      setDiscountType(discountData.type);
     }
   }, [discountData, isSuccess]);
 
@@ -47,7 +48,10 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
     if (initialValues?.method) {
       setDiscountMethod(initialValues.method);
     }
-  }, [initialValues?.method]);
+    if (initialValues?.type) {
+      setDiscountType(initialValues.type);
+    }
+  }, [initialValues?.method, initialValues?.type]);
 
   useEffect(() => {
     if (updateSuccess || createSuccess) {
@@ -66,7 +70,6 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
           errors: ["Percentage discount can not be more than 100%"],
         },
       ]);
-
       return;
     }
 
@@ -77,7 +80,11 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
       const value = values[typedKey];
 
       if (value !== undefined && value !== null) {
-        formData.append(typedKey, value as string | Blob);
+        if (Array.isArray(value)) {
+          formData.append(typedKey, JSON.stringify(value));
+        } else {
+          formData.append(typedKey, value as string | Blob);
+        }
       }
     }
 
@@ -92,7 +99,7 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
     if (disableCodeInput) return;
 
     const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let result = "SAVE"; // Optional prefix
+    let result = "SAVE";
     for (let i = 0; i < 8; i++) {
       result += characters.charAt(Math.floor(Math.random() * characters.length));
     }
@@ -104,6 +111,16 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
     if (Array.isArray(value)) return;
     const type = value as DiscountType;
     setDiscountType(type);
+    discountForm.setFields([
+      { name: "value", errors: [] },
+      { name: "freeShippingMinAmount", errors: [] },
+    ]);
+    if (type === DiscountType.FREE_SHIPPING && !initialValues) {
+      const currentName = discountForm.getFieldValue("name");
+      if (!currentName) {
+        discountForm.setFieldsValue({ name: "Free shipping" });
+      }
+    }
   };
 
   return (
@@ -141,32 +158,42 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-x-4  px-8">
-          {isAuto && (
+        <div className="grid grid-cols-2 gap-x-4 px-8">
+          {isValueType(discountType) && isAuto && (
             <InputFormItem
               label="Label"
               name="name"
               placeholder="e.g., BLACK FRIDAY"
               className="!col-span-2 !pb-3"
-              rules={[{ required: true, message: "Please enter a  discount name" }]}
+              rules={[{ required: true, message: "Please enter a discount name" }]}
               help="This discount will be automatically applied in the cart and at checkout."
             />
           )}
 
-          {isCode && (
+          {isValueType(discountType) && isCode && (
             <InputFormItem
               label="Code"
               disable={disableCodeInput}
               name="name"
               placeholder="SWEET-DELLIE"
               className="!col-span-2 !pb-3"
-              rules={[{ required: true, message: "Please enter a  discount name" }]}
+              rules={[{ required: true, message: "Please enter a discount name" }]}
               help="The discount applies only if customers enter this code at checkout."
               afterText={
-                <p className=" text-blue-700 cursor-pointer" onClick={handleGenerateCode}>
+                <p className="text-blue-700 cursor-pointer" onClick={handleGenerateCode}>
                   Generate code
                 </p>
               }
+            />
+          )}
+
+          {discountType === DiscountType.FREE_SHIPPING && (
+            <InputFormItem
+              label="Discount name"
+              name="name"
+              placeholder="e.g., Free Shipping"
+              className="!col-span-2"
+              rules={[{ required: true, message: "Please enter a discount name" }]}
             />
           )}
 
@@ -176,18 +203,30 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
             options={[
               { value: DiscountType.PERCENT, label: "Percentage" },
               { value: DiscountType.FIXED, label: "Fixed Amount" },
+              { value: DiscountType.FREE_SHIPPING, label: "Free Shipping" },
             ]}
             onChange={handleDiscountTypeChange}
             rules={[{ required: true, message: "Please select a discount type" }]}
           />
 
-          <InputFormItem
-            type="number"
-            label={`Discount ${discountType === DiscountType.PERCENT ? "(%)" : "(GHS)"}`}
-            name="value"
-            placeholder={discountType === DiscountType.PERCENT ? "0%" : "GHS 0"}
-            rules={[{ required: true, message: "Please enter a discount value" }]}
-          />
+          {isValueType(discountType) && (
+            <InputFormItem
+              type="number"
+              label={`Discount ${discountType === DiscountType.PERCENT ? "(%)" : "(GHS)"}`}
+              name="value"
+              placeholder={discountType === DiscountType.PERCENT ? "0%" : "GHS 0"}
+              rules={[{ required: true, message: "Please enter a discount value" }]}
+            />
+          )}
+
+          {discountType === DiscountType.FREE_SHIPPING && (
+            <InputFormItem
+              type="number"
+              label="Minimum order amount (GHS)"
+              name="freeShippingMinAmount"
+              placeholder="Optional minimum"
+            />
+          )}
 
           <Form.Item label="When Discount Begins" name="startDate">
             <DatePicker
@@ -224,23 +263,26 @@ export default function DiscountFormModal({ open, toggle, initialValues }: Disco
             />
           </Form.Item>
 
-          <InputFormItem type="number" label={`Minimum purchase amount (GHS)`} name="minAmount" placeholder={"Enter amount if any"} />
+          {isValueType(discountType) && <InputFormItem type="number" label="Minimum purchase amount (GHS)" name="minAmount" placeholder="Enter amount if any" />}
 
-          {isCode && <InputFormItem type="number" label={`Total Usage Limit"`} name="usageLimit" placeholder={"e.g. 100 uses total"} />}
+          {isValueType(discountType) && isCode && <InputFormItem type="number" label="Total Usage Limit" name="usageLimit" placeholder="e.g. 100 uses total" />}
+
+          <Form.Item label="Products" name="applicableProductIds" className="col-span-2">
+            <ProductPicker />
+          </Form.Item>
 
           {isAuto && (
-            <div className="flex items-center justify-between">
-              <p>Promote discount on storefront.</p>
-              <Form.Item name="promoteDiscount" valuePropName="checked" noStyle>
-                <Switch size="default" />
+            <div className="col-span-2">
+              <Form.Item label="Applies to" name="appliesTo" initialValue={DiscountAppliesTo.BOTH}>
+                <Segmented
+                  options={[
+                    { label: "Storefront", value: DiscountAppliesTo.STOREFRONT },
+                    { label: "POS", value: DiscountAppliesTo.POS },
+                    { label: "Both", value: DiscountAppliesTo.BOTH },
+                  ]}
+                />
               </Form.Item>
             </div>
-          )}
-
-          {isAuto && promoteDiscount && (
-            <Form.Item label="Banner to promote this discount." name="image" className=" col-span-2">
-              <BannerImageUpload />
-            </Form.Item>
           )}
         </div>
       </Form>

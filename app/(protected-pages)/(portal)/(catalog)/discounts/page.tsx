@@ -24,10 +24,10 @@ export default function DiscountsPage() {
   return (
     <div>
       <div className="py-8 px-8 flex justify-between w-full">
-        <div className=" flex items-center gap-2">
-          <AppSearch placeholder="Search tags..." onReset={handleFilterRest} onSearchChange={handleFilterChange} menu={{ items: DiscountsFilters({ onChange: handleFilterChange, filters: discountQuery }) }} />
+        <div className="flex items-center gap-2">
+          <AppSearch placeholder="Search discounts..." onReset={handleFilterRest} onSearchChange={handleFilterChange} menu={{ items: DiscountsFilters({ onChange: handleFilterChange, filters: discountQuery }) }} />
         </div>
-        <div className=" flex gap-x-5 ">
+        <div className="flex gap-x-5 items-center">
           <div className="hidden md:block">
             <AddButton onClick={toggleDiscountForm} label="New Discount" />
           </div>
@@ -36,7 +36,7 @@ export default function DiscountsPage() {
 
       <DiscountView query={discountQuery} />
 
-      {openDiscountForm && <DiscountFormModal open={openDiscountForm} toggle={toggleDiscountForm} />}
+      <DiscountFormModal open={openDiscountForm} toggle={toggleDiscountForm} />
       <FloatingAddButton onClick={toggleDiscountForm} label="New Discount" />
     </div>
   );

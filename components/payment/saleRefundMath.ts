@@ -7,29 +7,29 @@ import type { Sale } from "@/types/sale";
 const QUANTITY_DECIMALS = 6;
 type RefundableDocument = Sale | Purchase;
 
-export type SaleRefundableLine = {
+export type RefundableLine = {
   lineItemId: string;
   productId?: string;
   productName: string;
   productSku?: string;
-  returnedQuantity: number;
+  totalQuantity: number;
   alreadyRefundedQuantity: number;
   availableRefundableQuantity: number;
 };
 
-export type SaleRefundPreviewItem = RefundItemSnapshot & {
-  returnedQuantity: number;
+export type RefundPreviewItem = RefundItemSnapshot & {
+  totalQuantity: number;
   alreadyRefundedQuantity: number;
   availableRefundableQuantity: number;
 };
 
-export type SaleRefundPreview = {
+export type RefundPreview = {
   remainingRetainedPaidAmount: number;
   originalRefundableMerchandiseAmount: number;
   selectedFullReturnedValue: number;
   paidRatio: number;
   totalRefundAmount: number;
-  items: SaleRefundPreviewItem[];
+  items: RefundPreviewItem[];
 };
 
 function roundMoney(value: number) {
@@ -161,7 +161,7 @@ export function getRemainingRefundablePaidAmount(payments: Payment[] = [], exclu
   return roundMoney(Math.max(paymentSummary(payments, excludePaymentId), 0));
 }
 
-export function getSaleRefundableLines(sale?: RefundableDocument, excludePaymentId?: string): SaleRefundableLine[] {
+export function getRefundableLines(sale?: RefundableDocument, excludePaymentId?: string): RefundableLine[] {
   if (!sale) return [];
 
   const refundedByLine = new Map<string, number>();
@@ -176,24 +176,24 @@ export function getSaleRefundableLines(sale?: RefundableDocument, excludePayment
   return sale.lineItems
     .map((line) => {
       const id = lineId(line);
-      const returnedQuantity = roundQuantity(Number(line.returnedQuantity || 0));
+      const totalQuantity = roundQuantity(Number(line.quantity || 0));
       const alreadyRefundedQuantity = roundQuantity(refundedByLine.get(id) || 0);
-      const availableRefundableQuantity = roundQuantity(Math.max(returnedQuantity - alreadyRefundedQuantity, 0));
+      const availableRefundableQuantity = roundQuantity(Math.max(totalQuantity - alreadyRefundedQuantity, 0));
 
       return {
         lineItemId: id,
         productId: productId(line),
         productName: productName(line),
         productSku: productSku(line),
-        returnedQuantity,
+        totalQuantity,
         alreadyRefundedQuantity,
         availableRefundableQuantity,
       };
     })
-    .filter((line) => line.returnedQuantity > 0);
+    .filter((line) => line.totalQuantity > 0);
 }
 
-export function computeSaleRefundPreview(sale?: RefundableDocument, selectedItems: RefundItemInput[] = [], excludePaymentId?: string): SaleRefundPreview {
+export function computeRefundPreview(sale?: RefundableDocument, selectedItems: RefundItemInput[] = [], excludePaymentId?: string): RefundPreview {
   if (!sale) {
     return {
       remainingRetainedPaidAmount: 0,
@@ -205,7 +205,7 @@ export function computeSaleRefundPreview(sale?: RefundableDocument, selectedItem
     };
   }
 
-  const refundableLines = getSaleRefundableLines(sale, excludePaymentId);
+  const refundableLines = getRefundableLines(sale, excludePaymentId);
   const refundableByLine = new Map(refundableLines.map((line) => [line.lineItemId, line]));
   const selectedByLine = new Map<string, number>();
 
@@ -226,7 +226,7 @@ export function computeSaleRefundPreview(sale?: RefundableDocument, selectedItem
 
       return { line, info, quantity: cappedQuantity };
     })
-    .filter(Boolean) as Array<{ line: Sale["lineItems"][number]; info: SaleRefundableLine; quantity: number }>;
+    .filter(Boolean) as Array<{ line: Sale["lineItems"][number]; info: RefundableLine; quantity: number }>;
 
   const originalLineSubTotals = sale.lineItems.map((line) => lineOriginalMetrics(line, Number(line.quantity || 0), true));
   const originalSubTotalAfterLineDiscount = roundMoney(originalLineSubTotals.reduce((sum, line) => sum + line.afterLineDiscount, 0));
@@ -362,7 +362,7 @@ export function computeSaleRefundPreview(sale?: RefundableDocument, selectedItem
       productName: item.entry.info.productName,
       productSku: item.entry.info.productSku,
       quantity: item.entry.quantity,
-      returnedQuantity: item.entry.info.returnedQuantity,
+      totalQuantity: item.entry.info.totalQuantity,
       alreadyRefundedQuantity: item.entry.info.alreadyRefundedQuantity,
       availableRefundableQuantity: item.entry.info.availableRefundableQuantity,
       computedFullItemValue: roundMoney(item.fullItemValue),
@@ -373,3 +373,8 @@ export function computeSaleRefundPreview(sale?: RefundableDocument, selectedItem
     })),
   };
 }
+
+export {
+  computeRefundPreview as computeSaleRefundPreview,
+  getRefundableLines as getSaleRefundableLines,
+};

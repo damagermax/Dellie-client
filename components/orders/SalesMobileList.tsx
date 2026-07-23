@@ -3,6 +3,7 @@
 import { Tag } from "antd";
 import Link from "next/link";
 import { formatDate } from "@/lib/dateUtils";
+import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
 import { Sale } from "@/types/sale";
 import { saleDocumentNumber, saleFulfillmentStatusLabel } from "./saleUtils";
 
@@ -41,7 +42,7 @@ export default function SalesMobileList({ sales }: SalesMobileListProps) {
                       </Tag>
                     )}
                     <Tag className={`${mobileTagClassName} capitalize`} color={statusColor(sale.paymentStatus)}>
-                      {sale.paymentStatus}
+                      {paymentStatusLabel(sale.paymentStatus)}
                     </Tag>
                     <Tag className={`${mobileTagClassName} capitalize`} color={statusColor(sale.receiptStatus)}>
                       {saleFulfillmentStatusLabel(sale.receiptStatus)}

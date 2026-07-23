@@ -30,7 +30,8 @@ export function derivePurchaseDetailState({
   const canReceive = !purchase.locked && !isCancelled && fulfillableLines.some((line) => Number(line.quantity) > Number(line.fulfilledQuantity || 0));
   const canReturn = !purchase.locked && !isCancelled && fulfillableLines.some((line) => Number(line.fulfilledQuantity || 0) > Number(line.returnedQuantity || 0));
   const isFullyReceived = !purchase.locked && !isCancelled && fulfillableLines.length > 0 && fulfillableLines.every((line) => Number(line.fulfilledQuantity || 0) >= Number(line.quantity || 0));
-  const canRecordPayment = !purchase.locked && !isCancelled && Number(purchase.balance || 0) > 0;
+  const balance = Number(purchase.balance || 0);
+  const canRecordPayment = !purchase.locked && !isCancelled && balance > 0;
   const remainingRefundablePaidAmount = getRemainingRefundablePaidAmount(purchase.payments || []);
   const canRefundPayment = !purchase.locked && !isCancelled && remainingRefundablePaidAmount > 0;
   const canUseReturns = featureSettings?.purchaseReturnsEnabled !== false;

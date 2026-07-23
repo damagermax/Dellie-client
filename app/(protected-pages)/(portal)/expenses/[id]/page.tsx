@@ -46,6 +46,14 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
 
   const expense = data as Expense | undefined;
   const currency = expense?.currency?.code || "";
+  const expenseLinkTransaction = expense
+    ? {
+        id,
+        rate: expense.rate || 1,
+        currencyId: expense.currency?.id || "",
+        type: TransactionType.EXPENSE,
+      }
+    : undefined;
   const attachments = expense?.attachments || [];
   const totalAmount = Number(expense?.amount || 0);
   const totalPaidAmount =
@@ -127,7 +135,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f8faff_0%,#eef2ff_45%,#f7f8fc_100%)]">
       {canManageExpense && <ExpenseFormModal open={expenseModalOpen} toggle={toggleExpenseModal} initialValues={expense} />}
-      {paymentModalOpen && <PaymentFormModal type={paymentType} open={paymentModalOpen} toggle={togglePaymentModal} linkTransaction={{ id, rate: expense?.rate || 1, currencyId: expense?.currency?.id || "", type: TransactionType.EXPENSE }} />}
+      {paymentModalOpen && <PaymentFormModal type={paymentType} open={paymentModalOpen} toggle={togglePaymentModal} linkTransaction={expenseLinkTransaction} />}
       <ExpenseAttachmentsModal
         open={attachmentsOpen}
         toggle={toggleAttachmentsOpen}
@@ -237,7 +245,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
 
-          <PaymentView payments={expense.payments as Payment[]} canManage={canManageExpense} />
+          <PaymentView payments={expense.payments as Payment[]} canManage={canManageExpense} linkTransaction={expenseLinkTransaction} />
 
           <div className="border-t border-gray-200 bg-white px-4 py-6 md:px-8">
             <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-3">

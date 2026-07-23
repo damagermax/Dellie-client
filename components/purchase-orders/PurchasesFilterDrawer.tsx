@@ -78,7 +78,7 @@ export function PurchasesFilterDrawer({ open, filters, onChange, onClose, onAppl
           options={[
             { value: "", label: "All" },
             { value: "unpaid", label: "Unpaid" },
-            { value: "partial", label: "Partial" },
+            { value: "partial", label: "Partial Payment" },
             { value: "paid", label: "Paid" },
           ]}
         />

@@ -16,6 +16,7 @@ import {
   productImage,
   productName,
   productSku,
+  SaleReturnRestockIndicator,
   SaleTableSectionHandlers,
   SaleTableView,
 } from "./saleDetailTableShared";
@@ -29,6 +30,10 @@ export function SaleItemsTotalsCard({
   showDeliveryFee,
   total,
   paid,
+  refund,
+  writeOff,
+  showRefund,
+  showWriteOff,
   balance,
   taxSummary,
   taxAmount,
@@ -41,6 +46,10 @@ export function SaleItemsTotalsCard({
   showDeliveryFee: boolean;
   total: number;
   paid: number;
+  refund: number;
+  writeOff: number;
+  showRefund: boolean;
+  showWriteOff: boolean;
   balance: number;
   taxSummary: Array<{ name: string; amount: number }>;
   taxAmount: number;
@@ -58,6 +67,8 @@ export function SaleItemsTotalsCard({
             <InlineSummaryRow label="Total" value={money(currency, total)} strong />
           </div>
           <InlineSummaryRow label="Paid" value={money(currency, paid)} />
+          {showRefund ? <InlineSummaryRow label="Refund" value={money(currency, refund)} /> : null}
+          {showWriteOff ? <InlineSummaryRow label="Write-off" value={money(currency, writeOff)} /> : null}
           <div className="border-t border-gray-300 pt-4">
             <InlineSummaryRow label="Balance" value={money(currency, balance)} strong />
           </div>
@@ -136,14 +147,24 @@ export function MobileSaleList({
     return (
       <div className="divide-y divide-gray-200 border-y border-gray-200">
         {(sale.returnedItems || []).map((event) => (
-          <MobileEvent
-            key={event.id}
-            title={<ResolvedProductName name={productName(event.productId)} product={event.productId} />}
-            date={formatDate(event.returnedAt)}
-            detail={event.reason || "No reason provided"}
-            value={`${Number(event.quantity || 0).toLocaleString()} returned`}
-            action={canMutate && (!isStaffUser || canMutateStockEvent(event)) ? <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} /> : null}
-          />
+          <div key={event.id} className="px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium capitalize text-gray-950">
+                  <ResolvedProductName name={productName(event.productId)} product={event.productId} />
+                </p>
+                <p className="mt-1 truncate text-sm text-gray-500">{event.reason || "No reason provided"}</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <SaleReturnRestockIndicator restock={event.restock} />
+                {canMutate && (!isStaffUser || canMutateStockEvent(event)) ? <ActionDropdown openEditModal={() => onEditReturn(event)} onDelete={() => onDeleteReturn(event)} /> : null}
+              </div>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3 text-[13px] text-gray-500">
+              <span>{Number(event.quantity || 0).toLocaleString()} returned</span>
+              <span>{formatDate(event.returnedAt)}</span>
+            </div>
+          </div>
         ))}
       </div>
     );
