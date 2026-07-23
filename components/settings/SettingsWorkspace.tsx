@@ -5,7 +5,7 @@ import { Button } from "antd";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { IconType } from "react-icons";
-import { LuAppWindow, LuBadgePercent, LuCalendarClock, LuChevronLeft, LuChevronRight, LuCircleDollarSign, LuCreditCard, LuFileStack, LuFolderTree, LuGlobe, LuMapPin, LuPlus, LuReceipt, LuScanLine, LuSettings, LuStore } from "react-icons/lu";
+import { LuAppWindow, LuBadgePercent, LuCalendarClock, LuChevronLeft, LuChevronRight, LuCircleDollarSign, LuCreditCard, LuFileStack, LuFolderTree, LuGlobe, LuMapPin, LuPlus, LuReceipt, LuScanLine, LuSettings, LuStore, LuUsers } from "react-icons/lu";
 import CategoriesFormModal from "../categories/CategoriesFormModal";
 import CategoriesList from "../categories/categories-view/CategoriesList";
 import DiscountsList from "../discounts/discount-view/DiscountsList";
@@ -193,6 +193,15 @@ const SETTINGS_GROUPS: SettingGroup[] = [
       { type: "section", key: "payment_method" },
       { type: "section", key: "Delivery Zones" },
       { type: "section", key: "expense_categories" },
+      {
+        type: "link",
+        key: "employees",
+        label: "Employees",
+        description: "Team members, access setup, and employee contact records",
+        href: "/contacts?role=employees",
+        icon: LuUsers,
+        tone: "bg-blue-50 text-blue-700 ring-blue-100",
+      },
       {
         type: "link",
         key: "apps",

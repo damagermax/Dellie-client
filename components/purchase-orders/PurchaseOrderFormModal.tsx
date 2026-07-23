@@ -1,7 +1,7 @@
 "use client";
 
 import { AppModal, ModalProps } from "../ui/AppModal";
-import { Form, Select } from "antd";
+import { Button, Form, Select } from "antd";
 import { DatePickerFormItem } from "../ui/AppFormItems";
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
 import { Purchase } from "@/types/index";
@@ -40,10 +40,26 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
 
   return (
     <>
-      <AppModal open={open} toggle={toggle} title={purchase ? "Edit Purchase" : "New Purchase"} onOk={controller.handleSubmit} width={1000} loading={controller.loading} okText={"Save"}>
+      <AppModal
+        open={open}
+        toggle={toggle}
+        title={purchase ? "Edit Purchase" : "New Purchase"}
+        width={1000}
+        loading={controller.loading}
+        footer={
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-white px-4 py-4 sm:px-5">
+            <Button onClick={toggle}>
+              Cancel
+            </Button>
+            <Button type="primary" loading={controller.loading} onClick={controller.handleSubmit}>
+              {purchase ? "Save Changes" : "Save Purchase"}
+            </Button>
+          </div>
+        }
+      >
         <Form form={controller.form} disabled={controller.cannotEdit || controller.loading} layout="vertical" initialValues={{ date: dayjs(), dueDate: dayjs() }}>
           <div className={`grid grid-cols-1 gap-x-5 gap-y-1 p-5 pb-8 ${inputGridClass}`}>
-            <Form.Item name="contactId" label="Contact" rules={[{ required: true, message: "Select contact" }]}>
+            <Form.Item name="contactId" label="Contact">
               <SearchableContactSelect onAddContact={() => {}} />
             </Form.Item>
             <DatePickerFormItem label="Date" name="date" placeholder="date" className="" />

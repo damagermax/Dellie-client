@@ -13,7 +13,7 @@ export default function ContactsMobileList({ contacts }: ContactsMobileListProps
   return (
     <div className="md:hidden">
       {contacts.map((contact) => {
-        const name = contact.displayName || contact.name;
+        const name = contact.name;
         const contactLine = contact.phone || contact.email || "No phone or email";
 
         return (

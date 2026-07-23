@@ -77,6 +77,8 @@ export function AppModal({
           ? {
               marginTop: 0,
               padding: 0,
+              background: "white",
+              flexShrink: 0,
             }
           : undefined,
       }}

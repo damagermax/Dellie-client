@@ -7,6 +7,7 @@ export interface ContactQueryParams {
   search?: string | "";
   status?: ContactStatus;
   role?: ContactRole;
+  excludeRole?: ContactRole;
   page?: number;
   limit?: number;
   sortBy?: string;
@@ -16,7 +17,6 @@ export interface ContactQueryParams {
 export interface Contact {
   id: string;
   name: string;
-  displayName?: string;
   email?: string;
   phone?: string;
   mobile?: string;
@@ -51,7 +51,6 @@ export interface Contact {
 
 export interface CreateContactInput {
   name: string;
-  displayName?: string;
   email?: string;
   phone?: string;
   mobile?: string;
@@ -95,16 +94,11 @@ export enum ContactRole {
 
 export interface Address {
   street?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  postalCode?: string;
 }
 
 export interface ContactAssignmentPreview {
   id: string;
   name: string;
-  displayName?: string;
   email?: string;
   phone?: string;
 }

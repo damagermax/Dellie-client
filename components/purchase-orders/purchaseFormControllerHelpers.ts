@@ -10,12 +10,20 @@ type PurchaseDiscountState = { discountValue: number; discountType: PurchaseDisc
 
 export function getDefaultPurchaseFormValues({
   defaultStoreCurrencyId,
+  defaultLocationId,
   paymentTermsEnabled,
 }: {
   defaultStoreCurrencyId?: string;
+  defaultLocationId?: string;
   paymentTermsEnabled: boolean;
 }) {
-  return { date: dayjs(), dueDate: paymentTermsEnabled ? dayjs() : undefined, currencyId: defaultStoreCurrencyId, rate: 1 };
+  return {
+    date: dayjs(),
+    dueDate: paymentTermsEnabled ? dayjs() : undefined,
+    currencyId: defaultStoreCurrencyId,
+    location: defaultLocationId,
+    rate: 1,
+  };
 }
 
 export function getPurchaseFormValues(purchase: Purchase) {
@@ -131,7 +139,7 @@ export function buildPurchasePayload({
   multiCurrencyEnabled,
 }: {
   values: {
-    contactId: string;
+    contactId?: string;
     date: { toISOString: () => string };
     deliveryDate?: { toISOString: () => string };
     location: string;

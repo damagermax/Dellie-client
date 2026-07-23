@@ -5,6 +5,7 @@ import { Form, MenuProps, message } from "antd";
 import { useSelector } from "react-redux";
 
 import { useCreatePurchaseMutation, useGetCurrencyQuery, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdatePurchaseMutation } from "@/lib/redux/services";
+import { useGetDefaultLocationQuery } from "@/lib/redux/services/locationsApi";
 import { buildPaymentTermOptions } from "@/lib/payment-terms";
 import useToggle from "@/hooks/UseToggle";
 import { RootState } from "@/lib/store";
@@ -40,6 +41,7 @@ export function usePurchaseOrderFormController({ open, toggle, purchase, onSaved
   const [createPurchase, { isLoading: creating }] = useCreatePurchaseMutation();
   const [updatePurchase, { isLoading: updating }] = useUpdatePurchaseMutation();
   const { data: paymentTerms } = useGetPaymentTermsQuery();
+  const { data: defaultLocation } = useGetDefaultLocationQuery(undefined, { skip: !open });
   const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20, purchasable: true });
   const { data: taxes } = useGetTaxesQuery();
 
@@ -72,12 +74,17 @@ export function usePurchaseOrderFormController({ open, toggle, purchase, onSaved
     }
 
     form.resetFields();
-    form.setFieldsValue(getDefaultPurchaseFormValues({ defaultStoreCurrencyId, paymentTermsEnabled }));
+    form.setFieldsValue(getDefaultPurchaseFormValues({ defaultStoreCurrencyId, defaultLocationId: defaultLocation?.id, paymentTermsEnabled }));
     setDiscount({ discountValue: 0, discountType: "percent" });
     setSelectedTax(undefined);
     setIsDeferentProductTax(false);
     setLineItems([]);
-  }, [defaultStoreCurrencyId, form, open, paymentTermsEnabled, purchase]);
+  }, [defaultLocation?.id, defaultStoreCurrencyId, form, open, paymentTermsEnabled, purchase]);
+
+  useEffect(() => {
+    if (!open || purchase || !defaultLocation?.id || form.getFieldValue("location")) return;
+    form.setFieldValue("location", defaultLocation.id);
+  }, [defaultLocation?.id, form, open, purchase]);
 
   useEffect(() => {
     if (!open || !purchase || !taxes) return;

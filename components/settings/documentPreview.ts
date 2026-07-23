@@ -35,7 +35,6 @@ const samplePurchase: Purchase = {
   contactId: {
     id: "supplier-1",
     name: "Northwind Supply Co.",
-    displayName: "Northwind Supply Co.",
     email: "purchasing@northwind.example",
     phone: "+1 (415) 555-0188",
   },
@@ -139,7 +138,6 @@ const sampleSale: Sale = {
   contactId: {
     id: "customer-1",
     name: "Luna Market",
-    displayName: "Luna Market",
     email: "accounts@lunamarket.example",
     phone: "+1 (628) 555-0134",
   },
@@ -243,7 +241,6 @@ const samplePosReceipt: Sale = {
   contactId: {
     id: "walk-in",
     name: "Walk-in customer",
-    displayName: "Walk-in customer",
   },
   lineItems: [
     {
@@ -602,7 +599,7 @@ function renderModernSaleDocument(options: SaleDocumentHtmlOptions) {
   const { sale, type, branding, resolvedNames, paymentTermsLabel = "Standard terms", selectedPayment } = options;
   const currency = sale.currencyId?.code || "";
   const theme = saleTheme("modern");
-  const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
+  const customer = sale.contactId?.name || "Walk-in customer";
   const locationLabel = saleLocationLabel(sale);
   const rows = renderSaleRows(sale, currency, resolvedNames);
   const summaryRows = renderSummaryRows(
@@ -737,7 +734,7 @@ function renderMinimalSaleDocument(options: SaleDocumentHtmlOptions) {
   const { sale, type, branding, resolvedNames, paymentTermsLabel = "Standard terms", paperSize = "full_page", selectedPayment } = options;
   const currency = sale.currencyId?.code || "";
   const theme = saleTheme("minimal");
-  const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
+  const customer = sale.contactId?.name || "Walk-in customer";
   const fulfillmentLabel = saleFulfillmentLabel(sale);
   const rows = renderSaleRows(sale, currency, resolvedNames);
   const summaryRows = renderSummaryRows(
@@ -848,7 +845,7 @@ function renderBoldSaleDocument(options: SaleDocumentHtmlOptions) {
   const { sale, type, branding, resolvedNames, paymentTermsLabel = "Standard terms", selectedPayment } = options;
   const currency = sale.currencyId?.code || "";
   const theme = saleTheme("bold");
-  const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
+  const customer = sale.contactId?.name || "Walk-in customer";
   const scheduleLabel = saleScheduleLabel(sale);
   const locationLabel = saleLocationLabel(sale);
   const rows = renderSaleRows(sale, currency, resolvedNames);
@@ -970,7 +967,7 @@ function renderClassicSaleDocument(options: SaleDocumentHtmlOptions) {
   const { sale, type, branding, resolvedNames, paymentTermsLabel = "Standard terms", selectedPayment } = options;
   const currency = sale.currencyId?.code || "";
   const theme = saleTheme("classic");
-  const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
+  const customer = sale.contactId?.name || "Walk-in customer";
   const scheduleLabel = saleScheduleLabel(sale);
   const rows = renderSaleRows(sale, currency, resolvedNames);
   const summaryRows = renderSummaryRows(

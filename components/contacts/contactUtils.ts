@@ -25,7 +25,7 @@ export function getContactColor(text?: string) {
 
 export function formatContactAddress(address?: Address) {
   if (!address) return "";
-  return [address.street, address.city, address.state, address.country, address.postalCode].filter(Boolean).join(", ");
+  return address.street?.trim() || "";
 }
 
 export function formatContactRole(role: ContactRole) {

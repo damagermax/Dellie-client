@@ -36,7 +36,7 @@ export function SearchableContactSelect({ value, onChange, mode, onAddContact, i
       label: (
         <div className=" flex items-center gap-x-1">
           <IoPersonCircleOutline size={18} />
-          <p>{contact.name || contact.displayName}</p>
+          <p>{contact.name}</p>
         </div>
       ),
     })) || []),

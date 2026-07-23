@@ -20,7 +20,7 @@ type PurchaseOverviewSectionProps = {
 
 export function PurchaseOverviewSection({ purchase, isCancelled, isClosed, paymentTerms }: PurchaseOverviewSectionProps) {
   const paymentTermsEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.paymentTermsEnabled !== false);
-  const supplierName = purchase.contactId?.name || purchase.contactId?.displayName || "Supplier not set";
+  const supplierName = purchase.contactId?.name || "Supplier not set";
   const supplierMeta = [purchase.contactId?.email, purchase.contactId?.phone].filter(Boolean).join(" · ") || "No contact details provided";
   const locationName = purchase.locationId?.name || "Location not set";
   const locationMeta = purchase.locationId?.address || "No address provided";

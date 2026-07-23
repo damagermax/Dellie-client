@@ -23,7 +23,7 @@ export default function SalesMobileList({ sales }: SalesMobileListProps) {
   return (
     <div className="md:hidden">
       {sales.map((sale) => {
-        const customer = sale.contactId?.displayName || sale.contactId?.name || "Walk-in Customer";
+        const customer = sale.contactId?.name || "Walk-in Customer";
         const currency = sale.currencyId?.code || "";
         const showSource = Boolean(sale.source && sale.source !== "Manual Sale");
 

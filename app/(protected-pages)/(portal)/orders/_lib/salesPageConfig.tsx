@@ -60,7 +60,7 @@ export function buildSalesColumns(): TableProps<Sale>["columns"] {
           </Tag>
         ),
     },
-    { title: "Customer", key: "customer", render: (_, sale) => sale.contactId?.name || sale.contactId?.displayName || "Walk-in Customer" },
+    { title: "Customer", key: "customer", render: (_, sale) => sale.contactId?.name || "Walk-in Customer" },
     { title: "Date", key: "date", render: (_, sale) => formatDate(sale.date) },
     { title: "Location", key: "location", render: (_, sale) => sale.locationId?.name || "-" },
     { title: "Total Amount", key: "amount", render: (_, sale) => `${sale.currencyId?.code || ""} ${Number(sale.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },

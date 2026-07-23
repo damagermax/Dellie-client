@@ -34,7 +34,7 @@ export function buildPurchaseColumns(): TableProps<Purchase>["columns"] {
           </Tag>
         ),
     },
-    { title: "Supplier", key: "supplier", render: (_, purchase) => purchase.contactId?.name || purchase.contactId?.displayName || "-" },
+    { title: "Supplier", key: "supplier", render: (_, purchase) => purchase.contactId?.name || "-" },
     { title: "Location", key: "location", render: (_, purchase) => purchase.locationId?.name || "-" },
     { title: "Date", key: "date", render: (_, purchase) => formatDate(purchase.date) },
     {

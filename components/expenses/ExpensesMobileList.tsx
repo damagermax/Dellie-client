@@ -16,7 +16,7 @@ export default function ExpensesMobileList({ expenses }: ExpensesMobileListProps
     <div className="md:hidden">
       {expenses.map((expense) => {
         const title = expense.note || expense.title || expense.category?.name || "Expense";
-        const vendor = expense.contact?.displayName || expense.contact?.name || "Open Market";
+        const vendor = expense.contact?.name || "Open Market";
         const currency = expense.currency?.code || "";
         const isPaid = Number(expense.balance || 0) <= 0;
 

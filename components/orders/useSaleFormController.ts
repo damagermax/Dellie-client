@@ -7,6 +7,7 @@ import { useSelector } from "react-redux";
 import useToggle from "@/hooks/UseToggle";
 import { RootState } from "@/lib/store";
 import { useCreateSaleMutation, useGetCurrencyQuery, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdateSaleMutation } from "@/lib/redux/services";
+import { useGetDefaultLocationQuery } from "@/lib/redux/services/locationsApi";
 import { buildPaymentTermOptions } from "@/lib/payment-terms";
 import { getNormalPrice } from "@/lib/products/pricing";
 import { ProductListItem, PurchaseDiscountType, Sale, Tax } from "@/types/index";
@@ -37,6 +38,7 @@ export function useSaleFormController({ open, sale, onSaved, toggle }: UseSaleFo
   const [createSale, { isLoading: creating }] = useCreateSaleMutation();
   const [updateSale, { isLoading: updating }] = useUpdateSaleMutation();
   const { data: paymentTerms } = useGetPaymentTermsQuery();
+  const { data: defaultLocation } = useGetDefaultLocationQuery(undefined, { skip: !open });
   const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20 });
   const { data: taxes } = useGetTaxesQuery();
   const rate = Form.useWatch("rate", form) || 1;
@@ -62,7 +64,15 @@ export function useSaleFormController({ open, sale, onSaved, toggle }: UseSaleFo
     if (!open) return;
     if (!sale) {
       form.resetFields();
-      form.setFieldsValue(getDefaultSaleFormValues({ defaultStoreCurrencyId, deliveryEnabled, pickupEnabled, paymentTermsEnabled }));
+      form.setFieldsValue(
+        getDefaultSaleFormValues({
+          defaultStoreCurrencyId,
+          defaultLocationId: defaultLocation?.id,
+          deliveryEnabled,
+          pickupEnabled,
+          paymentTermsEnabled,
+        }),
+      );
       setLineItems([]);
       setDiscount({ discountValue: 0, discountType: "percent" });
       setDeliveryFee(0);
@@ -75,7 +85,12 @@ export function useSaleFormController({ open, sale, onSaved, toggle }: UseSaleFo
     setDiscount({ discountValue: Number(sale.discountValue || 0), discountType: sale.discountType || "fixed" });
     setDeliveryFee(Number(sale.deliveryFee || 0));
     setLineItems(mapSaleLineItems(sale));
-  }, [defaultStoreCurrencyId, deliveryEnabled, form, open, paymentTermsEnabled, pickupEnabled, sale]);
+  }, [defaultLocation?.id, defaultStoreCurrencyId, deliveryEnabled, form, open, paymentTermsEnabled, pickupEnabled, sale]);
+
+  useEffect(() => {
+    if (!open || sale || !defaultLocation?.id || form.getFieldValue("location")) return;
+    form.setFieldValue("location", defaultLocation.id);
+  }, [defaultLocation?.id, form, open, sale]);
 
   useEffect(() => {
     if (!open) return;

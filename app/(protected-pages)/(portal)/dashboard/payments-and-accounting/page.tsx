@@ -108,7 +108,7 @@ function FinanceReportContent() {
     skip: !ready || !canViewReport || selectedView !== "profit-loss",
   });
   const { data: categoryData } = useGetCategoriesQuery(
-    { type: CategoryType.EXPENSE, status: CategoryStatus.ACTIVE },
+    { type: CategoryType.EXPENSE, status: CategoryStatus.ACTIVE, limit: 100 },
     { skip: !ready || !canViewReport || selectedView !== "expenses" },
   );
   const categoryOptions = useMemo(

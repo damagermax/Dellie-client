@@ -5,6 +5,7 @@ import { Modal, message } from "antd";
 import { useRouter } from "next/navigation";
 import ContactDetailContent from "@/components/contacts/ContactDetailContent";
 import ContactsFormModal from "@/components/contacts/ContactsFormModal";
+import EmployeeFormModal from "@/components/contacts/EmployeeFormModal";
 import ContactSummary from "@/components/contacts/ContactSummary";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
@@ -13,6 +14,7 @@ import { useDeleteContactMutation, useGetContactQuery, useGetContactTransactions
 import { usePermissions } from "@/hooks/usePermissions";
 import { StorePermission } from "@/types/store-access";
 import { useState } from "react";
+import { ContactRole } from "@/types/contact";
 
 export default function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -33,7 +35,7 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
     if (!contact || isDeleting) return;
 
     Modal.confirm({
-      title: `Delete ${contact.displayName || contact.name}?`,
+      title: `Delete ${contact.name}?`,
       content: "This contact will be removed from your contacts list. This action cannot be undone.",
       okText: "Delete",
       okType: "danger",
@@ -82,7 +84,12 @@ export default function ContactDetailPage({ params }: { params: Promise<{ id: st
         <ContactSummary contact={contact} />
       </div>
 
-      {editOpen && <ContactsFormModal open={editOpen} toggle={toggleEdit} initialValues={contact} onSaved={refetch} />}
+      {editOpen &&
+        (contact.roles?.includes(ContactRole.EMPLOYEE) ? (
+          <EmployeeFormModal open={editOpen} toggle={toggleEdit} initialValues={contact} onSaved={refetch} />
+        ) : (
+          <ContactsFormModal open={editOpen} toggle={toggleEdit} initialValues={contact} onSaved={refetch} />
+        ))}
     </div>
   );
 }

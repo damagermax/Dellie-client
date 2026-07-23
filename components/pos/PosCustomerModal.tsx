@@ -76,7 +76,7 @@ export default function PosCustomerModal({
                 return (
                   <button key={contact.id} type="button" className="flex w-full items-center justify-between gap-3 border-b border-stone-100 px-4 py-3 text-left last:border-b-0 active:bg-stone-50" onClick={() => onSelectCustomer(contact)}>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-stone-900">{contact.name || contact.displayName}</p>
+                      <p className="truncate text-sm font-medium text-stone-900">{contact.name}</p>
                       <p className="mt-0.5 truncate text-xs text-stone-500">{contact.phone || contact.mobile || contact.email || "No contact info"}</p>
                     </div>
                     {isActive ? (

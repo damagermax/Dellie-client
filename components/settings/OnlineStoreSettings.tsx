@@ -69,7 +69,7 @@ export default function OnlineStoreSettings() {
   const normalizedSearch = locationSearch.trim().toLowerCase();
   const filteredLocations = locations.filter((location) => {
     if (!normalizedSearch) return true;
-    const haystack = [location.name, location.address, location.city, location.state, location.country].filter(Boolean).join(" ").toLowerCase();
+    const haystack = [location.name, location.address].filter(Boolean).join(" ").toLowerCase();
     return haystack.includes(normalizedSearch);
   });
 

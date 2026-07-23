@@ -125,7 +125,6 @@ function renderAuditValue(value: AuditLogMetadataValue): ReactNode {
 }
 
 function readObjectValue(value: AuditLogMetadataRecord) {
-  if (typeof value.displayName === "string") return value.displayName;
   if (typeof value.name === "string") return value.name;
   if (typeof value.code === "string" && typeof value.name === "string") return `${value.code} · ${value.name}`;
   if (typeof value.code === "string") return value.code;

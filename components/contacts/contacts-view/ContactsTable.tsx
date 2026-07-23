@@ -28,14 +28,14 @@ export default function ContactsTable({ contacts, pagination }: ContactTableProp
           <div
             className="w-[30px] rounded-full h-[30px] flex items-center justify-center text-white font-medium"
             style={{
-              backgroundColor: getContactColor(name || contact.displayName),
+              backgroundColor: getContactColor(name),
             }}
           >
-            {getContactInitials(name || contact.displayName)}
+            {getContactInitials(name)}
           </div>
           <div>
             <Link href={`/contacts/${contact.id}`} className="capitalize text-sm text-gray-900 hover:text-black hover:underline">
-              {name || contact.displayName}
+              {name}
             </Link>
             {contact.employeeAccess?.status && contact.employeeAccess.status !== "disabled" && <Tag className="!mt-1 !rounded-full !px-2 text-[10px]" color="purple">Login enabled</Tag>}
           </div>

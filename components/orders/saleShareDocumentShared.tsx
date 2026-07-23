@@ -74,7 +74,7 @@ export function saleDocumentText(
 ) {
   const currency = sale.currencyId?.code || "";
   const label = documentLabel(type);
-  const customer = sale.contactId?.name || sale.contactId?.displayName || "Walk-in customer";
+  const customer = sale.contactId?.name || "Walk-in customer";
   const paidAmount = Math.max(Number(sale.amount || 0) - Number(sale.balance || 0), 0);
   const taxLines = saleTaxSummary(sale).map((tax) => `${tax.name}: ${amount(currency, tax.amount)}`);
   const itemLines = sale.lineItems.map((line: Sale["lineItems"][number]) => {

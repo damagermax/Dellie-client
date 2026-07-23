@@ -17,7 +17,7 @@ const AppDrawer = ({ title, toggle, open, children, footer }: AppModalProps) => 
         styles={{
           body: { padding: 0, flex: 1, minHeight: 0, overflow: "auto" },
           content: {
-            borderRadius: fullScreen ? 0 : 24,
+            borderRadius: 0,
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",

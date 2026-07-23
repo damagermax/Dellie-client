@@ -132,7 +132,7 @@ export interface Transaction {
   balance?: number;
   currency?: { code: string; id: string };
   category?: { name: string; id: string };
-  contact?: { name: string; displayName: string; id: string };
+  contact?: { name: string; id: string };
   paymentMethod?: { name: string; id: string };
   linkedDocumentSnapshot?: { id?: string; type: string; number: string; status?: string };
   linkedTransactionId?: string;

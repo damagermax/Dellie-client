@@ -61,7 +61,7 @@ export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId
 }
 
 export interface CreatePurchaseInput {
-  contactId: string;
+  contactId?: string;
   date: string;
   deliveryDate?: string;
   locationId: string;
@@ -84,7 +84,7 @@ export interface Purchase extends Omit<CreatePurchaseInput, "contactId" | "locat
   receiptStatus: PurchaseReceiptStatus;
   locked?: boolean;
   isDeleted?: boolean;
-  contactId?: { id: string; name: string; displayName?: string; email?: string; phone?: string };
+  contactId?: { id: string; name: string; email?: string; phone?: string };
   locationId?: { id: string; name: string; address?: string };
   currencyId?: { id: string; code: string; name?: string };
   createdBy?: { id: string; name: string; email?: string };

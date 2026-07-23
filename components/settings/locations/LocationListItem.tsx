@@ -1,6 +1,6 @@
 import { EnvironmentOutlined } from "@ant-design/icons";
 import { Card, Tag } from "antd";
-import { Location, UpdateLocationInput } from "@/types/index";
+import { Location } from "@/types/index";
 import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdown";
 import { IoCheckmarkCircleOutline } from "react-icons/io5";
 
@@ -33,7 +33,7 @@ export default function LocationListItem({ location, onDelete, onEdit, onSetDefa
                 {location.status}
               </Tag>
             </div>
-            <p className="text-gray-600 mt-1 text-xs">{[location.address, location.city, location.country].filter(Boolean).join(", ")}</p>
+            <p className="text-gray-600 mt-1 text-xs">{location.address || "No address provided"}</p>
           </div>
         </div>
         <div className="flex space-x-2 mt-4 md:mt-0">

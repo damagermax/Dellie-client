@@ -29,7 +29,7 @@ export function ContactAssignmentModal({ open, toggle, contact, mode, onSaved }:
       search,
       page: 1,
       limit: 100,
-      sortBy: "displayName",
+      sortBy: "name",
       sortOrder: "asc",
     },
     {
@@ -44,7 +44,7 @@ export function ContactAssignmentModal({ open, toggle, contact, mode, onSaved }:
         .filter((item) => item.id !== contact.id)
         .map((item) => ({
           value: item.id,
-          label: item.displayName || item.name,
+          label: item.name,
         })),
     [contact.id, data?.data],
   );

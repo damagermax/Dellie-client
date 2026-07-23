@@ -47,11 +47,13 @@ export function formatSaleAddress(address?: Address | null) {
 
 export function getDefaultSaleFormValues({
   defaultStoreCurrencyId,
+  defaultLocationId,
   deliveryEnabled,
   pickupEnabled,
   paymentTermsEnabled,
 }: {
   defaultStoreCurrencyId?: string;
+  defaultLocationId?: string;
   deliveryEnabled: boolean;
   pickupEnabled: boolean;
   paymentTermsEnabled: boolean;
@@ -62,6 +64,7 @@ export function getDefaultSaleFormValues({
     date: dayjs(),
     dueDate: paymentTermsEnabled ? dayjs() : undefined,
     currencyId: defaultStoreCurrencyId,
+    location: defaultLocationId,
     rate: 1,
     fulfillmentMethod: defaultFulfillmentMethod,
   };
@@ -192,7 +195,7 @@ export function buildSalePayload({
   multiCurrencyEnabled,
 }: {
   values: {
-    contactId: string;
+    contactId?: string;
     date: { toISOString: () => string };
     fulfillmentMethod?: "delivery" | "pickup";
     deliveryDate?: { toISOString: () => string };

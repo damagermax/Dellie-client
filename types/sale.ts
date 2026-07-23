@@ -44,7 +44,7 @@ export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" |
   receiptStatus: PurchaseReceiptStatus;
   locked?: boolean;
   isDeleted?: boolean;
-  contactId?: { id: string; name: string; displayName?: string; email?: string; phone?: string };
+  contactId?: { id: string; name: string; email?: string; phone?: string };
   locationId?: { id: string; name: string; address?: string };
   currencyId?: { id: string; code: string; name?: string };
   createdBy?: { id: string; name: string; email?: string };

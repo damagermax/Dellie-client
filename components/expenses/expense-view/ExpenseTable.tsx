@@ -55,7 +55,7 @@ export default function ExpenseTable({ expenses, pagination }: ExpenseTableProps
       dataIndex: "contact",
       key: "contact",
       width: 180,
-      render: (_, record) => record?.contact?.name || record?.contact?.displayName || "Open Market",
+      render: (_, record) => record?.contact?.name || "Open Market",
     },
     {
       title: "Amount",

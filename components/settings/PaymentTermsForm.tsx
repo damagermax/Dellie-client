@@ -50,7 +50,7 @@ export default function PaymentTermsForm({ open, toggle, initialValues, onSaveSu
     <AppDrawer title={initialValues ? "Edit Payment Term" : "Payment Term"} open={open} toggle={toggle}>
       <Form disabled={isCreating || isUpdating} form={form} layout="vertical" onFinish={handleSubmit} className="mt-6">
         <div className="space-y-5 px-6">
-          <InputFormItem label="Term name" name="name" placeholder="Net 30" rules={[{ required: true, message: "Enter a payment term name" }]} help="Use a clear label that users will recognize in sales and purchase forms." />
+          <InputFormItem label="Term name" name="name" placeholder="Net 30" rules={[{ required: true, message: "Enter a payment term name" }]} />
 
           <Form.Item label="Days" name="days" rules={[{ required: true, message: "Enter number of days" }]}>
             <InputNumber min={0} controls={false} className="!w-full" placeholder="30" />

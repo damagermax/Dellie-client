@@ -67,7 +67,7 @@ export type ProductOrderHistoryItem = {
   quoteNumber?: string;
   purchaseNumber?: string;
   documentNumber?: string;
-  contactId?: { id?: string; name?: string; displayName?: string };
+  contactId?: { id?: string; name?: string };
   locationId?: { id?: string; name?: string };
   currencyId?: { id?: string; code?: string; name?: string };
   date?: string;

@@ -40,7 +40,7 @@ export function SaleOverviewSection({ sale, canEdit, isCancelled, isClosed, paym
   const [updateSale, { isLoading: isSavingAddress }] = useUpdateSaleMutation();
   const paymentTermsEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.paymentTermsEnabled !== false);
   const isPickup = sale.fulfillmentMethod === "pickup";
-  const customerName = sale.contactId?.name || sale.contactId?.displayName || "Walk-in Customer";
+  const customerName = sale.contactId?.name || "Walk-in Customer";
   const customerMeta = [sale.contactId?.email, sale.contactId?.phone].filter(Boolean).join(" · ") || "No contact details provided";
   const locationName = sale.locationId?.name || "Location not set";
   const locationMeta = sale.locationId?.address || "No address provided";

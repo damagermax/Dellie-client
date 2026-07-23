@@ -5,7 +5,7 @@ import { useGetCategoriesQuery } from "@/lib/redux/services";
 import { AppNotFoundView } from "@/components/ui/AppNotFoundView";
 import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import CategoriesFormModal from "../CategoriesFormModal";
-import { Category, CategoriesQueryParams, CategoryType } from "@/types/category";
+import { Category, CategoriesQueryParams, CategoryStatus, CategoryType } from "@/types/category";
 import { Tag } from "antd";
 
 interface CategoriesListProps {
@@ -15,8 +15,8 @@ interface CategoriesListProps {
 export default function CategoriesList({ query }: CategoriesListProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>();
-
-  const { data: categories, isLoading: loadingCategories } = useGetCategoriesQuery(query);
+  const categoriesQuery = { ...query, limit: query.limit ?? 1000 };
+  const { data: categories, isLoading: loadingCategories } = useGetCategoriesQuery(categoriesQuery);
 
   const openEditModal = (category: Category) => {
     setSelectedCategory(category);
@@ -26,7 +26,7 @@ export default function CategoriesList({ query }: CategoriesListProps) {
   return (
     <div>
       <AppViewLoader loading={loadingCategories} />
-      <AppNotFoundView dataLength={categories?.data?.length || 0} loading={loadingCategories} query={query} entity="Categories" />
+      <AppNotFoundView dataLength={categories?.data?.length || 0} loading={loadingCategories} query={categoriesQuery} entity="Categories" />
 
       <div className="px-5 pb-32">
         {categories?.data?.map((category, index) => {

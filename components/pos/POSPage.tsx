@@ -113,7 +113,7 @@ export default function POSPage() {
   });
   const { data: paymentMethods } = useGetPaymentMethodsQuery({ status: "active", showInPOS: true });
   const { data: taxes = [] } = useGetTaxesQuery();
-  const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery({ type: CategoryType.PRODUCT, status: CategoryStatus.ACTIVE });
+  const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery({ type: CategoryType.PRODUCT, status: CategoryStatus.ACTIVE, limit: 100 });
   const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId, { skip: !selectedCurrencyId });
   const currentPosLocationId = selectedLocation?.id || normalizeEntityId(form.getFieldValue("locationId")) || defaultLocation?.id;
   const activeLocationId = currentPosLocationId;
@@ -600,7 +600,7 @@ export default function POSPage() {
 
   const handleSelectCustomer = useCallback(
     (contact: Contact) => {
-      setSelectedContact({ id: contact.id, name: contact.name || contact.displayName || "" });
+      setSelectedContact({ id: contact.id, name: contact.name || "" });
       form.setFieldsValue({ contactId: contact.id });
       setCustomerModalOpen(false);
       if (pendingCheckoutOpen) {

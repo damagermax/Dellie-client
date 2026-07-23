@@ -1,15 +1,13 @@
 "use client";
 
-import { AppModal } from "@/components/ui/AppModal";
-import { Button, Divider, Form, Switch } from "antd";
+import { Divider, Form } from "antd";
 import { useEffect } from "react";
 import { Location, CreateLocationInput, UpdateLocationInput } from "@/types/index";
-import { InputFormItem, SelectFormItem } from "@/components/ui/AppFormItems";
+import { InputFormItem, PhoneInputFormItem } from "@/components/ui/AppFormItems";
 
 import { useCreateLocationMutation, useUpdateLocationMutation, useGetLocationQuery } from "@/lib/redux/services";
 import AppDrawer from "@/components/ui/AppDrawer";
 import { BaseButton } from "@/components/ui/AppButtons";
-import { SearchableLocationSelect } from "@/components/location/SearchableLocationSelect";
 
 interface LocationsFormModalProps {
   open: boolean;
@@ -74,23 +72,24 @@ function LocationsFormModal({ open, toggle, initialValues }: LocationsFormModalP
           </div>
           <Divider className="my-0" />
 
-          <div className=" px-6 grid grid-cols-2 gap-x-5">
-            <InputFormItem name="address" placeholder="Address" className=" col-span-2" label="Address" />
-            <InputFormItem label="Country" placeholder="Country" name="country" />
-            <InputFormItem label="City" placeholder="City" name="city" />
-            <InputFormItem label="State/Region" placeholder="State/Region" name="state" />
-            <InputFormItem label="Postal Code" placeholder="Postal Code" name="postalCode" />
+          <div className="grid gap-x-5 px-6 sm:grid-cols-2">
+            <InputFormItem
+              className="sm:col-span-2"
+              name="address"
+              placeholder="Enter location address"
+              label="Address"
+            />
+            <PhoneInputFormItem
+              label="Phone Number"
+              name="phone"
+              placeholder="Enter phone number"
+            />
+            <InputFormItem label="Email" name="email" placeholder="Enter location email" rules={[{ type: "email", message: "Enter a valid email address" }]} />
           </div>
         </>
       )}
     </Form>
   );
-
-  // return (
-  //   <AppModal onOk={locationForm.submit} okText={isCreating || isUpdating ? "Saving..." : "Save"} title={initialValues ? "Edit Location" : "Add New Location"} open={open} toggle={toggle} width={600}>
-  //     {formView}
-  //   </AppModal>
-  // );
 
   return (
     <AppDrawer onOk={locationForm.submit} okText={isCreating || isUpdating ? "Saving..." : "Save"} title={initialValues ? "Edit Location" : "Location"} open={open} toggle={toggle} width={600}>

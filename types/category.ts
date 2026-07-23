@@ -43,4 +43,6 @@ export interface CategoriesQueryParams {
   search?: string | "";
   type?: CategoryType;
   status?: CategoryStatus;
+  page?: number;
+  limit?: number;
 }

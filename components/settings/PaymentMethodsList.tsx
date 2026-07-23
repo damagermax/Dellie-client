@@ -55,6 +55,9 @@ export default function PaymentMethodsList({ onSelect }: PaymentMethodsListProps
                   {paymentMethod.status}
                 </Tag>
               </div>
+              <p className="mt-1 text-xs text-gray-500">
+                {paymentMethod.showInPOS ? "POS enabled" : "Not shown in POS"}
+              </p>
             </button>
 
             <ActionDropdown

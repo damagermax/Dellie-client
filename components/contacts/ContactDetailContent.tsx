@@ -66,10 +66,8 @@ export default function ContactDetailContent({
   const [view, setView] = React.useState<"overview" | "receivables" | "payables" | "transactions">("overview");
   const [assignmentMode, setAssignmentMode] = React.useState<"employee" | "customer" | null>(null);
   const { hasPermission } = usePermissions();
-  const title = contact.name || contact.displayName;
-  const displayName = contact.displayName || contact.name;
-  const legalName = contact.name && contact.name !== title ? contact.name : "Same as display name";
-  const primaryAddress = formatContactAddress(contact.addresses?.[0]) || "No address provided";
+  const title = contact.name;
+  const primaryAddress = formatContactAddress(contact.addresses?.[0]);
   const currencyCode = typeof contact.currencyId === "string" ? undefined : contact.currencyId?.code;
   const statusTone = contact.status === ContactStatus.ACTIVE ? "green" : "default";
   const canManageContacts = hasPermission(StorePermission.CONTACTS_MANAGE);
@@ -221,7 +219,7 @@ export default function ContactDetailContent({
       <div id="contact-overview" className="scroll-mt-14 pt-5 w-full md:pt-7">
         <div className="px-4 md:px-8">
           <div className="grid gap-4 sm:grid-cols-2">
-            <IdentityPanel label="Display Name" title={displayName} description={legalName} icon={<UserRound size={18} />} />
+            <IdentityPanel label="Name" title={title} icon={<UserRound size={18} />} />
             <IdentityPanel label="Primary Address" title="Address" description={primaryAddress} icon={<MapPinned size={18} />} />
           </div>
 
@@ -248,23 +246,25 @@ export default function ContactDetailContent({
         {view === "overview" ? (
           <div className="">
             <div className="grid mt-8  ">
-              <section className="border-y border-gray-200 bg-white px-8 py-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Transaction Summary</p>
+              {!isEmployee ? (
+                <section className="border-y border-gray-200 bg-white px-8 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">Transaction Summary</p>
+                    </div>
                   </div>
-                </div>
 
-                {summaryCards.length ? (
-                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    {summaryCards.map((card) => (
-                      <SummaryCard key={card.key} title={card.title} amount={card.item?.formattedTotal || "0.00"} count={card.item?.count || 0} tone={card.tone} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-5 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">No transactions recorded for this contact yet.</div>
-                )}
-              </section>
+                  {summaryCards.length ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      {summaryCards.map((card) => (
+                        <SummaryCard key={card.key} title={card.title} amount={card.item?.formattedTotal || "0.00"} count={card.item?.count || 0} tone={card.tone} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-5 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-sm text-gray-500">No transactions recorded for this contact yet.</div>
+                  )}
+                </section>
+              ) : null}
 
               <section className="border-b border-gray-200 bg-white py-5 px-8">
                 <div className="flex items-start justify-between gap-4">
@@ -315,7 +315,7 @@ export default function ContactDetailContent({
                           {contact.assignedCustomers.map((assignedCustomer) => (
                             <div key={assignedCustomer.id} className="flex items-start justify-between gap-3 rounded-md border border-gray-200 px-3 py-2">
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-gray-900">{assignedCustomer.displayName || assignedCustomer.name}</p>
+                                <p className="truncate text-sm font-medium text-gray-900">{assignedCustomer.name}</p>
                                 <p className="truncate text-xs text-gray-500">{assignedCustomer.email || assignedCustomer.phone || "No email or phone"}</p>
                               </div>
                               <Link href={`/contacts/${assignedCustomer.id}`} className="text-xs font-medium text-[#2d837d]">
@@ -344,7 +344,7 @@ export default function ContactDetailContent({
                     >
                       {contact.assignedEmployee ? (
                         <div className="rounded-md border border-gray-200 px-3 py-3">
-                          <p className="text-sm font-medium text-gray-900">{contact.assignedEmployee.displayName || contact.assignedEmployee.name}</p>
+                          <p className="text-sm font-medium text-gray-900">{contact.assignedEmployee.name}</p>
                           <p className="mt-1 text-xs text-gray-500">{contact.assignedEmployee.email || contact.assignedEmployee.phone || "No email or phone"}</p>
                           <Link href={`/contacts/${contact.assignedEmployee.id}`} className="mt-2 inline-flex text-xs font-medium text-[#2d837d]">
                             View employee
@@ -427,7 +427,7 @@ function IdentityPanel({
 }: {
   label: string;
   title: string;
-  description: string;
+  description?: string;
   icon: React.ReactNode;
 }) {
   return (
@@ -436,7 +436,7 @@ function IdentityPanel({
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-gray-400">{label}</p>
         <p className="mt-1 truncate text-lg font-medium text-gray-800">{title}</p>
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
+        {description ? <p className="mt-1 text-sm text-gray-500">{description}</p> : null}
       </div>
     </div>
   );

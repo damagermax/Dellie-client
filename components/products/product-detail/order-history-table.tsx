@@ -53,7 +53,7 @@ export function OrderHistoryTable({ orderHistory }: { orderHistory: ProductOrder
     {
       title: "Contact",
       key: "contact",
-      render: (_, order) => order.contactId?.displayName || order.contactId?.name || (order.type === "sale" ? "Walk-in Customer" : "-"),
+      render: (_, order) => order.contactId?.name || (order.type === "sale" ? "Walk-in Customer" : "-"),
     },
     { title: "Date", key: "date", render: (_, order) => formatDate(order.date) },
     { title: "Location", key: "location", render: (_, order) => order.locationId?.name || "-" },
@@ -77,7 +77,7 @@ export function OrderHistoryTable({ orderHistory }: { orderHistory: ProductOrder
             </div>
             <div className="mt-1.5 flex justify-between text-xs text-gray-500">
               <p className="  text-gray-500">
-                {order.contactId?.displayName || order.contactId?.name || (order.type === "sale" ? "Walk-in Customer" : "-")} <span className="capitalize">· {formatDate(order.date)}</span>
+                {order.contactId?.name || (order.type === "sale" ? "Walk-in Customer" : "-")} <span className="capitalize">· {formatDate(order.date)}</span>
               </p>
 
               <span>{formatQuantity(order.quantity)} units</span>

@@ -22,7 +22,7 @@ export default function PurchasesMobileList({ purchases }: PurchasesMobileListPr
   return (
     <div className="md:hidden">
       {purchases.map((purchase) => {
-        const supplier = purchase.contactId?.displayName || purchase.contactId?.name || "-";
+        const supplier = purchase.contactId?.name || "-";
         const currency = purchase.currencyId?.code || "";
 
         return (

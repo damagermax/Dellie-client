@@ -225,7 +225,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           <div id="expense-overview" className="scroll-mt-14 px-4 py-6 md:px-8">
             <div className="grid gap-4 sm:grid-cols-2">
               <IdentityPanel label="Description" title={expense.title || expense.note || "Expense"} description={""} />
-              <IdentityPanel label="Contact" title={expense.contact?.displayName || expense.contact?.name || "Open Market"} description={""} />
+              <IdentityPanel label="Contact" title={expense.contact?.name || "Open Market"} description={""} />
             </div>
 
             <Divider className="!mt-2" />

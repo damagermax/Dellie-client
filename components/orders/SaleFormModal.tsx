@@ -47,16 +47,16 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
         width={1000}
         loading={controller.loading}
         footer={
-          <div className="flex flex-col-reverse gap-3 border-t border-gray-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-5">
-            <Button className="w-full sm:w-auto" onClick={toggle}>
+          <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-white px-4 py-4 sm:px-5">
+            <Button onClick={toggle}>
               Cancel
             </Button>
             {!sale && quotesEnabled && (
-              <Button className="w-full sm:w-auto" disabled={controller.loading} onClick={() => controller.submit("quote")}>
+              <Button disabled={controller.loading} onClick={() => controller.submit("quote")}>
                 Save as Quote
               </Button>
             )}
-            <Button className="w-full sm:w-auto" type="primary" loading={controller.loading} onClick={() => controller.submit(sale && controller.isQuote ? "quote" : "sale")}>
+            <Button type="primary" loading={controller.loading} onClick={() => controller.submit(sale && controller.isQuote ? "quote" : "sale")}>
               {sale ? (controller.isQuote ? "Save Quote" : "Save Changes") : "Save Sale"}
             </Button>
           </div>
@@ -68,14 +68,16 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
           </Form.Item>
           {controller.pickupEnabled && controller.deliveryEnabled && (
             <div className="px-5 pt-5">
-              <div className="flex w-full flex-col gap-4 border border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex w-full items-start justify-between gap-4 border border-gray-200 bg-gray-50 px-4 py-3">
                 <span className="text-sm text-gray-700">Customer will pick up this sale instead of requesting delivery.</span>
-                <Switch size="small" checked={controller.fulfillmentMethod === "pickup"} onChange={(checked) => controller.form.setFieldValue("fulfillmentMethod", checked ? "pickup" : "delivery")} />
+                <div className="flex shrink-0 items-center">
+                  <Switch size="small" checked={controller.fulfillmentMethod === "pickup"} onChange={(checked) => controller.form.setFieldValue("fulfillmentMethod", checked ? "pickup" : "delivery")} />
+                </div>
               </div>
             </div>
           )}
           <div className={`grid grid-cols-1 gap-x-5 gap-y-1 px-5 pb-8 pt-4 ${inputGridClass}`}>
-            <Form.Item name="contactId" label="Contact" rules={[{ required: true, message: "Select contact" }]}>
+            <Form.Item name="contactId" label="Contact">
               <SearchableContactSelect onAddContact={() => {}} />
             </Form.Item>
             <DatePickerFormItem label="Date" name="date" placeholder="date" className="" />
