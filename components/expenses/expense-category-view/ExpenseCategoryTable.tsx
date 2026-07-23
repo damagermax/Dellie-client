@@ -70,7 +70,7 @@ export default function ExpenseCategoryTable({ expenseCategories, onToggleLock, 
 
   return (
     <>
-      <AppTable columns={columns} dataSource={expenseCategories ? expenseCategories : []} className="custom-table" rowClassName="hover:bg-gray-50" />
+      <AppTable columns={columns} dataSource={expenseCategories ? expenseCategories : []} className="custom-table" rowClassName="hover:bg-gray-50" pagination={false} />
     </>
   );
 }

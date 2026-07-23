@@ -2,7 +2,7 @@ import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { useGetCategoriesQuery } from "@/lib/redux/services";
 import { ExpenseCategory } from "@/types/transaction";
 import { Select, Spin } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CategoriesQueryParams, CategoryType } from "@/types/category";
 
 interface SearchableExpenseCategorySelectProps {
@@ -15,50 +15,20 @@ interface SearchableExpenseCategorySelectProps {
 }
 
 const ALL_OPTION_VALUE = "__all__";
-const PAGE_SIZE = 20;
-
 export function SearchableExpenseCategorySelect({ value, type, onChange, onAddCategory, includeAllOption = false, allLabel = "All" }: SearchableExpenseCategorySelectProps) {
-  const [categoriesQuery, setCategoriesQuery] = useState<CategoriesQueryParams>({ type, page: 1, limit: PAGE_SIZE });
-  const [items, setItems] = useState<ExpenseCategory[]>([]);
+  const [categoriesQuery, setCategoriesQuery] = useState<CategoriesQueryParams>({ type });
 
   const debounceExpenseCategoriesQuery = useDebouncedValue(categoriesQuery);
-  const querySignature = useMemo(() => JSON.stringify({ type, search: debounceExpenseCategoriesQuery.search || "" }), [debounceExpenseCategoriesQuery.search, type]);
 
   const handleFilterChange = (values: Partial<CategoriesQueryParams>) => {
-    setCategoriesQuery((prev) => ({ ...prev, ...values, page: 1, type, limit: PAGE_SIZE }));
+    setCategoriesQuery((prev) => ({ ...prev, ...values, type }));
   };
 
   useEffect(() => {
-    setCategoriesQuery({ type, page: 1, limit: PAGE_SIZE });
-    setItems([]);
+    setCategoriesQuery({ type });
   }, [type]);
 
-  const { data: categories, isLoading, isFetching } = useGetCategoriesQuery(debounceExpenseCategoriesQuery);
-  const hasNextPage = categories?.meta?.hasNextPage ?? ((categories?.data?.length || 0) === PAGE_SIZE);
-
-  useEffect(() => {
-    setItems([]);
-  }, [querySignature]);
-
-  useEffect(() => {
-    if (!categories) return;
-
-    setItems((current) => {
-      if ((categories.meta?.page || categories.page || categoriesQuery.page || 1) <= 1) {
-        return categories.data as ExpenseCategory[];
-      }
-
-      const existingIds = new Set(current.map((item) => item.id));
-      const nextItems = (categories.data as ExpenseCategory[]).filter((item) => !existingIds.has(item.id));
-      return [...current, ...nextItems];
-    });
-  }, [categories, categoriesQuery.page]);
-
-  const loadNextPage = () => {
-    if (isFetching || !hasNextPage) return;
-
-    setCategoriesQuery((prev) => ({ ...prev, page: (prev.page || 1) + 1, type, limit: PAGE_SIZE }));
-  };
+  const { data: categories, isLoading } = useGetCategoriesQuery(debounceExpenseCategoriesQuery);
   const options = [
     ...(includeAllOption
       ? [
@@ -68,7 +38,7 @@ export function SearchableExpenseCategorySelect({ value, type, onChange, onAddCa
           },
         ]
       : []),
-    ...(items.map((category: ExpenseCategory) => ({
+    ...(((categories || []) as ExpenseCategory[]).map((category: ExpenseCategory) => ({
       value: category.id,
       label: (
         <div className="flex items-center gap-x-2">
@@ -92,12 +62,6 @@ export function SearchableExpenseCategorySelect({ value, type, onChange, onAddCa
         filterOption={false}
         onSearch={(value) => handleFilterChange({ search: value })}
         notFoundContent={isLoading ? <Spin size="small" /> : <span>No categories found</span>}
-        onPopupScroll={(event) => {
-          const target = event.target as HTMLDivElement;
-          if (target.scrollTop + target.clientHeight >= target.scrollHeight - 24) {
-            loadNextPage();
-          }
-        }}
         popupRender={(menu) => (
           <>
             {onAddCategory ? (

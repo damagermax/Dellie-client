@@ -1,6 +1,6 @@
 import { baseApi, TAG_TYPES } from "./baseApi";
 
-import { CategoriesQueryParams, Category, CategoryCreateInput, CategoryUpdateInput, PaginatedResponse } from "../../../types";
+import { CategoriesQueryParams, Category, CategoryCreateInput, CategoryUpdateInput } from "../../../types";
 
 type CategoryMutationBody = CategoryCreateInput | FormData;
 type CategoryUpdateBody = CategoryUpdateInput | { id: string; data: FormData };
@@ -47,7 +47,7 @@ export const categoriesApi = baseApi.injectEndpoints({
       invalidatesTags: [TAG_TYPES.CATEGORIES],
     }),
 
-    getCategories: builder.query<PaginatedResponse<Category>, CategoriesQueryParams>({
+    getCategories: builder.query<Category[], CategoriesQueryParams>({
       query: (params) => ({ url: "categories", params }),
       providesTags: [TAG_TYPES.CATEGORIES],
     }),

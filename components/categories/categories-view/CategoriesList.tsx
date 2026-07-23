@@ -15,7 +15,7 @@ interface CategoriesListProps {
 export default function CategoriesList({ query }: CategoriesListProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category>();
-  const categoriesQuery = { ...query, limit: query.limit ?? 1000 };
+  const categoriesQuery = { ...query };
   const { data: categories, isLoading: loadingCategories } = useGetCategoriesQuery(categoriesQuery);
 
   const openEditModal = (category: Category) => {
@@ -26,14 +26,14 @@ export default function CategoriesList({ query }: CategoriesListProps) {
   return (
     <div>
       <AppViewLoader loading={loadingCategories} />
-      <AppNotFoundView dataLength={categories?.data?.length || 0} loading={loadingCategories} query={categoriesQuery} entity="Categories" />
+      <AppNotFoundView dataLength={categories?.length || 0} loading={loadingCategories} query={categoriesQuery} entity="Categories" />
 
       <div className="px-5 pb-32">
-        {categories?.data?.map((category, index) => {
+        {categories?.map((category, index) => {
           const isProductCategory = category.type === CategoryType.PRODUCT;
 
           return (
-            <div key={category.id} className={`flex items-start justify-between gap-4 py-5 ${index !== categories.data.length - 1 ? "border-b border-blue-100" : ""}`}>
+            <div key={category.id} className={`flex items-start justify-between gap-4 py-5 ${index !== categories.length - 1 ? "border-b border-blue-100" : ""}`}>
               <button type="button" className="flex min-w-0 flex-1 flex-col items-start text-left" onClick={() => openEditModal(category)}>
                 <div className="flex min-w-0 items-start gap-3">
                   {isProductCategory ? (

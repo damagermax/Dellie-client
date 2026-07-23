@@ -113,7 +113,7 @@ export default function POSPage() {
   });
   const { data: paymentMethods } = useGetPaymentMethodsQuery({ status: "active", showInPOS: true });
   const { data: taxes = [] } = useGetTaxesQuery();
-  const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery({ type: CategoryType.PRODUCT, status: CategoryStatus.ACTIVE, limit: 100 });
+  const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery({ type: CategoryType.PRODUCT, status: CategoryStatus.ACTIVE });
   const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId, { skip: !selectedCurrencyId });
   const currentPosLocationId = selectedLocation?.id || normalizeEntityId(form.getFieldValue("locationId")) || defaultLocation?.id;
   const activeLocationId = currentPosLocationId;

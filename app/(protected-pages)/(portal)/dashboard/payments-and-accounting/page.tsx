@@ -108,13 +108,13 @@ function FinanceReportContent() {
     skip: !ready || !canViewReport || selectedView !== "profit-loss",
   });
   const { data: categoryData } = useGetCategoriesQuery(
-    { type: CategoryType.EXPENSE, status: CategoryStatus.ACTIVE, limit: 100 },
+    { type: CategoryType.EXPENSE, status: CategoryStatus.ACTIVE },
     { skip: !ready || !canViewReport || selectedView !== "expenses" },
   );
   const categoryOptions = useMemo(
     () => [
       { label: "All expense categories", value: "all" },
-      ...(categoryData?.data || []).map((category) => ({
+      ...(categoryData || []).map((category) => ({
         label: category.name,
         value: category.id,
       })),
