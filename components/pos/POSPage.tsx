@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, type MenuProps, message } from "antd";
 import { useSelector } from "react-redux";
 import ContactsFormModal from "@/components/contacts/ContactsFormModal";
@@ -90,6 +90,7 @@ export default function POSPage() {
   const [posFulfillmentMode, setPosFulfillmentMode] = useState<"fulfill_now" | "pending" | undefined>(undefined);
   const [pendingCheckoutOpen, setPendingCheckoutOpen] = useState(false);
   const [hasAppliedInitialPosSettings, setHasAppliedInitialPosSettings] = useState(false);
+  const previousLocationIdRef = useRef<string | undefined>(undefined);
   const currentUser = useSelector((state: RootState) => state.currentUser.user);
   const currentStore = useSelector((state: RootState) => state.currentUser.store);
   const storeSettings = useSelector((state: RootState) => state.currentUser.storeSettings);
@@ -263,6 +264,45 @@ export default function POSPage() {
       }),
     );
   }, [cart.length, stockByProductId]);
+
+  useEffect(() => {
+    if (!activeLocationId) {
+      previousLocationIdRef.current = undefined;
+      return;
+    }
+
+    if (!previousLocationIdRef.current) {
+      previousLocationIdRef.current = activeLocationId;
+      return;
+    }
+
+    if (previousLocationIdRef.current === activeLocationId) {
+      return;
+    }
+
+    let removedCount = 0;
+
+    setCart((current) =>
+      current.filter((item) => {
+        const stockState = stockByProductId.get(item.productId);
+        const hasLocationAvailability = Boolean(stockState);
+        const hasSellableTrackedStock = !isTrackedInventory(stockState?.type) || Number(stockState?.availableStock || 0) > 0;
+
+        if (hasLocationAvailability && hasSellableTrackedStock) {
+          return true;
+        }
+
+        removedCount += 1;
+        return false;
+      }),
+    );
+
+    if (removedCount > 0) {
+      message.info(`${removedCount} item${removedCount === 1 ? "" : "s"} removed because they are not available in the selected location.`);
+    }
+
+    previousLocationIdRef.current = activeLocationId;
+  }, [activeLocationId, stockByProductId]);
 
   useEffect(() => {
     if (hasAppliedInitialPosSettings) {
