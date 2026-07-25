@@ -229,6 +229,7 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
         currencyId,
         rate: Number(values.rate || 1),
         paymentTerms: values.paymentTerm,
+        note: typeof values.note === "string" && values.note.trim() ? values.note.trim() : undefined,
         dueDate: values.dueDate?.toISOString?.(),
         source: "POS",
         posFulfillmentMode: submitParams.posFulfillmentMode || posSettings.fulfillmentDefault,
@@ -259,7 +260,7 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
         removeSavedCart(activeSavedCartId);
       }
       clearCart();
-      message.success(`Sale ${sale.saleNumber} completed.`);
+      message.success(`Sale ${finalSale.saleNumber} completed.`);
     } catch (error) {
       const apiMessage = typeof error === "object" && error !== null && "data" in error ? (error as { data?: { message?: string | string[] } }).data?.message : undefined;
 

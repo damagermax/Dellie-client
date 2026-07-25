@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, InputNumber, Modal, Select } from "antd";
+import { Button, Input, InputNumber, Modal, Select } from "antd";
 import type { PaymentMethod } from "@/types/index";
 import CheckoutInfoCard from "./CheckoutInfoCard";
 import type { PosPaymentEntry } from "./types";
@@ -37,12 +37,14 @@ type PosCheckoutModalProps = {
   getPaymentAmountLimit: (entryId: string, paymentMethodId?: string) => number | undefined;
   selectedContactName: string | null;
   selectedPaymentMethodName: string | null;
+  note: string;
   onCancel: () => void;
   onFulfillmentModeChange: (value: "fulfill_now" | "pending") => void;
   onSetShowSplit: (value: boolean) => void;
   onOpenSplitPayment: () => void;
   onUpdatePaymentRow: (id: string, patch: Partial<PosPaymentEntry>) => void;
   onRemovePaymentRow: (id: string) => void;
+  onNoteChange: (value: string) => void;
   onSubmitCheckout: () => void;
 };
 
@@ -69,12 +71,14 @@ export default function sPosCheckoutModal({
   getPaymentAmountLimit,
   selectedContactName,
   selectedPaymentMethodName,
+  note,
   onCancel,
   onFulfillmentModeChange,
   onSetShowSplit,
   onOpenSplitPayment,
   onUpdatePaymentRow,
   onRemovePaymentRow,
+  onNoteChange,
   onSubmitCheckout,
 }: PosCheckoutModalProps) {
   const selectedFulfillmentMode = fulfillmentMode || posSettings.fulfillmentDefault;
@@ -283,6 +287,17 @@ export default function sPosCheckoutModal({
                   </div>
                 </div>
               )}
+
+              <div className="mt-5">
+                <p className="mb-2 text-sm font-semibold text-stone-900">Sale note</p>
+                <Input.TextArea
+                  value={note}
+                  onChange={(event) => onNoteChange(event.target.value)}
+                  rows={4}
+                  placeholder="Add an optional note for this sale"
+                  className="!rounded-xl"
+                />
+              </div>
             </div>
 
             <div className="mt-6 space-y-3 pt-2">

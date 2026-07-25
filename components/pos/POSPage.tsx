@@ -765,12 +765,14 @@ export default function POSPage() {
         getPaymentAmountLimit={getPaymentAmountLimit}
         selectedContactName={selectedContactName}
         selectedPaymentMethodName={selectedPaymentMethodName}
+        note={form.getFieldValue("note") || ""}
         onCancel={() => setCheckoutModalOpen(false)}
         onFulfillmentModeChange={setPosFulfillmentMode}
         onSetShowSplit={setShowSplit}
         onOpenSplitPayment={handleOpenSplitPayment}
         onUpdatePaymentRow={updatePaymentRow}
         onRemovePaymentRow={removePaymentRow}
+        onNoteChange={(value) => form.setFieldValue("note", value)}
         onSubmitCheckout={submitCheckout}
       />
 
