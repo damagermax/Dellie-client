@@ -12,8 +12,7 @@ import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 import useToggle from "@/hooks/UseToggle";
 import {
-  useCreateSaleMutation,
-  useCreateTransactionActionMutation,
+  useCreatePosCheckoutMutation,
   useGetCategoriesQuery,
   useGetContactsQuery,
   useGetCurrencyQuery,
@@ -126,8 +125,7 @@ export default function POSPage() {
     locationId: activeLocationId,
     limit: 100,
   });
-  const [createSale, { isLoading: creatingSale }] = useCreateSaleMutation();
-  const [createPayment, { isLoading: creatingPayment }] = useCreateTransactionActionMutation();
+  const [createPosCheckout, { isLoading: creatingCheckout }] = useCreatePosCheckoutMutation();
   const storeCurrencyCode = useStoreCurrencyCode();
   const { data: salesHistoryData, isFetching: salesHistoryLoading } = useGetSalesQuery(
     {
@@ -549,8 +547,10 @@ export default function POSPage() {
     [activeSavedCartId, removeSavedCartFromStorage],
   );
 
-  const createSaleAction = useCallback((payload: Parameters<typeof createSale>[0]) => createSale(payload).unwrap(), [createSale]);
-  const createPaymentAction = useCallback((payload: Parameters<typeof createPayment>[0]) => createPayment(payload).unwrap(), [createPayment]);
+  const createPosCheckoutAction = useCallback(
+    (payload: Parameters<typeof createPosCheckout>[0]) => createPosCheckout(payload).unwrap(),
+    [createPosCheckout],
+  );
 
   const { cashPaymentMethodIds, getPaymentAmountLimit, remainingAmount, updatePaymentRow, removePaymentRow, openSplitPayment, prepareCheckout, submitCheckout } = usePosCheckout({
     payments,
@@ -570,8 +570,7 @@ export default function POSPage() {
       fallbackLocationId,
       fallbackCurrencyId,
       selectedTax,
-      createSaleAction,
-      createPaymentAction,
+      createPosCheckoutAction,
       setCompletedSale,
       setCheckoutModalOpen,
       toggleReceiptOpen,
@@ -646,7 +645,7 @@ export default function POSPage() {
     }
   }, [clearSelectedCustomer, continuePendingCheckout, pendingCheckoutOpen]);
 
-  const loading = creatingSale || creatingPayment;
+  const loading = creatingCheckout;
 
   return (
     <div className="min-h-screen  ">

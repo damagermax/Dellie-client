@@ -1,4 +1,5 @@
 import {
+  CreatePosCheckoutInput,
   CreateSaleInput,
   FulfillSaleInput,
   ReturnSaleInput,
@@ -16,6 +17,10 @@ export const salesApi = baseApi.injectEndpoints({
     createSale: builder.mutation<Sale, CreateSaleInput>({
       query: (body) => ({ url: "sales", method: "POST", body }),
       invalidatesTags: [TAG_TYPES.SALES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY],
+    }),
+    createPosCheckout: builder.mutation<Sale, CreatePosCheckoutInput>({
+      query: (body) => ({ url: "sales/pos-checkout", method: "POST", body }),
+      invalidatesTags: [TAG_TYPES.SALES, TAG_TYPES.PRODUCTS, TAG_TYPES.INVENTORY, TAG_TYPES.TRANSACTIONS],
     }),
     getSales: builder.query<SalesResponse, SaleQueryParams>({
       query: (params) => ({ url: "sales", params }),
@@ -74,6 +79,7 @@ export const salesApi = baseApi.injectEndpoints({
 
 export const {
   useCreateSaleMutation,
+  useCreatePosCheckoutMutation,
   useGetSalesQuery,
   useGetSaleQuery,
   useUpdateSaleMutation,

@@ -34,6 +34,16 @@ export interface CreateSaleInput {
   lineItems: SaleLineItemInput[];
 }
 
+export interface PosCheckoutPaymentInput {
+  amount: number;
+  paymentMethodId: string;
+  note?: string;
+}
+
+export interface CreatePosCheckoutInput extends CreateSaleInput {
+  payments: PosCheckoutPaymentInput[];
+}
+
 export interface Sale extends Omit<CreateSaleInput, "contactId" | "locationId" | "currencyId" | "lineItems" | "status"> {
   id: string;
   saleNumber?: string;
