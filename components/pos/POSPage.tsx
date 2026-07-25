@@ -133,6 +133,7 @@ export default function POSPage() {
     {
       source: "POS",
       createdBy: currentUser?.id,
+      locationId: activeLocationId,
       dateFrom: historyRange.start,
       dateTo: historyRange.end,
       sortBy: "date",
@@ -280,29 +281,16 @@ export default function POSPage() {
       return;
     }
 
-    let removedCount = 0;
-
-    setCart((current) =>
-      current.filter((item) => {
-        const stockState = stockByProductId.get(item.productId);
-        const hasLocationAvailability = Boolean(stockState);
-        const hasSellableTrackedStock = !isTrackedInventory(stockState?.type) || Number(stockState?.availableStock || 0) > 0;
-
-        if (hasLocationAvailability && hasSellableTrackedStock) {
-          return true;
-        }
-
-        removedCount += 1;
-        return false;
-      }),
-    );
-
-    if (removedCount > 0) {
-      message.info(`${removedCount} item${removedCount === 1 ? "" : "s"} removed because they are not available in the selected location.`);
+    if (cart.length > 0) {
+      setCart([]);
+      setPayments([{ id: uid(), amount: 0 }]);
+      setSelectedContact(null);
+      form.setFieldsValue({ contactId: undefined });
+      message.info("Cart cleared because the POS location changed.");
     }
 
     previousLocationIdRef.current = activeLocationId;
-  }, [activeLocationId, stockByProductId]);
+  }, [activeLocationId, cart.length, form]);
 
   useEffect(() => {
     if (hasAppliedInitialPosSettings) {
