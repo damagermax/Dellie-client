@@ -52,7 +52,7 @@ export function buildSalesColumns(): TableProps<Sale>["columns"] {
           </Tag>
         ) : sale.status === "draft" ? (
           <Tag className="!m-0 !rounded-full !px-2" color="purple">
-            Estimate
+            Quote
           </Tag>
         ) : (
           <Tag className="!m-0 !rounded-full !px-2 capitalize" color={sale.receiptStatus === "received" ? "green" : sale.receiptStatus === "partially_received" ? "gold" : "blue"}>

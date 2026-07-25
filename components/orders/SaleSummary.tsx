@@ -36,7 +36,7 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
             )}
             {!isCancelled && isQuote && (
               <Tag className="px-3 !rounded-full" color="purple">
-                Estimate
+                Quote
               </Tag>
             )}
             <Tag className="px-3 !rounded-full" color={sale.source === "POS" ? "green" : sale.source === "Online Store" ? "blue" : sale.source === "Sales Order" ? "gold" : "default"}>

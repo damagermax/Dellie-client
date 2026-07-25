@@ -42,7 +42,7 @@ export function OrderHistoryTable({ orderHistory }: { orderHistory: ProductOrder
           </Tag>
         ) : order.type === "sale" && order.status === "draft" ? (
           <Tag className="!m-0 !rounded-full !px-2" color="purple">
-            Estimate
+            Quote
           </Tag>
         ) : (
           <Tag className="!m-0 !rounded-full !px-2 capitalize" color={receiptStatusColor(order.receiptStatus)}>
