@@ -142,7 +142,7 @@ export default function POSPage() {
     { skip: !currentUser?.id },
   );
 
-  const categories = useMemo(() => categoriesData?.data || [], [categoriesData]);
+  const categories = useMemo(() => categoriesData || [], [categoriesData]);
   const allProducts = useMemo(() => allProductsData?.data || [], [allProductsData]);
   const rawVisibleProducts = useMemo(() => filteredProductsData?.data || [], [filteredProductsData]);
   const availablePaymentMethods = useMemo(() => (paymentMethods as PaymentMethod[]) || [], [paymentMethods]);
