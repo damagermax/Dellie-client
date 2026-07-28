@@ -30,6 +30,8 @@ type SubmitCheckoutParams = {
   selectedContactId?: string;
   form: FormInstance;
   grandTotal: number;
+  deliveryAddress?: string;
+  deliveryFee?: number;
   posFulfillmentMode?: 'fulfill_now' | 'pending';
   fulfillmentMethod?: PosOrderMethod;
   posSettings: {
@@ -218,6 +220,11 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
         contactId,
         date: new Date().toISOString(),
         deliveryDate: values.deliveryDate?.toISOString?.(),
+        deliveryAddress:
+          fulfillmentMethod === "delivery" && submitParams.deliveryAddress?.trim()
+            ? { street: submitParams.deliveryAddress.trim() }
+            : undefined,
+        deliveryFee: fulfillmentMethod === "delivery" ? roundMoney(Number(submitParams.deliveryFee || 0)) : undefined,
         locationId,
         currencyId,
         rate: Number(values.rate || 1),

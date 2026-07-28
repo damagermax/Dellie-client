@@ -40,6 +40,9 @@ export type SavedPosCart = {
   savedAt: string;
   cart: PosCartItem[];
   payments: PosPaymentEntry[];
+  orderMethod?: PosOrderMethod;
+  deliveryAddress?: string;
+  deliveryFee?: string;
   selectedTax?: Tax;
   categoryId?: string;
   searchValue?: string;

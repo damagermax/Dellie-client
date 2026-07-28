@@ -96,6 +96,8 @@ export default function POSPage() {
   const [showSplit, setShowSplit] = useState(false);
   const [posFulfillmentMode, setPosFulfillmentMode] = useState<"fulfill_now" | "pending" | undefined>(undefined);
   const [posOrderMethod, setPosOrderMethod] = useState<PosOrderMethod>("now");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState("");
   const [hasAppliedInitialPosSettings, setHasAppliedInitialPosSettings] = useState(false);
   const previousLocationIdRef = useRef<string | undefined>(undefined);
   const currentUser = useSelector((state: RootState) => state.currentUser.user);
@@ -206,7 +208,8 @@ export default function POSPage() {
     return counts;
   }, [allProducts]);
 
-  const { totalItems, subtotal, discounts, taxableSubtotal, taxAmount, grandTotal, totalPaid, balance, change } = usePosCartTotals(cart, payments, selectedTax);
+  const deliveryFeeAmount = useMemo(() => (posOrderMethod === "delivery" ? roundMoney(Number(deliveryFee || 0)) : 0), [deliveryFee, posOrderMethod]);
+  const { totalItems, subtotal, discounts, taxableSubtotal, taxAmount, grandTotal, totalPaid, balance, change } = usePosCartTotals(cart, payments, selectedTax, deliveryFeeAmount);
   const taxSummary = useMemo(
     () => buildTaxBreakdown(taxableSubtotal, selectedTax),
     [selectedTax, taxableSubtotal],
@@ -448,6 +451,8 @@ export default function POSPage() {
     setPayments([{ id: uid(), amount: 0 }]);
     setPosOrderMethod("now");
     setPosFulfillmentMode(stockModeFromOrderMethod("now"));
+    setDeliveryAddress("");
+    setDeliveryFee("");
     setCategoryId(undefined);
     setSearchValue("");
     if (posSettings.applyTaxByDefault && defaultTaxIdForSelectedLocation) {
@@ -480,6 +485,9 @@ export default function POSPage() {
       formValues: form.getFieldsValue(),
       cart,
       payments,
+      orderMethod: posOrderMethod,
+      deliveryAddress,
+      deliveryFee,
       categoryId,
       searchValue,
       selectedTax,
@@ -490,7 +498,7 @@ export default function POSPage() {
     writeSavedCarts([draft, ...nextSavedCarts]);
     clearCart();
     message.success("Cart saved.");
-  }, [activeSavedCartId, cart, categoryId, clearCart, currentUserId, form, historyRange.dayKey, payments, savedCarts, searchValue, selectedContact, selectedTax, writeSavedCarts]);
+  }, [activeSavedCartId, cart, categoryId, clearCart, currentUserId, deliveryAddress, deliveryFee, form, historyRange.dayKey, payments, posOrderMethod, savedCarts, searchValue, selectedContact, selectedTax, writeSavedCarts]);
 
   const cartActionItems = useMemo<NonNullable<MenuProps["items"]>>(
     () => [
@@ -540,6 +548,10 @@ export default function POSPage() {
       }
       setCart(savedCart.cart || []);
       setPayments(savedCart.payments?.length ? savedCart.payments : [{ id: uid(), amount: 0 }]);
+      setPosOrderMethod(savedCart.orderMethod || "now");
+      setPosFulfillmentMode(stockModeFromOrderMethod(savedCart.orderMethod || "now"));
+      setDeliveryAddress(savedCart.deliveryAddress || "");
+      setDeliveryFee(savedCart.deliveryFee || "");
       setCategoryId(savedCart.categoryId || undefined);
       setSearchValue(savedCart.searchValue || "");
       setSelectedTax(savedCart.selectedTax);
@@ -585,6 +597,8 @@ export default function POSPage() {
       selectedContactId: selectedContact?.id,
       form,
       grandTotal,
+      deliveryAddress,
+      deliveryFee: deliveryFeeAmount,
       posFulfillmentMode,
       fulfillmentMethod: posOrderMethod,
       posSettings,
@@ -614,8 +628,6 @@ export default function POSPage() {
     }
 
     prepareCheckout();
-    setPosOrderMethod("now");
-    setPosFulfillmentMode(stockModeFromOrderMethod("now"));
     setShowSplit(false);
     setCheckoutModalOpen(true);
   }, [cart.length, prepareCheckout, stockIssues]);
@@ -758,6 +770,8 @@ export default function POSPage() {
         totalPaid={totalPaid}
         balance={balance}
         change={change}
+        deliveryFee={deliveryFeeAmount}
+        deliveryAddress={deliveryAddress}
         remainingAmount={remainingAmount}
         payments={payments}
         paymentMethods={availablePaymentMethods}
@@ -768,11 +782,17 @@ export default function POSPage() {
         note={form.getFieldValue("note") || ""}
         onCancel={() => setCheckoutModalOpen(false)}
         onOrderMethodChange={handleOrderMethodChange}
+        onDeliveryAddressChange={setDeliveryAddress}
+        onDeliveryFeeChange={setDeliveryFee}
         onSetShowSplit={setShowSplit}
         onOpenSplitPayment={handleOpenSplitPayment}
         onUpdatePaymentRow={updatePaymentRow}
         onRemovePaymentRow={removePaymentRow}
         onNoteChange={(value) => form.setFieldValue("note", value)}
+        onSaveCart={() => {
+          setCheckoutModalOpen(false);
+          saveCartDraft();
+        }}
         onSubmitCheckout={submitCheckout}
       />
 

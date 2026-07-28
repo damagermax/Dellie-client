@@ -139,13 +139,14 @@ export function getCartItem(cart: PosCartItem[], productId: string) {
   return cart.find((item) => item.productId === productId);
 }
 
-export function getCartTotals(cart: PosCartItem[], selectedTax?: Tax, payments: PosPaymentEntry[] = []) {
+export function getCartTotals(cart: PosCartItem[], selectedTax?: Tax, payments: PosPaymentEntry[] = [], deliveryFee = 0) {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = roundMoney(cart.reduce((sum, item) => sum + roundMoney(item.unitPrice * item.quantity), 0));
   const discounts = roundMoney(cart.reduce((sum, item) => sum + lineDiscountAmount(item), 0));
   const taxableSubtotal = roundMoney(cart.reduce((sum, item) => sum + lineSubtotalAfterDiscount(item), 0));
   const taxAmount = roundMoney(buildTaxBreakdown(taxableSubtotal, selectedTax).reduce((sum, tax) => sum + tax.amount, 0));
-  const grandTotal = roundMoney(Math.max(taxableSubtotal + taxAmount, 0));
+  const normalizedDeliveryFee = roundMoney(Number(deliveryFee || 0));
+  const grandTotal = roundMoney(Math.max(taxableSubtotal + taxAmount + normalizedDeliveryFee, 0));
   const totalPaid = roundMoney(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
   const balance = roundMoney(Math.max(grandTotal - totalPaid, 0));
   const change = roundMoney(Math.max(totalPaid - grandTotal, 0));
