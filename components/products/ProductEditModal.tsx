@@ -33,6 +33,7 @@ type BundleItemInput = {
   sku?: string;
   imageUrl?: string;
   normalPrice: number;
+  costPrice: number;
   quantity: number;
 };
 
@@ -65,7 +66,7 @@ type ProductEditModalProduct = {
   conversionQuantity?: number;
   repackUnitName?: string;
   bundleItems?: Array<{
-    productId?: { id?: string; name?: string; sku?: string; media?: { url?: string }[]; priceTiers?: ProductPriceTier[]; normalPrice?: number } | string;
+    productId?: { id?: string; name?: string; sku?: string; media?: { url?: string }[]; priceTiers?: ProductPriceTier[]; normalPrice?: number; costPrice?: number } | string;
     quantity?: number;
   }>;
   hasVariants?: boolean;
@@ -98,6 +99,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
   const featureSettings = storeSettings.features;
   const currencyCode = useStoreCurrencyCode();
   const bundleFeatureEnabled = itemType === ITEM_TYPE.STOCK ? featureSettings?.stockBundleEnabled !== false : itemType === ITEM_TYPE.NON_STOCK ? featureSettings?.nonStockBundleEnabled !== false : false;
+  const isProductionBundle = itemType === ITEM_TYPE.STOCK;
 
   useEffect(() => {
     if (!open) return;
@@ -131,6 +133,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
           sku: component?.sku,
           imageUrl: component?.media?.[0]?.url,
           normalPrice: getNormalPrice(component),
+          costPrice: Number(component?.costPrice || 0),
           quantity: Number(item.quantity || 1),
         };
       }),
@@ -140,10 +143,10 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
     setProductSearch("");
   }, [enableTradePrice, form, open, product]);
 
-  const bundleItemsTotal = useMemo(() => bundleItems.reduce((total, item) => total + item.normalPrice * item.quantity, 0), [bundleItems]);
+  const bundleItemsTotal = useMemo(() => bundleItems.reduce((total, item) => total + (isProductionBundle ? item.costPrice : item.normalPrice) * item.quantity, 0), [bundleItems, isProductionBundle]);
 
   useEffect(() => {
-    if ([ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts && !bundleSellingPriceEdited) {
+    if (itemType === ITEM_TYPE.NON_STOCK && containsOtherProducts && !bundleSellingPriceEdited) {
       form.setFieldValue("priceTiers", getDefaultEditablePriceTiers(bundleItemsTotal, enableTradePrice));
     }
   }, [bundleItemsTotal, bundleSellingPriceEdited, containsOtherProducts, enableTradePrice, form, itemType]);
@@ -186,6 +189,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
           sku: selected.sku,
           imageUrl: selected.imageUrl,
           normalPrice: getNormalPrice(selected),
+          costPrice: Number(selected.costPrice || 0),
           quantity: 1,
         },
       ];
@@ -229,6 +233,12 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
         ),
       },
       {
+        title: isProductionBundle ? "Unit Cost" : "Unit Price",
+        dataIndex: isProductionBundle ? "costPrice" : "normalPrice",
+        key: "unitValue",
+        render: (_: unknown, record: BundleItemInput) => <span>{currencyCode ? `${currencyCode} ` : ""}{(isProductionBundle ? record.costPrice : record.normalPrice).toFixed(2)}</span>,
+      },
+      {
         title: "Qty",
         dataIndex: "quantity",
         key: "quantity",
@@ -246,7 +256,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
         ),
       },
     ],
-    [removeBundleItem, updateBundleItemQuantity],
+    [currencyCode, isProductionBundle, removeBundleItem, updateBundleItemQuantity],
   );
 
   const handleSubmit = async () => {
@@ -286,7 +296,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
         };
 
     if (!isVariantParent && [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && containsOtherProducts) {
-      payload.priceTiers = normalizePriceTierValues(values.priceTiers, bundleItemsTotal, enableTradePrice);
+      payload.priceTiers = normalizePriceTierValues(values.priceTiers, itemType === ITEM_TYPE.NON_STOCK ? bundleItemsTotal : 0, enableTradePrice);
       payload.bundleItems = bundleItems.map(({ productId, quantity }) => ({ productId, quantity }));
     } else if (!isVariantParent && [ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType)) {
       payload.bundleItems = [];
@@ -391,8 +401,12 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
                   {[ITEM_TYPE.STOCK, ITEM_TYPE.NON_STOCK].includes(itemType) && bundleFeatureEnabled && (
                     <div className=" flex items-center bg-gray-100 md:bg-transparent justify-between border-t border-gray-200  px-4 py-3">
                       <div>
-                        <h3 className="text-sm font-medium text-gray-800">Contains Other Products?</h3>
-                        <p className="mt-1 text-xs text-gray-500">Turn this on when the product is sold as a composite of other products.</p>
+                        <h3 className="text-sm font-medium text-gray-800">{isProductionBundle ? "Production Components" : "Contains Other Products?"}</h3>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {isProductionBundle
+                            ? "Used to estimate production cost. Final production cost is calculated from FIFO inventory batches at production time."
+                            : "Turn this on when the product is sold as a composite of other products."}
+                        </p>
                       </div>
                       <Form.Item name="containsOtherProducts" valuePropName="checked" className="!mb-0">
                         <Checkbox />
@@ -405,6 +419,12 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
                       <div className="px-5">{bundleItemsError && <p className="mt-1 text-xs text-red-500">{bundleItemsError}</p>}</div>
                       <AppTable columns={bundleColumns} dataSource={bundleItems || []} rowKey={(record: BundleItemInput) => record.productId} pagination={false} />
                       {searchBundleProduct}
+                      <div className="px-5 pt-5 pb-2">
+                        <p className="text-sm text-gray-500">{isProductionBundle ? "Estimated Production Cost" : "Selected Products Total"}</p>
+                        <p className="mt-1 font-medium text-gray-800">
+                          {currencyCode || "GHS"} {bundleItemsTotal.toFixed(2)}
+                        </p>
+                      </div>
                     </div>
                   )}
 

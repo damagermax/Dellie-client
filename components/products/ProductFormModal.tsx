@@ -30,7 +30,8 @@ interface BundleItemInput {
   name: string;
   sku?: string;
   imageUrl?: string;
-  sellingPrice: number;
+  normalPrice: number;
+  costPrice: number;
   quantity: number;
 }
 
@@ -128,10 +129,11 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   const stockBundleEnabled = featureSettings?.stockBundleEnabled !== false;
   const nonStockBundleEnabled = featureSettings?.nonStockBundleEnabled !== false;
   const bundleFeatureEnabled = itemType === ITEM_TYPE.STOCK ? stockBundleEnabled : itemType === ITEM_TYPE.NON_STOCK ? nonStockBundleEnabled : false;
+  const isProductionBundle = itemType === ITEM_TYPE.STOCK;
   const componentsSectionTitle = itemType === ITEM_TYPE.STOCK ? "Production Components" : "Bundle Components";
   const componentsSectionHelpText =
     itemType === ITEM_TYPE.STOCK
-      ? "Used to assemble this product and calculate production cost."
+      ? "Used to estimate production cost. Final production cost is calculated from FIFO inventory batches at production time."
       : "Used to define what is included when selling this bundle.";
   const itemTypeOptions = useMemo(
     () => (trackQuantityEnabled ? ItemType : ItemType.filter((type) => type.key !== ITEM_TYPE.STOCK)),
@@ -279,7 +281,8 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
           name: product.name,
           sku: product.sku,
           imageUrl: product.imageUrl,
-          sellingPrice: getNormalPrice(product),
+          normalPrice: getNormalPrice(product),
+          costPrice: Number(product.costPrice || 0),
           quantity: 1,
         },
       ];
@@ -305,8 +308,8 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   }, []);
 
   const bundleItemsTotal = useMemo(() => {
-    return bundleItems.reduce((total, item) => total + item.sellingPrice * item.quantity, 0);
-  }, [bundleItems]);
+    return bundleItems.reduce((total, item) => total + (isProductionBundle ? item.costPrice : item.normalPrice) * item.quantity, 0);
+  }, [bundleItems, isProductionBundle]);
 
   const updateVariantCombinations = (combinations: VariantCombination[]) => {
     const { costPrice = 0, sellingPrice = 0, weight = 0, barcode, lowStockThreshold, expiryDate } = productForm.getFieldsValue(["costPrice", "sellingPrice", "weight", "barcode", "lowStockThreshold", "expiryDate"]);
@@ -537,6 +540,12 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
         ),
       },
       {
+        title: isProductionBundle ? "Unit Cost" : "Unit Price",
+        dataIndex: isProductionBundle ? "costPrice" : "normalPrice",
+        key: "unitValue",
+        render: (_: unknown, record: BundleItemInput) => <span>{currencyCode ? `${currencyCode} ` : ""}{(isProductionBundle ? record.costPrice : record.normalPrice).toFixed(2)}</span>,
+      },
+      {
         title: "Qty",
         dataIndex: "quantity",
         key: "quantity",
@@ -555,7 +564,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
         ),
       },
     ],
-    [removeBundleItem, updateBundleItemQuantity],
+    [currencyCode, isProductionBundle, removeBundleItem, updateBundleItemQuantity],
   );
 
   const searchBundleProduct = (
@@ -690,8 +699,8 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
                     <AppTable columns={bundleColumns} dataSource={bundleItems || []} rowKey={(record: BundleItemInput) => record.productId} pagination={false} />
                     {searchBundleProduct}
                     <div className="px-5 pt-5 pb-2">
-                      <p className="text-sm text-gray-500">Selected Products Total</p>
-                      <p className="mt-1 font-medium text-gray-800">GHS {bundleItemsTotal.toFixed(2)}</p>
+                      <p className="text-sm text-gray-500">{isProductionBundle ? "Estimated Production Cost" : "Selected Products Total"}</p>
+                      <p className="mt-1 font-medium text-gray-800">{currencyCode || "GHS"} {bundleItemsTotal.toFixed(2)}</p>
                     </div>
                   </div>
                 )}
