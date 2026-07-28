@@ -7,12 +7,13 @@ import { ProductDetailShimmer } from "@/components/products/ProductDetailShimmer
 import { ProductVariantEditModal } from "@/components/products/ProductVariantEditModal";
 import { ProductMobileMedia } from "@/components/products/ProductMobileMedia";
 import { BatchTable } from "@/components/products/product-detail/batch-table";
+import { OrderHistoryTable } from "@/components/products/product-detail/order-history-table";
 import { RestockProductModal } from "@/components/products/product-detail/inventory-modals";
 import { buildProductDetailTabs } from "@/components/products/product-detail/overview";
 import { DetailGrid, TypeBadge } from "@/components/products/product-detail/shared";
 import type { ProductDetail } from "@/components/products/product-detail/types";
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
-import { useDeleteProductMutation, useGetProductQuery, useRestoreProductMutation } from "@/lib/redux/services";
+import { useDeleteProductMutation, useGetProductBatchesQuery, useGetProductOrderHistoryQuery, useGetProductQuery, useRestoreProductMutation } from "@/lib/redux/services";
 import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
 import EntityAuditTimeline from "@/components/audit/EntityAuditTimeline";
 import ProductImagePlaceholder from "@/components/ui/ProductImagePlaceholder";
@@ -20,7 +21,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdown";
 import { StorePermission } from "@/types/store-access";
 import useToggle from "@/hooks/UseToggle";
-import { Button, Empty, Popconfirm, Segmented, Tabs, message } from "antd";
+import { Button, Empty, Pagination, Popconfirm, Segmented, Spin, Tabs, message } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { ArrowRightLeft, PackageOpen, SlidersHorizontal } from "lucide-react";
@@ -42,12 +43,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [restockOpen, toggleRestock] = useToggle();
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
+  const [batchPage, setBatchPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
   const [heroImageFailed, setHeroImageFailed] = useState(false);
   const canViewProduct = hasAnyPermission([StorePermission.PRODUCTS_VIEW, StorePermission.PRODUCTS_MANAGE]);
   const canManageProduct = hasPermission(StorePermission.PRODUCTS_MANAGE);
   const canManageInventory = hasPermission(StorePermission.INVENTORY_MANAGE);
   const enableTradePrice = useSelector((state: RootState) => Boolean(state.currentUser.storeSettings.pricing?.enableTradePrice));
   const { data: rawProduct, isLoading, refetch } = useGetProductQuery(id, { skip: !id || !ready || !canViewProduct });
+  const batchesQuery = useGetProductBatchesQuery(
+    { id, page: batchPage, limit: 20 },
+    { skip: !id || !ready || !canViewProduct || activeSection !== "batches" },
+  );
+  const historyQuery = useGetProductOrderHistoryQuery(
+    { id, page: historyPage, limit: 20 },
+    { skip: !id || !ready || !canViewProduct || activeSection !== "order-history" },
+  );
   const [archiveProduct, { isLoading: archiving }] = useDeleteProductMutation();
   const [restoreProduct, { isLoading: restoring }] = useRestoreProductMutation();
   const product = rawProduct as ProductDetail | undefined;
@@ -56,6 +67,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const canEditProduct = canManageProduct && !isArchived;
   const canMutateInventory = canManageInventory && !isArchived;
   const canManageMedia = canManageProduct && !isArchived;
+  const batchRows = useMemo(() => batchesQuery.data?.data ?? product?.inventory?.batches ?? [], [batchesQuery.data?.data, product?.inventory?.batches]);
+  const historyRows = useMemo(() => historyQuery.data?.data ?? product?.orderHistory ?? [], [historyQuery.data?.data, product?.orderHistory]);
 
   const tabs = useMemo(
     () =>
@@ -63,9 +76,28 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         canManageProduct: canEditProduct,
         onEditProduct: toggleEdit,
         enableTradePrice,
-        renderBatchTable: (currentProduct) => <BatchTable product={currentProduct} batches={currentProduct.inventory?.batches || []} canManageInventory={canMutateInventory} onBatchChanged={refetch} />,
+        renderBatchTable: (currentProduct) => (
+          <ProductTabRequestState isLoading={batchesQuery.isFetching && batchRows.length === 0} isError={Boolean(batchesQuery.isError && batchRows.length === 0)} onRetry={batchesQuery.refetch}>
+            <BatchTable
+              product={currentProduct}
+              batches={batchRows}
+              canManageInventory={canMutateInventory}
+              onBatchChanged={() => {
+                void refetch();
+                if (batchesQuery.isSuccess) void batchesQuery.refetch();
+              }}
+            />
+            <ProductTabPagination page={batchPage} total={batchesQuery.data?.meta?.total} pageSize={batchesQuery.data?.meta?.limit} onChange={setBatchPage} />
+          </ProductTabRequestState>
+        ),
+        renderOrderHistory: () => (
+          <ProductTabRequestState isLoading={historyQuery.isFetching && historyRows.length === 0} isError={Boolean(historyQuery.isError && historyRows.length === 0)} onRetry={historyQuery.refetch}>
+            <OrderHistoryTable orderHistory={historyRows} />
+            <ProductTabPagination page={historyPage} total={historyQuery.data?.meta?.total} pageSize={historyQuery.data?.meta?.limit} onChange={setHistoryPage} />
+          </ProductTabRequestState>
+        ),
       }),
-    [canEditProduct, canMutateInventory, enableTradePrice, product, refetch, toggleEdit],
+    [batchPage, batchRows, batchesQuery, canEditProduct, canMutateInventory, enableTradePrice, historyPage, historyQuery, historyRows, product, refetch, toggleEdit],
   );
   const currentTab = tabs.find((tab) => tab.key === activeSection) || tabs[0];
 
@@ -78,6 +110,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     setHeroImageFailed(false);
   }, [imageUrl]);
+
+  useEffect(() => {
+    setBatchPage(1);
+    setHistoryPage(1);
+  }, [id]);
 
   const handleToggleProductStatus = async () => {
     if (!product) return;
@@ -352,6 +389,38 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       {editOpen && product && (product.productId ? <ProductVariantEditModal open={editOpen} toggle={toggleEdit} product={product} onSaved={refetch} /> : <ProductEditModal open={editOpen} toggle={toggleEdit} product={product} onSaved={refetch} />)}
       {restockOpen && product && <RestockProductModal open={restockOpen} toggle={toggleRestock} product={product} onSaved={refetch} />}
       {mediaOpen && product && <ProductMediaManagerModal open={mediaOpen} toggle={toggleMedia} productId={product.id} productName={product.name} media={product.media || []} onChanged={refetch} />}
+    </div>
+  );
+}
+
+function ProductTabRequestState({ children, isLoading, isError, onRetry }: { children: React.ReactNode; isLoading: boolean; isError: boolean; onRetry: () => void }) {
+  if (isLoading) {
+    return (
+      <div className="flex min-h-52 items-center justify-center bg-white">
+        <Spin />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-white py-10">
+        <Empty description="This section could not be loaded.">
+          <Button onClick={onRetry}>Try again</Button>
+        </Empty>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function ProductTabPagination({ page, total, pageSize, onChange }: { page: number; total?: number; pageSize?: number; onChange: (page: number) => void }) {
+  if (!total || total <= (pageSize || 20)) return null;
+
+  return (
+    <div className="flex justify-end border-t border-gray-200 bg-white px-4 py-4">
+      <Pagination current={page} total={total} pageSize={pageSize || 20} showSizeChanger={false} onChange={onChange} />
     </div>
   );
 }

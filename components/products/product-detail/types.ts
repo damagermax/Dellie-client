@@ -155,10 +155,12 @@ export type ProductDetail = Record<string, unknown> & {
   inventory?: {
     summary?: InventorySummary;
     locations?: InventoryLocation[];
+    batchCount?: number;
     batches?: InventoryBatch[];
   };
   availableLocations?: AvailableLocation[];
   orderHistory?: ProductOrderHistoryItem[];
+  orderHistoryCount?: number;
   sourceInventory?: {
     summary?: InventorySummary;
   };

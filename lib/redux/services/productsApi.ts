@@ -1,6 +1,7 @@
 import { baseApi, TAG_TYPES } from "./baseApi";
 
 import { PaginatedResponse, ProductQueryParams, ProductListItem } from "@/types/index";
+import type { InventoryBatch, ProductOrderHistoryItem } from "@/components/products/product-detail/types";
 
 export type UpdateProductPayload = {
   id: string;
@@ -21,6 +22,20 @@ export const productsApi = baseApi.injectEndpoints({
     getProduct: builder.query<ProductApiResult, string>({
       query: (id) => `products/${id}`,
       providesTags: (result, error, id) => [{ type: TAG_TYPES.PRODUCT, id }],
+    }),
+    getProductBatches: builder.query<PaginatedResponse<InventoryBatch>, { id: string; page?: number; limit?: number }>({
+      query: ({ id, page = 1, limit = 20 }) => ({
+        url: `products/${id}/batches`,
+        params: { page, limit },
+      }),
+      providesTags: (result, error, { id }) => [{ type: TAG_TYPES.PRODUCT, id }],
+    }),
+    getProductOrderHistory: builder.query<PaginatedResponse<ProductOrderHistoryItem>, { id: string; page?: number; limit?: number }>({
+      query: ({ id, page = 1, limit = 20 }) => ({
+        url: `products/${id}/order-history`,
+        params: { page, limit },
+      }),
+      providesTags: (result, error, { id }) => [{ type: TAG_TYPES.PRODUCT, id }],
     }),
     createProduct: builder.mutation<ProductApiResult, FormData>({
       query: (body) => ({
@@ -92,4 +107,4 @@ export const productsApi = baseApi.injectEndpoints({
   overrideExisting: false,
 });
 
-export const { useGetProductsQuery, useGetProductQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation, useRestoreProductMutation, useUpdateProductVariantMutation, useDeleteProductMediaMutation, useAddProductMediaMutation, useReorderProductMediaMutation } = productsApi;
+export const { useGetProductsQuery, useGetProductQuery, useGetProductBatchesQuery, useGetProductOrderHistoryQuery, useCreateProductMutation, useUpdateProductMutation, useDeleteProductMutation, useRestoreProductMutation, useUpdateProductVariantMutation, useDeleteProductMediaMutation, useAddProductMediaMutation, useReorderProductMediaMutation } = productsApi;

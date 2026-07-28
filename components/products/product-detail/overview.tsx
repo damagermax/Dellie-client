@@ -10,14 +10,19 @@ import { ITEM_TYPE } from "@/components/products/ProductFormModal";
 import { hasBundleComponents } from "@/lib/products/type-label";
 
 import { BundleSection } from "./bundle-section";
-import { OrderHistoryTable } from "./order-history-table";
 import { OverviewSection } from "./overview-section";
 import { TabLabel } from "./shared";
 import type { DetailTab, ProductDetail } from "./types";
 
 export function buildProductDetailTabs(
   product: ProductDetail | undefined,
-  options: { canManageProduct: boolean; onEditProduct: () => void; enableTradePrice: boolean; renderBatchTable: (product: ProductDetail) => ReactNode },
+  options: {
+    canManageProduct: boolean;
+    onEditProduct: () => void;
+    enableTradePrice: boolean;
+    renderBatchTable: (product: ProductDetail) => ReactNode;
+    renderOrderHistory: (product: ProductDetail) => ReactNode;
+  },
 ): DetailTab[] {
   if (!product) return [];
 
@@ -39,7 +44,10 @@ export function buildProductDetailTabs(
       },
   ];
 
-  if (product.type === ITEM_TYPE.STOCK) {
+  const batchCount = product.inventory?.batchCount ?? product.inventory?.batches?.length ?? 0;
+  const historyCount = product.orderHistoryCount ?? product.orderHistory?.length ?? 0;
+
+  if (product.type === ITEM_TYPE.STOCK && batchCount > 0) {
     tabs.push({
       key: "batches",
       label: <TabLabel icon={<ImBoxRemove />} text="Batches" />,
@@ -55,11 +63,13 @@ export function buildProductDetailTabs(
     });
   }
 
-  tabs.push({
-    key: "order-history",
-    label: <TabLabel icon={<GrHistory />} text="Order History" />,
-    children: <OrderHistoryTable orderHistory={product.orderHistory || []} />,
-  });
+  if (historyCount > 0) {
+    tabs.push({
+      key: "order-history",
+      label: <TabLabel icon={<GrHistory />} text="Order History" />,
+      children: options.renderOrderHistory(product),
+    });
+  }
 
   return tabs;
 }
