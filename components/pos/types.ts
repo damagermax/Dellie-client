@@ -1,6 +1,7 @@
 "use client";
 
 import type { Tax } from "@/types/index";
+import type { PosOrderMethod } from "@/types/store-settings";
 
 export type SelectedPosContact = {
   id: string;
@@ -27,6 +28,10 @@ export type PosPaymentEntry = {
   amount: number;
   reference?: string;
 };
+
+export const PAY_LATER_PAYMENT_METHOD_ID = "__pay_later__";
+
+export type { PosOrderMethod };
 
 export type SavedPosCart = {
   id: string;

@@ -12,7 +12,6 @@ type PosCustomerModalProps = {
   contacts: Contact[];
   selectedContactId?: string;
   selectedContactName: string | null;
-  customerMode?: string;
   onClose: () => void;
   onCustomerSearchChange: (value: string) => void;
   onClearSelectedCustomer: () => void;
@@ -28,7 +27,6 @@ export default function PosCustomerModal({
   contacts,
   selectedContactId,
   selectedContactName,
-  customerMode,
   onClose,
   onCustomerSearchChange,
   onClearSelectedCustomer,
@@ -97,11 +95,9 @@ export default function PosCustomerModal({
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {customerMode !== "require_customer" ? (
-            <Button size="large" className="!h-11 !rounded-2xl" onClick={onWalkInCustomer}>
-              Walk-in Customer
-            </Button>
-          ) : null}
+          <Button size="large" className="!h-11 !rounded-2xl" onClick={onWalkInCustomer}>
+            Walk-in Customer
+          </Button>
 
           <Button size="large" icon={<UserPlus size={16} />} className="!h-11 !rounded-2xl" onClick={onOpenNewCustomer}>
             New Customer

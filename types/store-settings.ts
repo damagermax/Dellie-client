@@ -3,6 +3,8 @@ export type StoreModuleKey = "catalog" | "storefront" | "sales" | "pos" | "purch
 export type StoreEnabledModules = Record<StoreModuleKey, boolean>;
 export type PosCustomerMode = "walk_in_default" | "prompt_before_checkout" | "require_customer";
 export type PosFulfillmentDefault = "fulfill_now" | "pending";
+export type PosOrderMethod = "now" | "pickup" | "delivery" | "dine_in";
+export type PosFulfillmentMethod = PosOrderMethod;
 export type PosReceiptPaperSize = "compact" | "full_page";
 export type StoreDocumentTemplateKey = "modern" | "minimal" | "bold" | "classic";
 export type OnlineStoreTheme = "minimal" | "modern" | "bold";
@@ -68,6 +70,7 @@ export interface PosSettings {
   applyTaxByDefault: boolean;
   allowEditCartItemPrice: boolean;
   fulfillmentDefault: PosFulfillmentDefault;
+  fulfillmentMethods: PosFulfillmentMethod[];
   allowFulfillmentChoiceAtCheckout: boolean;
   receiptAutoOpen: boolean;
   receiptPaperSize: PosReceiptPaperSize;
@@ -117,6 +120,7 @@ export const DEFAULT_POS_SETTINGS: PosSettings = {
   applyTaxByDefault: false,
   allowEditCartItemPrice: false,
   fulfillmentDefault: "fulfill_now",
+  fulfillmentMethods: ["now", "pickup", "delivery", "dine_in"],
   allowFulfillmentChoiceAtCheckout: false,
   receiptAutoOpen: true,
   receiptPaperSize: "full_page",

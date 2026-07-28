@@ -43,7 +43,7 @@ import PosProductGrid from "./PosProductGrid";
 import { usePosCartTotals } from "./hooks/usePosCartTotals";
 import { usePosCheckout } from "./hooks/usePosCheckout";
 import { usePosSavedCarts } from "./hooks/usePosSavedCarts";
-import type { PosCartItem, PosPaymentEntry, SavedPosCart, SelectedPosContact } from "./types";
+import { PAY_LATER_PAYMENT_METHOD_ID, type PosCartItem, type PosOrderMethod, type PosPaymentEntry, type SavedPosCart, type SelectedPosContact } from "./types";
 import { buildTaxBreakdown, formatMoney, getCartItem, getProductImage, getTodayRange, isTrackedInventory, roundMoney, uid } from "./utils";
 
 const normalizeEntityId = (value: unknown): string | undefined => {
@@ -62,6 +62,14 @@ const normalizeEntityId = (value: unknown): string | undefined => {
   }
 
   return undefined;
+};
+
+const stockModeFromOrderMethod = (method: PosOrderMethod) => (method === "now" ? "fulfill_now" : "pending");
+
+const normalizeAvailableOrderMethods = (methods?: PosOrderMethod[]): PosOrderMethod[] => {
+  const allowed = new Set<PosOrderMethod>(["now", "pickup", "delivery", "dine_in"]);
+  const normalized = (methods?.length ? methods : DEFAULT_POS_SETTINGS.fulfillmentMethods).filter((method) => allowed.has(method));
+  return Array.from(new Set<PosOrderMethod>(["now", ...normalized]));
 };
 
 export default function POSPage() {
@@ -87,13 +95,14 @@ export default function POSPage() {
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [posFulfillmentMode, setPosFulfillmentMode] = useState<"fulfill_now" | "pending" | undefined>(undefined);
-  const [pendingCheckoutOpen, setPendingCheckoutOpen] = useState(false);
+  const [posOrderMethod, setPosOrderMethod] = useState<PosOrderMethod>("now");
   const [hasAppliedInitialPosSettings, setHasAppliedInitialPosSettings] = useState(false);
   const previousLocationIdRef = useRef<string | undefined>(undefined);
   const currentUser = useSelector((state: RootState) => state.currentUser.user);
   const currentStore = useSelector((state: RootState) => state.currentUser.store);
   const storeSettings = useSelector((state: RootState) => state.currentUser.storeSettings);
-  const posSettings = storeSettings?.pos ? { ...DEFAULT_POS_SETTINGS, ...storeSettings.pos } : DEFAULT_POS_SETTINGS;
+  const posSettings = useMemo(() => (storeSettings?.pos ? { ...DEFAULT_POS_SETTINGS, ...storeSettings.pos } : DEFAULT_POS_SETTINGS), [storeSettings?.pos]);
+  const availableOrderMethods = useMemo(() => normalizeAvailableOrderMethods(posSettings.fulfillmentMethods), [posSettings.fulfillmentMethods]);
 
   const editingItem = useMemo(() => {
     if (!editingCartItemId) return null;
@@ -204,6 +213,7 @@ export default function POSPage() {
   );
   const selectedPaymentMethodName = useMemo(() => {
     const selectedMethodId = payments[0]?.paymentMethodId;
+    if (selectedMethodId === PAY_LATER_PAYMENT_METHOD_ID) return "Pay later";
     return availablePaymentMethods.find((method) => method.id === selectedMethodId)?.name || null;
   }, [availablePaymentMethods, payments]);
   const defaultTaxIdForSelectedLocation = currentPosLocationId ? posSettings.defaultTaxByLocationId?.[currentPosLocationId] : undefined;
@@ -241,6 +251,13 @@ export default function POSPage() {
       }),
     [cart],
   );
+
+  useEffect(() => {
+    if (!availableOrderMethods.includes(posOrderMethod)) {
+      setPosOrderMethod("now");
+      setPosFulfillmentMode(stockModeFromOrderMethod("now"));
+    }
+  }, [availableOrderMethods, posOrderMethod]);
 
   useEffect(() => {
     if (!cart.length || !stockByProductId.size) {
@@ -429,6 +446,8 @@ export default function POSPage() {
   const clearCart = useCallback(() => {
     setCart([]);
     setPayments([{ id: uid(), amount: 0 }]);
+    setPosOrderMethod("now");
+    setPosFulfillmentMode(stockModeFromOrderMethod("now"));
     setCategoryId(undefined);
     setSearchValue("");
     if (posSettings.applyTaxByDefault && defaultTaxIdForSelectedLocation) {
@@ -563,9 +582,11 @@ export default function POSPage() {
     submitParams: {
       cart,
       payments,
+      selectedContactId: selectedContact?.id,
       form,
       grandTotal,
       posFulfillmentMode,
+      fulfillmentMethod: posOrderMethod,
       posSettings,
       fallbackLocationId,
       fallbackCurrencyId,
@@ -577,8 +598,6 @@ export default function POSPage() {
       activeSavedCartId,
       removeSavedCart,
       clearCart,
-      setPendingCheckoutOpen,
-      setCustomerModalOpen,
     },
   });
 
@@ -594,56 +613,37 @@ export default function POSPage() {
       return;
     }
 
-    const customerMode = posSettings.customerMode || "walk_in_default";
-    if (customerMode === "require_customer" && !form.getFieldValue("contactId")) {
-      setPendingCheckoutOpen(true);
-      setCustomerModalOpen(true);
-      message.error("Select a customer before checkout.");
-      return;
-    }
-
-    if (customerMode === "prompt_before_checkout" && !form.getFieldValue("contactId")) {
-      setPendingCheckoutOpen(true);
-      setCustomerModalOpen(true);
-      return;
-    }
-
     prepareCheckout();
+    setPosOrderMethod("now");
+    setPosFulfillmentMode(stockModeFromOrderMethod("now"));
     setShowSplit(false);
     setCheckoutModalOpen(true);
-  }, [cart.length, form, posSettings.customerMode, prepareCheckout, stockIssues]);
+  }, [cart.length, prepareCheckout, stockIssues]);
+
+  const handleOrderMethodChange = useCallback((method: PosOrderMethod) => {
+    if (!availableOrderMethods.includes(method)) return;
+    setPosOrderMethod(method);
+    setPosFulfillmentMode(stockModeFromOrderMethod(method));
+  }, [availableOrderMethods]);
 
   const handleOpenSplitPayment = useCallback(() => {
     openSplitPayment();
     setShowSplit(true);
   }, [openSplitPayment]);
 
-  const continuePendingCheckout = useCallback(() => {
-    setPendingCheckoutOpen(false);
-    prepareCheckout();
-    setShowSplit(false);
-    setCheckoutModalOpen(true);
-  }, [prepareCheckout]);
-
   const handleSelectCustomer = useCallback(
     (contact: Contact) => {
       setSelectedContact({ id: contact.id, name: contact.name || "" });
       form.setFieldsValue({ contactId: contact.id });
       setCustomerModalOpen(false);
-      if (pendingCheckoutOpen) {
-        continuePendingCheckout();
-      }
     },
-    [continuePendingCheckout, form, pendingCheckoutOpen],
+    [form],
   );
 
   const handleWalkInCustomer = useCallback(() => {
     clearSelectedCustomer();
     setCustomerModalOpen(false);
-    if (pendingCheckoutOpen) {
-      continuePendingCheckout();
-    }
-  }, [clearSelectedCustomer, continuePendingCheckout, pendingCheckoutOpen]);
+  }, [clearSelectedCustomer]);
 
   const loading = creatingCheckout;
 
@@ -746,8 +746,8 @@ export default function POSPage() {
         open={checkoutModalOpen}
         loading={loading}
         showSplit={showSplit}
-        fulfillmentMode={posFulfillmentMode}
-        posSettings={posSettings}
+        orderMethod={posOrderMethod}
+        availableOrderMethods={availableOrderMethods}
         selectedCurrencyCode={selectedCurrencyCode}
         totalItems={totalItems}
         subtotal={subtotal}
@@ -767,7 +767,7 @@ export default function POSPage() {
         selectedPaymentMethodName={selectedPaymentMethodName}
         note={form.getFieldValue("note") || ""}
         onCancel={() => setCheckoutModalOpen(false)}
-        onFulfillmentModeChange={setPosFulfillmentMode}
+        onOrderMethodChange={handleOrderMethodChange}
         onSetShowSplit={setShowSplit}
         onOpenSplitPayment={handleOpenSplitPayment}
         onUpdatePaymentRow={updatePaymentRow}
@@ -783,7 +783,6 @@ export default function POSPage() {
         contacts={contacts}
         selectedContactId={selectedContact?.id}
         selectedContactName={selectedContactName}
-        customerMode={posSettings.customerMode}
         onClose={() => setCustomerModalOpen(false)}
         onCustomerSearchChange={setCustomerSearch}
         onClearSelectedCustomer={clearSelectedCustomer}

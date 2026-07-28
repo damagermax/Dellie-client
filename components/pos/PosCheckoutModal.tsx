@@ -3,23 +3,22 @@
 import { Button, Input, InputNumber, Modal, Select } from "antd";
 import type { PaymentMethod } from "@/types/index";
 import CheckoutInfoCard from "./CheckoutInfoCard";
-import type { PosPaymentEntry } from "./types";
+import { PAY_LATER_PAYMENT_METHOD_ID, type PosOrderMethod, type PosPaymentEntry } from "./types";
 import { POS_MODAL_OVERLAY_STYLE, formatMoney, parseMoneyInput } from "./utils";
 
 const FULFILLMENT_OPTIONS = [
-  { value: "fulfill_now", label: "Fulfill now" },
-  { value: "pending", label: "Leave pending" },
+  { value: "now", label: "Fulfill now" },
+  { value: "pickup", label: "Pickup later" },
+  { value: "delivery", label: "Delivery" },
+  { value: "dine_in", label: "Dine in" },
 ] as const;
 
 type PosCheckoutModalProps = {
   open: boolean;
   loading: boolean;
   showSplit: boolean;
-  fulfillmentMode?: "fulfill_now" | "pending";
-  posSettings: {
-    allowFulfillmentChoiceAtCheckout?: boolean;
-    fulfillmentDefault?: string;
-  };
+  orderMethod: PosOrderMethod;
+  availableOrderMethods: PosOrderMethod[];
   selectedCurrencyCode: string;
   totalItems: number;
   subtotal: number;
@@ -39,7 +38,7 @@ type PosCheckoutModalProps = {
   selectedPaymentMethodName: string | null;
   note: string;
   onCancel: () => void;
-  onFulfillmentModeChange: (value: "fulfill_now" | "pending") => void;
+  onOrderMethodChange: (value: PosOrderMethod) => void;
   onSetShowSplit: (value: boolean) => void;
   onOpenSplitPayment: () => void;
   onUpdatePaymentRow: (id: string, patch: Partial<PosPaymentEntry>) => void;
@@ -52,8 +51,8 @@ export default function sPosCheckoutModal({
   open,
   loading,
   showSplit,
-  fulfillmentMode,
-  posSettings,
+  orderMethod,
+  availableOrderMethods,
   selectedCurrencyCode,
   totalItems,
   subtotal,
@@ -73,7 +72,7 @@ export default function sPosCheckoutModal({
   selectedPaymentMethodName,
   note,
   onCancel,
-  onFulfillmentModeChange,
+  onOrderMethodChange,
   onSetShowSplit,
   onOpenSplitPayment,
   onUpdatePaymentRow,
@@ -81,14 +80,15 @@ export default function sPosCheckoutModal({
   onNoteChange,
   onSubmitCheckout,
 }: PosCheckoutModalProps) {
-  const selectedFulfillmentMode = fulfillmentMode || posSettings.fulfillmentDefault;
+  const isPayLater = payments[0]?.paymentMethodId === PAY_LATER_PAYMENT_METHOD_ID;
+  const fulfillmentOptions = FULFILLMENT_OPTIONS.filter((option) => availableOrderMethods.includes(option.value));
 
   return (
     <Modal
       title={
         <div className="pr-8">
           <p className="text-xl font-semibold text-stone-950">Checkout</p>
-          <p className="mt-1 text-sm text-stone-500">Take full payment and finish the sale.</p>
+          <p className="mt-1 text-sm text-stone-500">{isPayLater ? "Place the order now and collect payment later." : "Take full payment and finish the sale."}</p>
         </div>
       }
       open={open}
@@ -162,19 +162,19 @@ export default function sPosCheckoutModal({
 
           <section className=" flex flex-col justify-between bg-white px-4 sm:px-5">
             <div>
-              {posSettings.allowFulfillmentChoiceAtCheckout ? (
-                <div className="mb-5 border-b border-stone-200 pb-5">
-                  <p className="mb-2  font-semibold uppercase tracking-[0.14em] text-stone-400">Fulfillment</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {FULFILLMENT_OPTIONS.map((option) => {
-                      const isSelected = selectedFulfillmentMode === option.value;
+              {fulfillmentOptions.length > 1 ? (
+	                <div className="mb-5 border-b border-stone-200 pb-5">
+	                  <p className="mb-2  font-semibold uppercase tracking-[0.14em] text-stone-400">Fulfillment</p>
+	                  <div className="grid grid-cols-2 gap-2">
+	                    {fulfillmentOptions.map((option) => {
+	                      const isSelected = orderMethod === option.value;
 
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => onFulfillmentModeChange(option.value)}
-                          className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${isSelected ? " border-[#F7C855] border-2  bg-yellow-100  text-yellow-800 font-semibold" : "bg-stone-100 text-stone-700"}`}
+	                      return (
+	                        <button
+	                          key={option.value}
+	                          type="button"
+	                          onClick={() => onOrderMethodChange(option.value)}
+	                          className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${isSelected ? " border-[#F7C855] border-2  bg-yellow-100  text-yellow-800 font-semibold" : "bg-stone-100 text-stone-700"}`}
                         >
                           {option.label}
                         </button>
@@ -235,18 +235,25 @@ export default function sPosCheckoutModal({
                     <div className="my-3 mb-8 flex items-center justify-between gap-3">
                       <p className="font-semibold uppercase tracking-[0.14em] text-stone-400">Payment </p>
 
-                      <button className=" rounded-lg cursor-pointer bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200" onClick={onOpenSplitPayment}>
-                        Split payment
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {paymentMethods.map((method) => {
-                        const isSelected = payments[0]?.paymentMethodId === method.id;
+	                      {!isPayLater ? <button className=" rounded-lg cursor-pointer bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200" onClick={onOpenSplitPayment}>
+	                        Split payment
+	                      </button> : null}
+	                    </div>
+	                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+		                      <button
+		                        type="button"
+		                        onClick={() => onUpdatePaymentRow(payments[0]?.id, { paymentMethodId: PAY_LATER_PAYMENT_METHOD_ID, amount: 0 })}
+		                        className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${isPayLater ? "  border-[#2d837d] border-2 border bg-green-100  text-green-800 font-semibold" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
+		                      >
+		                        Pay later
+		                      </button>
+	                      {paymentMethods.map((method) => {
+	                        const isSelected = payments[0]?.paymentMethodId === method.id;
                         return (
                           <button
                             key={method.id}
                             type="button"
-                            onClick={() => onUpdatePaymentRow(payments[0]?.id, { paymentMethodId: method.id })}
+	                            onClick={() => onUpdatePaymentRow(payments[0]?.id, { paymentMethodId: method.id, amount: grandTotal })}
                             className={`rounded-lg px-4 py-3 text-sm font-medium transition-all ${isSelected ? "  border-[#2d837d] border-2 border bg-green-100  text-green-800 font-semibold" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
                           >
                             {method.name}
@@ -256,35 +263,41 @@ export default function sPosCheckoutModal({
                     </div>
                   </div>
 
-                  <div className="rounded-xl bg-stone-50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-stone-900">Amount received</p>
-                        <p className="mt-1 text-xs text-stone-500">Enter the full amount due. Only cash can exceed it for change.</p>
-                      </div>
-                      <div className={`rounded-lg px-3 py-1 text-xs font-semibold ${change > 0 ? "bg-emerald-100 text-emerald-700" : balance > 0 ? "bg-amber-100 text-amber-700" : "bg-stone-200 text-stone-700"}`}>
-                        {change > 0 ? `Change ${formatMoney(selectedCurrencyCode, change)}` : `Remaining ${formatMoney(selectedCurrencyCode, balance)}`}
-                      </div>
-                    </div>
+	                  {!isPayLater ? (
+	                    <div className="rounded-xl bg-stone-50 p-4">
+	                      <div className="flex items-start justify-between gap-3">
+	                        <div>
+	                          <p className="text-sm font-semibold text-stone-900">Amount received</p>
+	                          <p className="mt-1 text-xs text-stone-500">Enter the full amount due. Only cash can exceed it for change.</p>
+	                        </div>
+	                        <div className={`rounded-lg px-3 py-1 text-xs font-semibold ${change > 0 ? "bg-emerald-100 text-emerald-700" : balance > 0 ? "bg-amber-100 text-amber-700" : "bg-stone-200 text-stone-700"}`}>
+	                          {change > 0 ? `Change ${formatMoney(selectedCurrencyCode, change)}` : `Remaining ${formatMoney(selectedCurrencyCode, balance)}`}
+	                        </div>
+	                      </div>
 
-                    <div className="mt-4 grid grid-cols-[minmax(0,1fr)_88px] gap-2">
-                      <InputNumber
-                        size="large"
-                        className="!w-full"
-                        placeholder={selectedCurrencyCode ? `${selectedCurrencyCode} 0.00` : "0.00"}
-                        prefix={selectedCurrencyCode || undefined}
-                        value={payments[0]?.amount}
-                        min={0}
-                        max={getPaymentAmountLimit(payments[0]?.id || "", payments[0]?.paymentMethodId)}
-                        precision={2}
-                        parser={parseMoneyInput}
-                        onChange={(value) => onUpdatePaymentRow(payments[0]?.id, { amount: Number(value || 0) })}
-                      />
-                      <button type="button" onClick={() => onUpdatePaymentRow(payments[0]?.id, { amount: grandTotal })} className="rounded-lg bg-white px-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-200">
-                        Exact
-                      </button>
-                    </div>
-                  </div>
+	                      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_88px] gap-2">
+	                        <InputNumber
+	                          size="large"
+	                          className="!w-full"
+	                          placeholder={selectedCurrencyCode ? `${selectedCurrencyCode} 0.00` : "0.00"}
+	                          prefix={selectedCurrencyCode || undefined}
+	                          value={payments[0]?.amount}
+	                          min={0}
+	                          max={getPaymentAmountLimit(payments[0]?.id || "", payments[0]?.paymentMethodId)}
+	                          precision={2}
+	                          parser={parseMoneyInput}
+	                          onChange={(value) => onUpdatePaymentRow(payments[0]?.id, { amount: Number(value || 0) })}
+	                        />
+	                        <button type="button" onClick={() => onUpdatePaymentRow(payments[0]?.id, { amount: grandTotal })} className="rounded-lg bg-white px-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-200">
+	                          Exact
+	                        </button>
+	                      </div>
+	                    </div>
+	                  ) : (
+	                    <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+	                      This order will be saved as unpaid with the full amount remaining.
+	                    </div>
+	                  )}
                 </div>
               )}
 
@@ -301,7 +314,7 @@ export default function sPosCheckoutModal({
             </div>
 
             <div className="mt-6 space-y-3 pt-2">
-              {remainingAmount > 0 ? <p className="text-sm text-amber-700">Remaining payment required: {formatMoney(selectedCurrencyCode, remainingAmount)}</p> : null}
+	              {remainingAmount > 0 && !isPayLater ? <p className="text-sm text-amber-700">Remaining payment required: {formatMoney(selectedCurrencyCode, remainingAmount)}</p> : null}
               <div className="grid grid-cols-2 gap-3">
               <Button size="large" className="!h-12 !rounded-lg !border-0 !bg-stone-100 !text-stone-700 !shadow-none hover:!bg-stone-200" onClick={onCancel}>
                 Cancel
@@ -312,11 +325,11 @@ export default function sPosCheckoutModal({
                 className="!h-12 !rounded-lg !border-0 !shadow-none"
                 style={{ backgroundColor: "#2d837d" }}
                 loading={loading}
-                disabled={remainingAmount > 0.005}
-                onClick={onSubmitCheckout}
-              >
-                Complete Sale
-              </Button>
+	                disabled={!isPayLater && remainingAmount > 0.005}
+	                onClick={onSubmitCheckout}
+	              >
+	                {isPayLater ? "Place Order" : "Complete Sale"}
+	              </Button>
               </div>
             </div>
           </section>

@@ -3,7 +3,7 @@
 import { FormInstance, message } from "antd";
 import { Dispatch, SetStateAction, useCallback, useMemo } from "react";
 import type { CreatePosCheckoutInput, PaymentMethod, Sale, Tax } from "@/types/index";
-import type { PosCartItem, PosPaymentEntry } from "../types";
+import { PAY_LATER_PAYMENT_METHOD_ID, type PosCartItem, type PosOrderMethod, type PosPaymentEntry } from "../types";
 import { isCashPaymentMethodName, roundMoney, uid } from "../utils";
 
 const normalizeEntityId = (value: unknown): string | undefined => {
@@ -27,11 +27,12 @@ const normalizeEntityId = (value: unknown): string | undefined => {
 type SubmitCheckoutParams = {
   cart: PosCartItem[];
   payments: PosPaymentEntry[];
+  selectedContactId?: string;
   form: FormInstance;
   grandTotal: number;
   posFulfillmentMode?: 'fulfill_now' | 'pending';
+  fulfillmentMethod?: PosOrderMethod;
   posSettings: {
-    customerMode?: string;
     fulfillmentDefault?: string;
     receiptAutoOpen?: boolean;
   };
@@ -45,8 +46,6 @@ type SubmitCheckoutParams = {
   activeSavedCartId: string | null;
   removeSavedCart: (savedCartId: string) => void;
   clearCart: () => void;
-  setPendingCheckoutOpen: Dispatch<SetStateAction<boolean>>;
-  setCustomerModalOpen: Dispatch<SetStateAction<boolean>>;
 };
 
 type UsePosCheckoutParams = {
@@ -56,7 +55,6 @@ type UsePosCheckoutParams = {
   grandTotal: number;
   form: FormInstance;
   posSettings: {
-    customerMode?: string;
     fulfillmentDefault?: 'fulfill_now' | 'pending';
     receiptAutoOpen?: boolean;
   };
@@ -156,14 +154,13 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
     const {
       cart,
       payments: checkoutPayments,
+      selectedContactId,
       setCompletedSale,
       setCheckoutModalOpen,
       toggleReceiptOpen,
       activeSavedCartId,
       removeSavedCart,
       clearCart,
-      setPendingCheckoutOpen,
-      setCustomerModalOpen,
       createPosCheckoutAction,
       selectedTax,
     } = submitParams;
@@ -175,23 +172,19 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
         return;
       }
 
-      if ((posSettings.customerMode === "require_customer" || posSettings.customerMode === "prompt_before_checkout") && !values.contactId) {
-        setPendingCheckoutOpen(true);
-        setCustomerModalOpen(true);
-        message.error(posSettings.customerMode === "require_customer" ? "Select a customer before checkout." : "Choose a customer or confirm walk-in before checkout.");
-        return;
-      }
-
       const locationId = normalizeEntityId(values.locationId) || submitParams.fallbackLocationId;
       const currencyId = normalizeEntityId(values.currencyId) || submitParams.fallbackCurrencyId;
-      const contactId = normalizeEntityId(values.contactId);
+      const contactId = normalizeEntityId(values.contactId) || selectedContactId;
 
       if (!locationId || !currencyId) {
         message.error("Select a valid sale location and currency before checkout.");
         return;
       }
 
-      const validPayments = checkoutPayments
+      const payLater = checkoutPayments[0]?.paymentMethodId === PAY_LATER_PAYMENT_METHOD_ID;
+      const fulfillmentMethod = submitParams.fulfillmentMethod || "now";
+
+      const validPayments = payLater ? [] : checkoutPayments
         .map((payment) => ({ ...payment, amount: roundMoney(Number(payment.amount || 0)) }))
         .filter((payment) => payment.amount > 0);
       if (validPayments.some((payment) => !payment.paymentMethodId)) {
@@ -206,17 +199,17 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
       const changeAmount = roundMoney(Math.max(paymentTotal - grandTotal, 0));
       const nonCashPaymentTotal = roundMoney(paymentTotal - cashPaymentTotal);
 
-      if (remainingAmount > 0.005) {
+      if (!payLater && remainingAmount > 0.005) {
         message.error("POS checkout requires full payment before completing the sale.");
         return;
       }
 
-      if (changeAmount > 0.005 && cashPayments.length === 0) {
+      if (!payLater && changeAmount > 0.005 && cashPayments.length === 0) {
         message.error("Only cash payments can exceed the sale total.");
         return;
       }
 
-      if (changeAmount > cashPaymentTotal + 0.005 || nonCashPaymentTotal > grandTotal + 0.005) {
+      if (!payLater && (changeAmount > cashPaymentTotal + 0.005 || nonCashPaymentTotal > grandTotal + 0.005)) {
         message.error("Only the cash portion can exceed the sale total for change.");
         return;
       }
@@ -232,7 +225,9 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
         note: typeof values.note === "string" && values.note.trim() ? values.note.trim() : undefined,
         dueDate: values.dueDate?.toISOString?.(),
         source: "POS",
-        posFulfillmentMode: submitParams.posFulfillmentMode || posSettings.fulfillmentDefault,
+        fulfillmentMethod,
+        posFulfillmentMode: payLater ? "pending" : submitParams.posFulfillmentMode || posSettings.fulfillmentDefault,
+        payLater,
         discountValue: 0,
         discountType: "fixed",
         taxId: selectedTax?.id,
@@ -260,7 +255,7 @@ export function usePosCheckout({ payments, setPayments, availablePaymentMethods,
         removeSavedCart(activeSavedCartId);
       }
       clearCart();
-      message.success(`Sale ${finalSale.saleNumber} completed.`);
+      message.success(payLater ? `Order ${finalSale.saleNumber} placed.` : `Sale ${finalSale.saleNumber} completed.`);
     } catch (error) {
       const apiMessage = typeof error === "object" && error !== null && "data" in error ? (error as { data?: { message?: string | string[] } }).data?.message : undefined;
 

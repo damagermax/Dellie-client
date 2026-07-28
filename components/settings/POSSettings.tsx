@@ -2,14 +2,14 @@
 
 import { Button, Form, Select, Skeleton, Switch, message } from "antd";
 import { useEffect } from "react";
-import { LuMapPin, LuPlus, LuReceipt, LuSave, LuShieldCheck, LuTrash2, LuUsers, LuWalletCards } from "react-icons/lu";
+import { LuMapPin, LuPlus, LuReceipt, LuSave, LuShieldCheck, LuTrash2, LuWalletCards } from "react-icons/lu";
 import { useDispatch } from "react-redux";
 
 import { setStoreSettings } from "@/lib/redux/features/userSlice";
 import { useGetLocationsQuery, useGetTaxesQuery } from "@/lib/redux/services";
 import { useGetStoreSettingsQuery, useUpdateStoreSettingsMutation } from "@/lib/redux/services/storeSettingsApi";
 import { Location, LocationStatus } from "@/types/location";
-import { DEFAULT_POS_SETTINGS, PosCustomerMode, PosFulfillmentDefault, PosReceiptPaperSize, PosSettings as PosSettingsType } from "@/types/store-settings";
+import { DEFAULT_POS_SETTINGS, PosFulfillmentMethod, PosReceiptPaperSize, PosSettings as PosSettingsType } from "@/types/store-settings";
 
 type PosSettingsFormValues = PosSettingsType;
 type TaxRuleFormValue = {
@@ -55,21 +55,23 @@ const buildTaxRules = (locations: Location[], defaultTaxByLocationId?: Record<st
   return defaultLocation ? [{ locationId: defaultLocation.id, taxId: undefined }] : [{ locationId: undefined, taxId: undefined }];
 };
 
-const CUSTOMER_MODE_OPTIONS: ChoiceCardOption<PosCustomerMode>[] = [
-  { value: "walk_in_default", label: "Walk-in default", description: "Checkout works immediately unless the cashier adds a customer." },
-  { value: "prompt_before_checkout", label: "Prompt before checkout", description: "Ask the cashier to confirm walk-in or choose a customer before finishing." },
-  { value: "require_customer", label: "Require customer", description: "Block checkout until a customer is selected." },
-];
-
-const FULFILLMENT_OPTIONS: ChoiceCardOption<PosFulfillmentDefault>[] = [
-  { value: "fulfill_now", label: "Fulfill now", description: "Reduce stock immediately when the sale is completed." },
-  { value: "pending", label: "Leave pending", description: "Create the sale first and fulfill it later from the sales flow." },
+const FULFILLMENT_METHOD_OPTIONS: ChoiceCardOption<PosFulfillmentMethod>[] = [
+  { value: "now", label: "Fulfill now", description: "Complete the sale and deduct stock immediately." },
+  { value: "pickup", label: "Pickup later", description: "Create an order for customer pickup and fulfill it later." },
+  { value: "delivery", label: "Delivery", description: "Create a delivery order; delivery details are handled in POS." },
+  { value: "dine_in", label: "Dine in", description: "Create an in-house order for service." },
 ];
 
 const RECEIPT_SIZE_OPTIONS: ChoiceCardOption<PosReceiptPaperSize>[] = [
   { value: "compact", label: "Compact receipt", description: "Narrow receipt layout for quick counter printing and sharing." },
   { value: "full_page", label: "Full page", description: "Larger document layout with more whitespace." },
 ];
+
+function normalizeFulfillmentMethods(methods?: PosFulfillmentMethod[]) {
+  const allowed = new Set(FULFILLMENT_METHOD_OPTIONS.map((option) => option.value));
+  const normalized = (methods?.length ? methods : DEFAULT_POS_SETTINGS.fulfillmentMethods).filter((method) => allowed.has(method));
+  return Array.from(new Set<PosFulfillmentMethod>(["now", ...normalized]));
+}
 
 function SettingsPanel({ icon: Icon, title, children }: SettingsPanelProps) {
   return (
@@ -107,6 +109,49 @@ function ChoiceCards<T extends string>({ value, options, onChange }: { value?: T
   );
 }
 
+function MultiChoiceCards<T extends string>({ value, options, lockedValues = [], onChange }: { value?: T[]; options: ChoiceCardOption<T>[]; lockedValues?: T[]; onChange: (value: T[]) => void }) {
+  const selectedValues = new Set([...(value || []), ...lockedValues]);
+  const locked = new Set(lockedValues);
+
+  return (
+    <div>
+      {options.map((option, index) => {
+        const active = selectedValues.has(option.value);
+        const disabled = locked.has(option.value);
+
+        return (
+          <button
+            key={option.value}
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              const next = new Set(selectedValues);
+              if (next.has(option.value)) {
+                next.delete(option.value);
+              } else {
+                next.add(option.value);
+              }
+              lockedValues.forEach((lockedValue) => next.add(lockedValue));
+              onChange(Array.from(next));
+            }}
+            className={`w-full px-4 py-4 text-left transition-all ${index !== 0 ? "border-t border-gray-200" : ""} ${active ? "bg-[#2d837d]/[0.04]" : "bg-white"} ${disabled ? "cursor-not-allowed" : ""}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className={`text-sm font-semibold ${active ? "text-[#1f5d59]" : "text-gray-900"}`}>{option.label}</p>
+                <p className="mt-1 text-sm leading-5 text-gray-500">{option.description}</p>
+              </div>
+              <span className={`mt-1 flex size-4 items-center justify-center rounded border ${active ? "border-[#2d837d] bg-[#2d837d]" : "border-gray-300 bg-white"}`}>
+                {active ? <span className="size-1.5 rounded-sm bg-white" /> : null}
+              </span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ToggleRow({ title, description, name }: ToggleRowProps) {
   return (
     <div className="flex items-center justify-between gap-4 border-t border-gray-200 px-4 py-4">
@@ -135,6 +180,7 @@ export default function POSSettings() {
       form.setFieldsValue({
         ...DEFAULT_POS_SETTINGS,
         ...data.pos,
+        fulfillmentMethods: normalizeFulfillmentMethods(data.pos.fulfillmentMethods),
         defaultTaxByLocationId: data.pos.defaultTaxByLocationId || {},
         taxRules: buildTaxRules(locations, data.pos.defaultTaxByLocationId),
       });
@@ -142,7 +188,8 @@ export default function POSSettings() {
   }, [data, form, locations]);
 
   const handleSubmit = async (values: PosSettingsFormState) => {
-    const { taxRules = [], ...rest } = values;
+    const { customerMode: _customerMode, taxRules = [], ...rest } = values;
+    void _customerMode;
     const defaultTaxByLocationId = taxRules.reduce<Record<string, string | undefined>>((rules, rule) => {
       if (rule.locationId && rule.taxId) {
         rules[rule.locationId] = rule.taxId;
@@ -153,6 +200,8 @@ export default function POSSettings() {
 
     const payload: PosSettingsFormValues = {
       ...rest,
+      fulfillmentDefault: "fulfill_now",
+      fulfillmentMethods: normalizeFulfillmentMethods(rest.fulfillmentMethods),
       defaultTaxByLocationId,
     };
 
@@ -188,16 +237,6 @@ export default function POSSettings() {
   return (
     <Form form={form} layout="vertical" requiredMark={false} onFinish={handleSubmit} className="px-4 py-6 mt-5! sm:px-6">
       <div className="space-y-8">
-        <SettingsPanel icon={LuUsers} title="Customer Flow">
-          <Form.Item noStyle shouldUpdate>
-            {() => (
-              <Form.Item label="Checkout customer behavior" name="customerMode" className="!mb-0">
-                <ChoiceCards value={form.getFieldValue("customerMode")} options={CUSTOMER_MODE_OPTIONS} onChange={(value) => form.setFieldValue("customerMode", value)} />
-              </Form.Item>
-            )}
-          </Form.Item>
-        </SettingsPanel>
-
         <SettingsPanel icon={LuShieldCheck} title="Tax Defaults">
           <ToggleRow title="Apply tax automatically" description="When enabled, POS preloads the default tax configured for the active location." name="applyTaxByDefault" />
 
@@ -272,13 +311,11 @@ export default function POSSettings() {
         <SettingsPanel icon={LuWalletCards} title="Fulfillment">
           <Form.Item noStyle shouldUpdate>
             {() => (
-              <Form.Item label="Default stock handling" name="fulfillmentDefault" className="!mb-0">
-                <ChoiceCards value={form.getFieldValue("fulfillmentDefault")} options={FULFILLMENT_OPTIONS} onChange={(value) => form.setFieldValue("fulfillmentDefault", value)} />
+              <Form.Item label="Fulfillment methods" name="fulfillmentMethods" className="!mb-0">
+                <MultiChoiceCards value={form.getFieldValue("fulfillmentMethods")} options={FULFILLMENT_METHOD_OPTIONS} lockedValues={["now"]} onChange={(value) => form.setFieldValue("fulfillmentMethods", normalizeFulfillmentMethods(value))} />
               </Form.Item>
             )}
           </Form.Item>
-
-          <ToggleRow title="Allow choice at checkout" description="Let cashiers override the default fulfillment behavior before completing a sale." name="allowFulfillmentChoiceAtCheckout" />
         </SettingsPanel>
 
         <SettingsPanel icon={LuWalletCards} title="Cart Controls">

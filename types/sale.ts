@@ -15,7 +15,7 @@ export interface SaleLineItemInput {
 export interface CreateSaleInput {
   contactId?: string;
   date: string;
-  fulfillmentMethod?: "delivery" | "pickup";
+  fulfillmentMethod?: "delivery" | "pickup" | "now" | "dine_in";
   deliveryDate?: string;
   deliveryAddress?: Address;
   locationId: string;
@@ -41,6 +41,7 @@ export interface PosCheckoutPaymentInput {
 }
 
 export interface CreatePosCheckoutInput extends CreateSaleInput {
+  payLater?: boolean;
   payments: PosCheckoutPaymentInput[];
 }
 
@@ -90,7 +91,7 @@ export interface SaleQueryParams {
   locationId?: string;
   createdBy?: string;
   source?: string;
-  fulfillmentMethod?: "delivery" | "pickup";
+  fulfillmentMethod?: "delivery" | "pickup" | "now" | "dine_in";
   dateFrom?: string;
   dateTo?: string;
   sortBy?: string;
