@@ -29,9 +29,15 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (currentUser && isSuccess) {
       const storeSettingsFromCurrentUser = currentUser.store?.settings || {};
+      const rawEnabledModules = storeSettingsFromCurrentUser.enabledModules || {};
       const enabledModules = {
         ...DEFAULT_ENABLED_MODULES,
-        ...(storeSettingsFromCurrentUser.enabledModules || {}),
+        ...(rawEnabledModules.storefront !== undefined ? { storefront: rawEnabledModules.storefront } : {}),
+        ...(rawEnabledModules.sales !== undefined ? { sales: rawEnabledModules.sales } : {}),
+        ...(rawEnabledModules.pos !== undefined ? { pos: rawEnabledModules.pos } : {}),
+        ...(rawEnabledModules.purchases !== undefined ? { purchases: rawEnabledModules.purchases } : {}),
+        ...(rawEnabledModules.expenses !== undefined ? { expenses: rawEnabledModules.expenses } : {}),
+        ...(rawEnabledModules.contacts !== undefined ? { contacts: rawEnabledModules.contacts } : {}),
       };
 
       dispatch(

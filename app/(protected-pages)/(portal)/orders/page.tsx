@@ -25,6 +25,7 @@ type SalesQuickFilter = "all" | "quote" | "unpaid" | "paid" | "unfulfilled" | "f
 export default function SalesPage() {
   const searchParams = useSearchParams();
   const quotesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.quotesEnabled !== false);
+  const manualSalesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules.sales !== false);
   const initialQuery = useMemo(
     () => ({
       page: 1,
@@ -92,9 +93,11 @@ export default function SalesPage() {
           />
         </div>
         <div className="flex gap-x-3 md:gap-x-5">
-          <div className="hidden md:block">
-            <AddButton onClick={controller.toggleForm} label="New Sale" />
-          </div>
+          {manualSalesEnabled ? (
+            <div className="hidden md:block">
+              <AddButton onClick={controller.toggleForm} label="New Sale" />
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -114,11 +117,11 @@ export default function SalesPage() {
         </>
       )}
 
-      {controller.formOpen && <SaleFormModal open={controller.formOpen} toggle={controller.toggleForm} />}
+      {controller.formOpen && manualSalesEnabled && <SaleFormModal open={controller.formOpen} toggle={controller.toggleForm} />}
       {controller.editOpen && controller.selectedSale && <SaleFormModal open={controller.editOpen} toggle={controller.toggleEdit} sale={controller.selectedSale} />}
       <SalesFilterDrawer open={controller.filterOpen} filters={controller.draftFilters} onChange={(values) => controller.setDraftFilters((prev) => ({ ...prev, ...values }))} onClose={() => controller.setFilterOpen(false)} onApply={controller.applyFilters} onClear={controller.clearFilters} />
       {controller.shareDocumentType && controller.selectedSale && <SaleShareDocumentModal open={Boolean(controller.shareDocumentType)} toggle={() => controller.setShareDocumentType(undefined)} sale={controller.selectedSale} type={controller.shareDocumentType} />}
-      <FloatingAddButton onClick={controller.toggleForm} label="New Sale" />
+      {manualSalesEnabled ? <FloatingAddButton onClick={controller.toggleForm} label="New Sale" /> : null}
     </div>
   );
 }

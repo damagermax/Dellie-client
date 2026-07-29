@@ -41,17 +41,11 @@ type FeatureGroup = {
 
 const MODULE_GROUPS: ModuleGroup[] = [
   {
-    title: "Commerce",
-    items: [
-      { key: "catalog", label: "Catalog", description: "Products, inventory views, discounts, and coupons." },
-      { key: "storefront", label: "Storefront", description: "Public product visibility and online store views." },
-      { key: "sales", label: "Sales", description: "Sales orders, quotes, and sale workflows." },
-      { key: "pos", label: "POS", description: "Point-of-sale checkout experience." },
-    ],
-  },
-  {
     title: "Operations",
     items: [
+      { key: "storefront", label: "Storefront", description: "Public product visibility and online store views." },
+      { key: "sales", label: "Manual Sales", description: "Allow creating manual sales and quotes from the sales module." },
+      { key: "pos", label: "POS", description: "Point-of-sale checkout experience." },
       { key: "purchases", label: "Purchases", description: "Purchase orders, receiving, and landed costs." },
       { key: "expenses", label: "Expenses", description: "Expense tracking and expense categories." },
       { key: "contacts", label: "Contacts", description: "Customers, suppliers, and team contact records." },
@@ -76,13 +70,13 @@ const FEATURE_GROUPS: FeatureGroup[] = [
     items: [{ key: "purchaseReturnsEnabled", label: "Allow purchase returns", description: "Enable purchase return actions and return records." }],
   },
   {
-    title: "Inventory",
+    title: "Catalog",
     description: "Product and stock handling rules.",
     items: [
       { key: "trackQuantityEnabled", label: "Track quantity", description: "Keep stock-tracked products and inventory reporting available." },
       { key: "expiryEnabled", label: "Track expiry", description: "Show and accept expiry inputs for stock batches." },
-      { key: "stockBundleEnabled", label: "Allow stock bundles", description: "Let stock-tracked products contain component products." },
-      { key: "nonStockBundleEnabled", label: "Allow non-stock bundles", description: "Let non-stock products contain component products." },
+      { key: "stockBundleEnabled", label: "Production Components", description: "Let stock-tracked products contain component products." },
+      { key: "nonStockBundleEnabled", label: "Bundle Components", description: "Let non-stock products contain component products." },
     ],
   },
   {
@@ -99,7 +93,12 @@ const FEATURE_GROUPS: FeatureGroup[] = [
 
 const normalizeEnabledModules = (enabledModules?: Partial<StoreEnabledModules>): StoreEnabledModules => ({
   ...DEFAULT_ENABLED_MODULES,
-  ...(enabledModules || {}),
+  ...(enabledModules?.storefront !== undefined ? { storefront: enabledModules.storefront } : {}),
+  ...(enabledModules?.sales !== undefined ? { sales: enabledModules.sales } : {}),
+  ...(enabledModules?.pos !== undefined ? { pos: enabledModules.pos } : {}),
+  ...(enabledModules?.purchases !== undefined ? { purchases: enabledModules.purchases } : {}),
+  ...(enabledModules?.expenses !== undefined ? { expenses: enabledModules.expenses } : {}),
+  ...(enabledModules?.contacts !== undefined ? { contacts: enabledModules.contacts } : {}),
 });
 
 const normalizePricingSettings = (pricing?: Partial<StorePricingSettings>): StorePricingSettings => ({
@@ -256,7 +255,10 @@ export default function GeneralSettings() {
         </div>
       </section>
 
-      {FEATURE_GROUPS.map((group) => (
+      {FEATURE_GROUPS.filter((group) => {
+        if (group.title === "Purchases" && !enabledModules.purchases) return false;
+        return true;
+      }).map((group) => (
         <section key={group.title} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
           <div className="border-b border-gray-100 px-4 py-3">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{group.title}</h2>

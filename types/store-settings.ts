@@ -1,4 +1,4 @@
-export type StoreModuleKey = "catalog" | "storefront" | "sales" | "pos" | "purchases" | "expenses" | "contacts";
+export type StoreModuleKey = "storefront" | "sales" | "pos" | "purchases" | "expenses" | "contacts";
 
 export type StoreEnabledModules = Record<StoreModuleKey, boolean>;
 export type PosCustomerMode = "walk_in_default" | "prompt_before_checkout" | "require_customer";
@@ -102,7 +102,6 @@ export interface StoreBusinessProfile {
 }
 
 export const DEFAULT_ENABLED_MODULES: StoreEnabledModules = {
-  catalog: true,
   storefront: true,
   sales: true,
   pos: true,
