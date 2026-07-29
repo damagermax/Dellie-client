@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Empty, Tag } from "antd";
 import type { TableProps } from "antd/es/table";
+import type { ReactNode } from "react";
 import { useSelector } from "react-redux";
 
 import AppTable from "@/components/ui/AppTable";
@@ -11,7 +12,7 @@ import { RootState } from "@/lib/store";
 import type { ProductOrderHistoryItem } from "./types";
 import { formatDate, formatMoney, formatQuantity, receiptStatusColor, saleSourceColor } from "./utils";
 
-export function OrderHistoryTable({ orderHistory }: { orderHistory: ProductOrderHistoryItem[] }) {
+export function OrderHistoryTable({ orderHistory, footer }: { orderHistory: ProductOrderHistoryItem[]; footer?: ReactNode }) {
   const storeCurrencyCode = useSelector((state: RootState) => state.currentStore?.currency?.code || state.currentUser?.store?.currency?.code || state.currentUser?.store?.currencyCode || "");
 
   const columns: TableProps<ProductOrderHistoryItem>["columns"] = [
@@ -88,6 +89,7 @@ export function OrderHistoryTable({ orderHistory }: { orderHistory: ProductOrder
       <div className="hidden md:block">
         <AppTable<ProductOrderHistoryItem> columns={columns} dataSource={orderHistory} rowKey="id" pagination={false} />
       </div>
+      {footer ? <div className="border-t border-gray-200 bg-white px-4 py-4">{footer}</div> : null}
     </>
   ) : (
     <Empty className="py-10" description={emptyText} />

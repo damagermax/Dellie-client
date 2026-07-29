@@ -11,7 +11,7 @@ import { OrderHistoryTable } from "@/components/products/product-detail/order-hi
 import { RestockProductModal } from "@/components/products/product-detail/inventory-modals";
 import { buildProductDetailTabs } from "@/components/products/product-detail/overview";
 import { DetailGrid, TypeBadge } from "@/components/products/product-detail/shared";
-import type { ProductDetail } from "@/components/products/product-detail/types";
+import type { InventoryBatch, ProductDetail, ProductOrderHistoryItem } from "@/components/products/product-detail/types";
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
 import { useDeleteProductMutation, useGetProductBatchesQuery, useGetProductOrderHistoryQuery, useGetProductQuery, useRestoreProductMutation } from "@/lib/redux/services";
 import { AccessDeniedView } from "@/components/ui/AccessDeniedView";
@@ -21,18 +21,43 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdown";
 import { StorePermission } from "@/types/store-access";
 import useToggle from "@/hooks/UseToggle";
-import { Button, Empty, Pagination, Popconfirm, Segmented, Spin, Tabs, message } from "antd";
+import { Button, Empty, Popconfirm, Segmented, Spin, Tabs, message } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { ArrowRightLeft, PackageOpen, SlidersHorizontal } from "lucide-react";
 import { hasBundleComponents } from "@/lib/products/type-label";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ImBoxRemove } from "react-icons/im";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
 import { useRouter } from "next/navigation";
 
 dayjs.extend(relativeTime);
+
+function mergeById<T extends { id?: string | null }>(current: T[], next: T[]) {
+  const merged = [...current];
+  const seen = new Set(current.map((item) => item.id).filter((id): id is string => Boolean(id)));
+
+  next.forEach((item) => {
+    if (item.id && seen.has(item.id)) {
+      const existingIndex = merged.findIndex((entry) => entry.id === item.id);
+      if (existingIndex >= 0) {
+        merged[existingIndex] = item;
+      }
+      return;
+    }
+
+    if (item.id) {
+      seen.add(item.id);
+    } else if (merged.some((entry) => !entry.id && JSON.stringify(entry) === JSON.stringify(item))) {
+      return;
+    }
+
+    merged.push(item);
+  });
+
+  return merged;
+}
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -46,6 +71,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [batchPage, setBatchPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [heroImageFailed, setHeroImageFailed] = useState(false);
+  const [batchItems, setBatchItems] = useState<InventoryBatch[]>([]);
+  const [historyItems, setHistoryItems] = useState<ProductOrderHistoryItem[]>([]);
+  const batchSentinelRef = useRef<HTMLDivElement | null>(null);
+  const historySentinelRef = useRef<HTMLDivElement | null>(null);
+  const batchLoadLockedRef = useRef(false);
+  const historyLoadLockedRef = useRef(false);
   const canViewProduct = hasAnyPermission([StorePermission.PRODUCTS_VIEW, StorePermission.PRODUCTS_MANAGE]);
   const canManageProduct = hasPermission(StorePermission.PRODUCTS_MANAGE);
   const canManageInventory = hasPermission(StorePermission.INVENTORY_MANAGE);
@@ -67,8 +98,40 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const canEditProduct = canManageProduct && !isArchived;
   const canMutateInventory = canManageInventory && !isArchived;
   const canManageMedia = canManageProduct && !isArchived;
-  const batchRows = useMemo(() => batchesQuery.data?.data ?? product?.inventory?.batches ?? [], [batchesQuery.data?.data, product?.inventory?.batches]);
-  const historyRows = useMemo(() => historyQuery.data?.data ?? product?.orderHistory ?? [], [historyQuery.data?.data, product?.orderHistory]);
+  const batchRows = useMemo(() => batchItems.length ? batchItems : product?.inventory?.batches ?? [], [batchItems, product?.inventory?.batches]);
+  const historyRows = useMemo(() => historyItems.length ? historyItems : product?.orderHistory ?? [], [historyItems, product?.orderHistory]);
+  const isBatchInitialLoading = batchesQuery.isFetching && batchRows.length === 0;
+  const isHistoryInitialLoading = historyQuery.isFetching && historyRows.length === 0;
+  const isBatchLoadMore = batchesQuery.isFetching && batchPage > 1 && batchRows.length > 0;
+  const isHistoryLoadMore = historyQuery.isFetching && historyPage > 1 && historyRows.length > 0;
+  const batchLoadMoreError = Boolean(batchesQuery.isError && batchPage > 1 && batchRows.length > 0);
+  const historyLoadMoreError = Boolean(historyQuery.isError && historyPage > 1 && historyRows.length > 0);
+
+  useEffect(() => {
+    if (product?.inventory?.batches?.length && batchItems.length === 0) {
+      setBatchItems(product.inventory.batches);
+    }
+  }, [batchItems.length, product?.inventory?.batches]);
+
+  useEffect(() => {
+    if (product?.orderHistory?.length && historyItems.length === 0) {
+      setHistoryItems(product.orderHistory);
+    }
+  }, [historyItems.length, product?.orderHistory]);
+
+  useEffect(() => {
+    const incoming = batchesQuery.data?.data;
+    if (!incoming) return;
+
+    setBatchItems((current) => (batchPage <= 1 ? incoming : mergeById(current, incoming)));
+  }, [batchPage, batchesQuery.data?.data]);
+
+  useEffect(() => {
+    const incoming = historyQuery.data?.data;
+    if (!incoming) return;
+
+    setHistoryItems((current) => (historyPage <= 1 ? incoming : mergeById(current, incoming)));
+  }, [historyPage, historyQuery.data?.data]);
 
   const tabs = useMemo(
     () =>
@@ -77,27 +140,63 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         onEditProduct: toggleEdit,
         enableTradePrice,
         renderBatchTable: (currentProduct) => (
-          <ProductTabRequestState isLoading={batchesQuery.isFetching && batchRows.length === 0} isError={Boolean(batchesQuery.isError && batchRows.length === 0)} onRetry={batchesQuery.refetch}>
+          <ProductTabRequestState
+            isLoading={isBatchInitialLoading}
+            isError={Boolean(batchesQuery.isError && batchRows.length === 0)}
+            onRetry={() => {
+              setBatchItems([]);
+              setBatchPage(1);
+              void batchesQuery.refetch();
+            }}
+          >
             <BatchTable
               product={currentProduct}
               batches={batchRows}
               canManageInventory={canMutateInventory}
               onBatchChanged={() => {
+                setBatchItems([]);
+                setBatchPage(1);
                 void refetch();
-                if (batchesQuery.isSuccess) void batchesQuery.refetch();
+                if (activeSection === "batches") {
+                  void batchesQuery.refetch();
+                }
               }}
+              footer={
+                <ProductTabLoadMoreState
+                  isLoadingMore={isBatchLoadMore}
+                  hasError={batchLoadMoreError}
+                  onRetry={() => void batchesQuery.refetch()}
+                />
+              }
             />
-            <ProductTabPagination page={batchPage} total={batchesQuery.data?.meta?.total} pageSize={batchesQuery.data?.meta?.limit} onChange={setBatchPage} />
+            <div ref={batchSentinelRef} className="h-1 w-full" aria-hidden="true" />
           </ProductTabRequestState>
         ),
         renderOrderHistory: () => (
-          <ProductTabRequestState isLoading={historyQuery.isFetching && historyRows.length === 0} isError={Boolean(historyQuery.isError && historyRows.length === 0)} onRetry={historyQuery.refetch}>
-            <OrderHistoryTable orderHistory={historyRows} />
-            <ProductTabPagination page={historyPage} total={historyQuery.data?.meta?.total} pageSize={historyQuery.data?.meta?.limit} onChange={setHistoryPage} />
+          <ProductTabRequestState
+            isLoading={isHistoryInitialLoading}
+            isError={Boolean(historyQuery.isError && historyRows.length === 0)}
+            onRetry={() => {
+              setHistoryItems([]);
+              setHistoryPage(1);
+              void historyQuery.refetch();
+            }}
+          >
+            <OrderHistoryTable
+              orderHistory={historyRows}
+              footer={
+                <ProductTabLoadMoreState
+                  isLoadingMore={isHistoryLoadMore}
+                  hasError={historyLoadMoreError}
+                  onRetry={() => void historyQuery.refetch()}
+                />
+              }
+            />
+            <div ref={historySentinelRef} className="h-1 w-full" aria-hidden="true" />
           </ProductTabRequestState>
         ),
       }),
-    [batchPage, batchRows, batchesQuery, canEditProduct, canMutateInventory, enableTradePrice, historyPage, historyQuery, historyRows, product, refetch, toggleEdit],
+    [activeSection, batchLoadMoreError, batchRows, batchesQuery, canEditProduct, canMutateInventory, enableTradePrice, historyLoadMoreError, historyQuery, historyRows, isBatchInitialLoading, isBatchLoadMore, isHistoryInitialLoading, isHistoryLoadMore, product, refetch, toggleEdit],
   );
   const currentTab = tabs.find((tab) => tab.key === activeSection) || tabs[0];
 
@@ -114,7 +213,63 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     setBatchPage(1);
     setHistoryPage(1);
+    setBatchItems([]);
+    setHistoryItems([]);
+    batchLoadLockedRef.current = false;
+    historyLoadLockedRef.current = false;
   }, [id]);
+
+  useEffect(() => {
+    if (!batchesQuery.isFetching) {
+      batchLoadLockedRef.current = false;
+    }
+  }, [batchesQuery.isFetching]);
+
+  useEffect(() => {
+    if (!historyQuery.isFetching) {
+      historyLoadLockedRef.current = false;
+    }
+  }, [historyQuery.isFetching]);
+
+  useEffect(() => {
+    const sentinel = batchSentinelRef.current;
+    if (!sentinel || activeSection !== "batches") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) return;
+        if (!batchesQuery.data?.meta?.hasNextPage || batchesQuery.isFetching || batchLoadMoreError || isBatchInitialLoading || batchLoadLockedRef.current) return;
+
+        batchLoadLockedRef.current = true;
+        setBatchPage((current) => current + 1);
+      },
+      { rootMargin: "240px 0px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeSection, batchLoadMoreError, batchesQuery.data?.meta?.hasNextPage, batchesQuery.isFetching, isBatchInitialLoading]);
+
+  useEffect(() => {
+    const sentinel = historySentinelRef.current;
+    if (!sentinel || activeSection !== "order-history") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) return;
+        if (!historyQuery.data?.meta?.hasNextPage || historyQuery.isFetching || historyLoadMoreError || isHistoryInitialLoading || historyLoadLockedRef.current) return;
+
+        historyLoadLockedRef.current = true;
+        setHistoryPage((current) => current + 1);
+      },
+      { rootMargin: "240px 0px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeSection, historyLoadMoreError, historyQuery.data?.meta?.hasNextPage, historyQuery.isFetching, isHistoryInitialLoading]);
 
   const handleToggleProductStatus = async () => {
     if (!product) return;
@@ -415,12 +570,17 @@ function ProductTabRequestState({ children, isLoading, isError, onRetry }: { chi
   return <>{children}</>;
 }
 
-function ProductTabPagination({ page, total, pageSize, onChange }: { page: number; total?: number; pageSize?: number; onChange: (page: number) => void }) {
-  if (!total || total <= (pageSize || 20)) return null;
+function ProductTabLoadMoreState({ isLoadingMore, hasError, onRetry }: { isLoadingMore: boolean; hasError: boolean; onRetry: () => void }) {
+  if (!isLoadingMore && !hasError) return null;
 
   return (
-    <div className="flex justify-end border-t border-gray-200 bg-white px-4 py-4">
-      <Pagination current={page} total={total} pageSize={pageSize || 20} showSizeChanger={false} onChange={onChange} />
+    <div className="flex items-center justify-center">
+      {isLoadingMore ? <Spin size="small" /> : null}
+      {hasError ? (
+        <Button type="link" onClick={onRetry} className="!px-0">
+          Retry loading more
+        </Button>
+      ) : null}
     </div>
   );
 }

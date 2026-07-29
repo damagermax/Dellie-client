@@ -44,7 +44,7 @@ import { usePosCartTotals } from "./hooks/usePosCartTotals";
 import { usePosCheckout } from "./hooks/usePosCheckout";
 import { usePosSavedCarts } from "./hooks/usePosSavedCarts";
 import { PAY_LATER_PAYMENT_METHOD_ID, type PosCartItem, type PosOrderMethod, type PosPaymentEntry, type SavedPosCart, type SelectedPosContact } from "./types";
-import { buildTaxBreakdown, formatMoney, getCartItem, getProductImage, getTodayRange, isTrackedInventory, roundMoney, uid } from "./utils";
+import { buildTaxBreakdown, createSavedCartId, formatMoney, getCartItem, getProductImage, getTodayRange, isTrackedInventory, roundMoney, uid } from "./utils";
 
 const normalizeEntityId = (value: unknown): string | undefined => {
   if (typeof value === "string") {
@@ -171,12 +171,12 @@ export default function POSPage() {
 
   const {
     savedCarts,
-    writeSavedCarts,
-    removeSavedCart: removeSavedCartFromStorage,
-  } = usePosSavedCarts({
-    currentUserId,
-    dayKey: historyRange.dayKey,
-  });
+      upsertSavedCart,
+      removeSavedCart: removeSavedCartFromStorage,
+    } = usePosSavedCarts({
+      currentUserId,
+      dayKey: historyRange.dayKey,
+    });
 
   const visibleProducts = useMemo(() => {
     const search = debouncedSearch.trim().toLowerCase();
@@ -478,7 +478,7 @@ export default function POSPage() {
     }
 
     const draft: SavedPosCart = {
-      id: uid(),
+      id: activeSavedCartId || createSavedCartId(),
       userId: currentUserId,
       dayKey: historyRange.dayKey,
       savedAt: new Date().toISOString(),
@@ -494,11 +494,10 @@ export default function POSPage() {
       selectedContact,
     };
 
-    const nextSavedCarts = activeSavedCartId ? savedCarts.filter((entry) => entry.id !== activeSavedCartId) : savedCarts;
-    writeSavedCarts([draft, ...nextSavedCarts]);
+    upsertSavedCart(draft);
     clearCart();
     message.success("Cart saved.");
-  }, [activeSavedCartId, cart, categoryId, clearCart, currentUserId, deliveryAddress, deliveryFee, form, historyRange.dayKey, payments, posOrderMethod, savedCarts, searchValue, selectedContact, selectedTax, writeSavedCarts]);
+  }, [activeSavedCartId, cart, categoryId, clearCart, currentUserId, deliveryAddress, deliveryFee, form, historyRange.dayKey, payments, posOrderMethod, searchValue, selectedContact, selectedTax, upsertSavedCart]);
 
   const cartActionItems = useMemo<NonNullable<MenuProps["items"]>>(
     () => [

@@ -3,6 +3,7 @@
 import { Button, Drawer, Empty, Input, Select } from "antd";
 import type { TableProps } from "antd/es/table";
 import { ArrowRightLeft, PackageOpen, SlidersHorizontal } from "lucide-react";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
@@ -19,7 +20,19 @@ import type { InventoryBatch, ProductDetail } from "./types";
 import { formatBatchSource, formatDate, formatMoney, formatQuantity, isExpiredBatch, isExpiringSoonBatch, sortBatchesByPriority } from "./utils";
 import { BatchAdjustmentModal, BatchDisassembleModal, BatchTransferModal, ProductionBatchDetailModal } from "./inventory-modals";
 
-export function BatchTable({ product, batches, canManageInventory, onBatchChanged }: { product: ProductDetail; batches: InventoryBatch[]; canManageInventory: boolean; onBatchChanged: () => void }) {
+export function BatchTable({
+  product,
+  batches,
+  canManageInventory,
+  onBatchChanged,
+  footer,
+}: {
+  product: ProductDetail;
+  batches: InventoryBatch[];
+  canManageInventory: boolean;
+  onBatchChanged: () => void;
+  footer?: ReactNode;
+}) {
   const [selectedBatch, setSelectedBatch] = useState<InventoryBatch | null>(null);
   const [activeBatchModal, setActiveBatchModal] = useState<"adjust" | "transfer" | "disassemble" | "production" | null>(null);
   const [locationFilter, setLocationFilter] = useState<string>("all");
@@ -323,6 +336,7 @@ export function BatchTable({ product, batches, canManageInventory, onBatchChange
           locale={{ emptyText: <Empty className="py-10" description="No batches match the selected filters." /> }}
         />
       </div>
+      {footer ? <div className="border-t border-gray-200 bg-white px-4 py-4">{footer}</div> : null}
 
       <Drawer
         title="Batch filters"
