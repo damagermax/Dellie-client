@@ -1,6 +1,7 @@
 "use client";
 
 import { Tag } from "antd";
+import { Globe, Store } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/dateUtils";
 import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
@@ -19,14 +20,33 @@ const statusColor = (status?: string) => {
   return "blue";
 };
 
+function SaleSourceIcon({ source }: { source?: string }) {
+  if (source === "POS") {
+    return (
+      <span className="inline-flex h-[18px] w-[18px] items-center justify-center text-gray-500" title="POS">
+        <Store size={13} />
+      </span>
+    );
+  }
+
+  if (source === "Online Store") {
+    return (
+      <span className="inline-flex h-[18px] w-[18px] items-center justify-center text-blue-600" title="Website">
+        <Globe size={13} />
+      </span>
+    );
+  }
+
+  return null;
+}
+
 export default function SalesMobileList({ sales }: SalesMobileListProps) {
   return (
     <div className="md:hidden">
       {sales.map((sale) => {
         const customer = sale.contactId?.name || "Walk-in Customer";
         const currency = sale.currencyId?.code || "";
-        const sourceLabel = !sale.source || sale.source === "Manual Sale" ? "Manual Sales" : sale.source;
-        const showSource = Boolean(sourceLabel);
+        const sourceLabel = sale.source === "POS" || sale.source === "Online Store" ? sale.source : undefined;
 
         return (
           <div key={sale.id} className="gap-3 border-b border-gray-100 px-4 py-4">
@@ -36,7 +56,7 @@ export default function SalesMobileList({ sales }: SalesMobileListProps) {
                   <div className=" flex flex-wrap items-center gap-2 text-xs text-gray-500">
                     <p className="truncate text-[15px] font-semibold text-gray-900">{saleDocumentNumber(sale)}</p>
 
-                    {showSource ? <span>{sourceLabel}</span> : null}
+                    {sourceLabel ? <SaleSourceIcon source={sourceLabel} /> : null}
                     {sale.fulfillmentMethod === "pickup" && (
                       <Tag className={mobileTagClassName} color="cyan">
                         Pickup

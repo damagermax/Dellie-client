@@ -15,6 +15,37 @@ export function saleFulfillmentStatusLabel(status?: string) {
   return (status || "pending").replaceAll("_", " ");
 }
 
+export function saleDetailFulfillmentStatusLabel(sale: Pick<Sale, "fulfillmentMethod" | "receiptStatus">) {
+  const status = sale.receiptStatus || "pending";
+  const method = sale.fulfillmentMethod;
+
+  if (method === "delivery") {
+    if (status === "received") return "Delivered";
+    if (status === "partially_received") return "Partial delivery";
+    return "Pending delivery";
+  }
+
+  if (method === "pickup") {
+    if (status === "received") return "Picked up";
+    if (status === "partially_received") return "Partial pickup";
+    return "Pending pickup";
+  }
+
+  if (method === "now") {
+    if (status === "received") return "Fulfilled";
+    if (status === "partially_received") return "Partially fulfilled";
+    return "Pending fulfillment";
+  }
+
+  if (method === "dine_in") {
+    if (status === "received") return "Served";
+    if (status === "partially_received") return "Partially served";
+    return "Open dine-in";
+  }
+
+  return saleFulfillmentStatusLabel(status);
+}
+
 export function visibleSaleDeleteRestrictions(sale: Sale) {
   const restrictions: string[] = [];
 

@@ -8,6 +8,7 @@ import { PendingReceiptFocusCard } from "@/components/dashboard/purchase-report/
 import { PurchaseReportShimmer } from "@/components/dashboard/purchase-report/PurchaseReportShimmer";
 import { PurchasingTrendCard } from "@/components/dashboard/purchase-report/PurchasingTrendCard";
 import { TopSuppliersCard } from "@/components/dashboard/purchase-report/TopSuppliersCard";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useGetLocationsQuery, useGetPurchaseReportQuery } from "@/lib/redux/services";
 import { RootState } from "@/lib/store";
@@ -16,7 +17,7 @@ import type { PurchaseReportResponse } from "@/types/purchase-report";
 import { DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Button, DatePicker, Select } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
 const { RangePicker } = DatePicker;
@@ -24,20 +25,28 @@ const { RangePicker } = DatePicker;
 export default function PurchaseReportsPage() {
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>(() => [dayjs().startOf("month"), dayjs()]);
   const [locationId, setLocationId] = useState("all");
+  const assignedScope = useAssignedLocationScope();
   const { ready, hasPermission } = usePermissions();
   const canViewReport = hasPermission(StorePermission.REPORTS_VIEW);
   const purchasesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules.purchases);
   const activeStoreId = useSelector((state: RootState) => state.currentUser.activeStoreId || state.currentUser.store?.id || undefined);
   const { data: locations = [] } = useGetLocationsQuery({ status: LocationStatus.ACTIVE, parentsOnly: false });
+  const effectiveLocationId = assignedScope.isRestricted ? assignedScope.assignedLocationId || "__assigned_location_required__" : locationId;
+
+  useEffect(() => {
+    if (assignedScope.isRestricted && assignedScope.assignedLocationId && locationId !== assignedScope.assignedLocationId) {
+      setLocationId(assignedScope.assignedLocationId);
+    }
+  }, [assignedScope.assignedLocationId, assignedScope.isRestricted, locationId]);
 
   const query = useMemo(
     () => ({
       dateFrom: dateRange[0].format("YYYY-MM-DD"),
       dateTo: dateRange[1].format("YYYY-MM-DD"),
-      locationId: locationId === "all" ? undefined : locationId,
+      locationId: effectiveLocationId === "all" || effectiveLocationId === "__assigned_location_required__" ? undefined : effectiveLocationId,
       storeId: activeStoreId,
     }),
-    [activeStoreId, dateRange, locationId],
+    [activeStoreId, dateRange, effectiveLocationId],
   );
 
   const {
@@ -49,13 +58,19 @@ export default function PurchaseReportsPage() {
   } = useGetPurchaseReportQuery(query, { skip: !ready || !canViewReport || !purchasesEnabled });
 
   const locationOptions = useMemo(() => {
+    if (assignedScope.isRestricted) {
+      return [{
+        label: assignedScope.assignedLocation?.name || "Assigned location required",
+        value: assignedScope.assignedLocationId || "__assigned_location_required__",
+      }];
+    }
     const options = [{ label: "All locations", value: "all" }];
     locations.forEach((location) => {
       options.push({ label: location.name, value: location.id });
       location.subLocations?.forEach((child) => options.push({ label: `${location.name} / ${child.name}`, value: child.id }));
     });
     return options;
-  }, [locations]);
+  }, [assignedScope.assignedLocation?.name, assignedScope.assignedLocationId, assignedScope.isRestricted, locations]);
 
   if (ready && !canViewReport) {
     return (
@@ -80,7 +95,7 @@ export default function PurchaseReportsPage() {
       <DashboardToolbar>
         <div />
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          <Select className="min-w-[220px]" value={locationId} onChange={setLocationId} options={locationOptions} />
+          <Select className="min-w-[220px]" value={effectiveLocationId} onChange={assignedScope.isRestricted ? undefined : setLocationId} options={locationOptions} disabled={assignedScope.isRestricted} />
           <RangePicker value={dateRange} onChange={(value) => value && setDateRange(value as [Dayjs, Dayjs])} />
           <StoreSelector />
           <div className="flex items-center gap-2">

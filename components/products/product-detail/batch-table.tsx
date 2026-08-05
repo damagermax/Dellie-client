@@ -10,6 +10,7 @@ import { useSelector } from "react-redux";
 import { ActionDropdown, DropdownItemLabel } from "@/components/ui/ActionDropdown";
 import AppTable from "@/components/ui/AppTable";
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 import useToggle from "@/hooks/UseToggle";
 import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 import { RootState } from "@/lib/store";
@@ -45,6 +46,8 @@ export function BatchTable({
   const canMutateBatches = canManageInventory && product.status !== "archived";
   const expiryEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.expiryEnabled !== false);
   const storeCurrencyCode = useStoreCurrencyCode();
+  const assignedScope = useAssignedLocationScope();
+  const lockedLocationId = assignedScope.isRestricted ? assignedScope.assignedLocationId || "" : "";
 
   const locationOptions = useMemo(
     () =>
@@ -135,16 +138,22 @@ export function BatchTable({
   }, [expiryEnabled, filteredBatches]);
 
   const activeFilterCount = useMemo(
-    () => [locationFilter, sourceFilter, stockStateFilter, ...(expiryEnabled ? [expiryFilter] : [])].filter((value) => value !== "all").length + (queryFilter.trim() ? 1 : 0),
-    [expiryEnabled, expiryFilter, locationFilter, queryFilter, sourceFilter, stockStateFilter],
+    () => [assignedScope.isRestricted ? "all" : locationFilter, sourceFilter, stockStateFilter, ...(expiryEnabled ? [expiryFilter] : [])].filter((value) => value !== "all").length + (queryFilter.trim() ? 1 : 0),
+    [assignedScope.isRestricted, expiryEnabled, expiryFilter, locationFilter, queryFilter, sourceFilter, stockStateFilter],
   );
 
   useEffect(() => {
+    if (assignedScope.isRestricted) {
+      if (lockedLocationId && locationFilter !== lockedLocationId) {
+        setLocationFilter(lockedLocationId);
+      }
+      return;
+    }
     if (locationFilter === "all") return;
     if (!locationOptions.some((option) => option.value === locationFilter)) {
       setLocationFilter("all");
     }
-  }, [locationFilter, locationOptions]);
+  }, [assignedScope.isRestricted, locationFilter, locationOptions, lockedLocationId]);
 
   useEffect(() => {
     if (sourceFilter === "all") return;
@@ -159,7 +168,7 @@ export function BatchTable({
   }, [expiryEnabled, expiryFilter]);
 
   const clearFilters = () => {
-    setLocationFilter("all");
+    setLocationFilter(lockedLocationId || "all");
     setSourceFilter("all");
     setStockStateFilter("all");
     if (expiryEnabled) {
@@ -359,7 +368,13 @@ export function BatchTable({
           </div>
           <div>
             <p className="mb-2 text-sm font-medium text-gray-900">Location</p>
-            <Select className="!w-full" value={locationFilter} onChange={setLocationFilter} options={[{ label: "All locations", value: "all" }, ...locationOptions]} />
+            <Select
+              className="!w-full"
+              value={locationFilter}
+              onChange={assignedScope.isRestricted ? undefined : setLocationFilter}
+              disabled={assignedScope.isRestricted}
+              options={assignedScope.isRestricted ? locationOptions.filter((option) => option.value === lockedLocationId) : [{ label: "All locations", value: "all" }, ...locationOptions]}
+            />
           </div>
           <div>
             <p className="mb-2 text-sm font-medium text-gray-900">Source</p>

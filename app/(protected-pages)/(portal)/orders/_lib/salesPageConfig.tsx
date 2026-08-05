@@ -3,22 +3,32 @@
 import Link from "next/link";
 import { Tag } from "antd";
 import type { TableProps } from "antd/es/table";
+import { Globe, Store } from "lucide-react";
 import { formatDate } from "@/lib/dateUtils";
 import type { Sale } from "@/types/index";
 import { saleDocumentNumber, saleFulfillmentStatusLabel } from "@/components/orders/saleUtils";
 import { TransactionBalancePill } from "@/components/ui/TransactionBalancePill";
 
-const saleSourceLabel = (source?: string) => {
-  if (!source || source === "Manual Sale") return "Manual Sales";
-  return source;
-};
-const shouldShowSaleSourceTag = (source?: string) => Boolean(source) || source === "Manual Sale";
+const shouldShowSaleSourceTag = (source?: string) => source === "POS" || source === "Online Store";
 
-const saleSourceColor = (source?: string) => {
-  if (source === "POS") return "green";
-  if (source === "Online Store") return "blue";
-  if (source === "Manual Sale") return "gold";
-  return "default";
+const saleSourceIcon = (source?: string) => {
+  if (source === "POS") {
+    return (
+      <span className="inline-flex h-5 w-5 items-center justify-center text-gray-500" title="POS">
+        <Store size={14} />
+      </span>
+    );
+  }
+
+  if (source === "Online Store") {
+    return (
+      <span className="inline-flex h-5 w-5 items-center justify-center text-blue-600" title="Website">
+        <Globe size={14} />
+      </span>
+    );
+  }
+
+  return null;
 };
 
 export function buildSalesColumns(): TableProps<Sale>["columns"] {
@@ -33,9 +43,7 @@ export function buildSalesColumns(): TableProps<Sale>["columns"] {
             {saleDocumentNumber(sale)}
           </Link>
           {shouldShowSaleSourceTag(sale.source) ? (
-            <Tag className="!m-0 !rounded-full !px-2" color={saleSourceColor(sale.source)}>
-              {saleSourceLabel(sale.source)}
-            </Tag>
+            saleSourceIcon(sale.source)
           ) : null}
           {sale.fulfillmentMethod === "pickup" ? (
             <Tag className="!m-0 !rounded-full !px-2" color="cyan">

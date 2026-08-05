@@ -7,37 +7,53 @@ import { DashboardStateCard } from "@/components/dashboard/DashboardStateCard";
 import { DashboardOverviewSalesCard } from "@/components/dashboard/DashboardOverviewSalesCard";
 import { DashboardOverviewShimmer } from "@/components/dashboard/DashboardOverviewShimmer";
 import { DashboardToolbar } from "@/components/dashboard/DashboardToolbar";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useGetDashboardOverviewQuery, useGetLocationsQuery } from "@/lib/redux/services";
 import { RootState } from "@/lib/store";
 import { LocationStatus } from "@/types/index";
 import { StorePermission } from "@/types/store-access";
 import { Select } from "antd";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
 export default function DashboardPage() {
   const [locationId, setLocationId] = useState("all");
+  const assignedScope = useAssignedLocationScope();
   const { ready, hasPermission } = usePermissions();
   const canViewReport = hasPermission(StorePermission.REPORTS_VIEW);
   const trackQuantityEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.trackQuantityEnabled !== false);
   const { data: locations = [] } = useGetLocationsQuery({ status: LocationStatus.ACTIVE, parentsOnly: false });
+  const effectiveLocationId = assignedScope.isRestricted ? assignedScope.assignedLocationId || "__assigned_location_required__" : locationId;
+
+  useEffect(() => {
+    if (assignedScope.isRestricted && assignedScope.assignedLocationId && locationId !== assignedScope.assignedLocationId) {
+      setLocationId(assignedScope.assignedLocationId);
+    }
+  }, [assignedScope.assignedLocationId, assignedScope.isRestricted, locationId]);
+
   const query = useMemo(
     () => ({
-      locationId: locationId === "all" ? undefined : locationId,
+      locationId: effectiveLocationId === "all" || effectiveLocationId === "__assigned_location_required__" ? undefined : effectiveLocationId,
     }),
-    [locationId],
+    [effectiveLocationId],
   );
   const { data, isLoading, isError, refetch } = useGetDashboardOverviewQuery(query, { skip: !ready || !canViewReport });
 
   const locationOptions = useMemo(() => {
+    if (assignedScope.isRestricted) {
+      return [{
+        label: assignedScope.assignedLocation?.name || "Assigned location required",
+        value: assignedScope.assignedLocationId || "__assigned_location_required__",
+      }];
+    }
     const options = [{ label: "All locations", value: "all" }];
     locations.forEach((location) => {
       options.push({ label: location.name, value: location.id });
       location.subLocations?.forEach((child) => options.push({ label: `${location.name} / ${child.name}`, value: child.id }));
     });
     return options;
-  }, [locations]);
+  }, [assignedScope.assignedLocation?.name, assignedScope.assignedLocationId, assignedScope.isRestricted, locations]);
 
   if (ready && !canViewReport) {
     return (
@@ -73,7 +89,7 @@ export default function DashboardPage() {
         <DashboardToolbar className="mb-5">
           <div />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Select className="min-w-[220px]" value={locationId} onChange={setLocationId} options={locationOptions} />
+            <Select className="min-w-[220px]" value={effectiveLocationId} onChange={assignedScope.isRestricted ? undefined : setLocationId} options={locationOptions} disabled={assignedScope.isRestricted} />
           </div>
         </DashboardToolbar>
         <DashboardOverviewMetricsSection currencyCode={data.currencyCode} revenueToday={data.summary.revenueToday} salesToday={data.summary.salesToday} totalProducts={data.summary.totalProducts} totalCustomers={data.summary.totalCustomers} />

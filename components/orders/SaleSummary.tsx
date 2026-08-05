@@ -1,12 +1,33 @@
 "use client";
 
 import { Divider, Tag } from "antd";
+import { Globe, Store } from "lucide-react";
 import { Sale } from "@/types/index";
 import { buildDocumentSettlementSummary } from "@/components/payment/documentSettlementSummary";
 import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
 
 interface SaleSummaryProps {
   sale: Sale;
+}
+
+function SaleSourceIcon({ source }: { source?: string }) {
+  if (source === "POS") {
+    return (
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500" title="POS">
+        <Store size={14} />
+      </span>
+    );
+  }
+
+  if (source === "Online Store") {
+    return (
+      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-blue-600" title="Website">
+        <Globe size={14} />
+      </span>
+    );
+  }
+
+  return null;
 }
 
 export default function SaleSummary({ sale }: SaleSummaryProps) {
@@ -23,8 +44,7 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
     }, {}),
   ).map(([name, amount]) => ({ name, amount }));
 
-  const sourceLabel = !sale.source || sale.source === "Manual Sale" ? "Manual Sales" : sale.source;
-  const sourceColor = sourceLabel === "POS" ? "green" : sourceLabel === "Online Store" ? "blue" : sourceLabel === "Manual Sales" ? "gold" : "default";
+  const sourceLabel = sale.source === "POS" || sale.source === "Online Store" ? sale.source : undefined;
 
   return (
     <aside id="sale-summary" className="w-full scroll-mt-14 border-t border-gray-200 bg-gray-50 px-5 pb-8 pt-6 lg:w-[30%] lg:border-l lg:border-t-0 lg:px-7">
@@ -42,9 +62,7 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
                 Quote
               </Tag>
             )}
-            <Tag className="px-3 !rounded-full" color={sourceColor}>
-              {sourceLabel}
-            </Tag>
+            {sourceLabel ? <SaleSourceIcon source={sourceLabel} /> : null}
           </div>
         </div>
         <Summary label="Items Total" value={money(currency, Number(sale.subTotal))} />
