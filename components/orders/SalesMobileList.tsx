@@ -25,7 +25,8 @@ export default function SalesMobileList({ sales }: SalesMobileListProps) {
       {sales.map((sale) => {
         const customer = sale.contactId?.name || "Walk-in Customer";
         const currency = sale.currencyId?.code || "";
-        const showSource = Boolean(sale.source && sale.source !== "Manual Sale");
+        const sourceLabel = !sale.source || sale.source === "Manual Sale" ? "Manual Sales" : sale.source;
+        const showSource = Boolean(sourceLabel);
 
         return (
           <div key={sale.id} className="gap-3 border-b border-gray-100 px-4 py-4">
@@ -35,7 +36,7 @@ export default function SalesMobileList({ sales }: SalesMobileListProps) {
                   <div className=" flex flex-wrap items-center gap-2 text-xs text-gray-500">
                     <p className="truncate text-[15px] font-semibold text-gray-900">{saleDocumentNumber(sale)}</p>
 
-                    {showSource ? <span>{sale.source}</span> : null}
+                    {showSource ? <span>{sourceLabel}</span> : null}
                     {sale.fulfillmentMethod === "pickup" && (
                       <Tag className={mobileTagClassName} color="cyan">
                         Pickup

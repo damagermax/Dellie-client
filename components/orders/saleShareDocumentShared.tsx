@@ -88,7 +88,7 @@ export function saleDocumentText(
     `${label} ${saleDocumentNumber(sale)}`,
     `Date: ${formatDate(sale.date)}`,
     `Customer: ${customer}`,
-    `Source: ${sale.source || "Manual Sale"}`,
+    `Source: ${!sale.source || sale.source === "Manual Sale" ? "Manual Sales" : sale.source}`,
     "",
     ...itemLines,
     "",

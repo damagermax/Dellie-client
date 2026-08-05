@@ -25,9 +25,9 @@ export function OrderHistoryTable({ orderHistory, footer }: { orderHistory: Prod
           <Link href={order.type === "purchase" ? `/purchases/${order.id}` : `/orders/${order.id}`} className="font-medium !text-gray-700 hover:!text-indigo-600">
             {order.documentNumber || "-"}
           </Link>
-          {order.type === "sale" && order.source && order.source !== "Manual Sale" ? (
+          {order.type === "sale" && order.source ? (
             <Tag className="!m-0 !rounded-full !px-2" color={saleSourceColor(order.source)}>
-              {order.source}
+              {order.source === "Manual Sale" ? "Manual Sales" : order.source}
             </Tag>
           ) : null}
         </div>

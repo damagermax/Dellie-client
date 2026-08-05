@@ -9,6 +9,7 @@ import { ProductVariantSelectorModal } from "@/components/products/ProductVarian
 import SaleShareDocumentModal, { SaleDocumentType } from "@/components/orders/SaleShareDocumentModal";
 import { TaxSelector } from "@/components/settings/TaxSelector";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
 import useToggle from "@/hooks/UseToggle";
 import {
@@ -104,6 +105,7 @@ export default function POSPage() {
   const currentStore = useSelector((state: RootState) => state.currentUser.store);
   const storeSettings = useSelector((state: RootState) => state.currentUser.storeSettings);
   const posSettings = useMemo(() => (storeSettings?.pos ? { ...DEFAULT_POS_SETTINGS, ...storeSettings.pos } : DEFAULT_POS_SETTINGS), [storeSettings?.pos]);
+  const assignedScope = useAssignedLocationScope();
   const availableOrderMethods = useMemo(() => normalizeAvailableOrderMethods(posSettings.fulfillmentMethods), [posSettings.fulfillmentMethods]);
 
   const editingItem = useMemo(() => {
@@ -126,7 +128,9 @@ export default function POSPage() {
   const { data: taxes = [] } = useGetTaxesQuery();
   const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery({ type: CategoryType.PRODUCT, status: CategoryStatus.ACTIVE });
   const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId, { skip: !selectedCurrencyId });
-  const currentPosLocationId = selectedLocation?.id || normalizeEntityId(form.getFieldValue("locationId")) || defaultLocation?.id;
+  const currentPosLocationId = assignedScope.isRestricted
+    ? assignedScope.assignedLocationId || undefined
+    : selectedLocation?.id || normalizeEntityId(form.getFieldValue("locationId")) || defaultLocation?.id;
   const activeLocationId = currentPosLocationId;
   const { data: allProductsData } = useGetProductsQuery({ inPOS: true, locationId: activeLocationId, limit: 100 });
   const { data: filteredProductsData, isLoading: productsLoading } = useGetProductsQuery({
@@ -315,6 +319,14 @@ export default function POSPage() {
       return;
     }
 
+    if (assignedScope.isRestricted && assignedScope.assignedLocationId) {
+      const assignedLocation = locations?.find((location) => location.id === assignedScope.assignedLocationId);
+      setSelectedLocation(assignedLocation || null);
+      form.setFieldsValue({ locationId: assignedScope.assignedLocationId });
+      setHasAppliedInitialPosSettings(true);
+      return;
+    }
+
     const configuredLocationId = posSettings.defaultLocationId;
     const configuredLocation = configuredLocationId ? locations?.find((location) => location.id === configuredLocationId) : undefined;
 
@@ -329,7 +341,7 @@ export default function POSPage() {
       form.setFieldsValue({ locationId: defaultLocation.id });
       setHasAppliedInitialPosSettings(true);
     }
-  }, [defaultLocation, form, hasAppliedInitialPosSettings, locations, posSettings.defaultLocationId, selectedLocation]);
+  }, [assignedScope.assignedLocationId, assignedScope.isRestricted, defaultLocation, form, hasAppliedInitialPosSettings, locations, posSettings.defaultLocationId, selectedLocation]);
 
   useEffect(() => {
     const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
@@ -667,7 +679,10 @@ export default function POSPage() {
             selectedLocationName={selectedLocation?.name || defaultLocation?.name}
             searchValue={searchValue}
             onSearchChange={setSearchValue}
-            onOpenLocation={() => setLocationModalOpen(true)}
+            onOpenLocation={() => {
+              if (assignedScope.isRestricted) return;
+              setLocationModalOpen(true);
+            }}
             onOpenHistory={() => setHistoryDrawerOpen(true)}
           />
           <PosProductGrid
@@ -814,7 +829,7 @@ export default function POSPage() {
       />
 
       <PosLocationModal
-        open={locationModalOpen}
+        open={!assignedScope.isRestricted && locationModalOpen}
         locations={locations}
         activeLocationId={selectedLocation?.id || defaultLocation?.id || form.getFieldValue("locationId")}
         onClose={() => setLocationModalOpen(false)}

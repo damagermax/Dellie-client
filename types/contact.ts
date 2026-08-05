@@ -38,6 +38,8 @@ export interface Contact {
   assignedEmployeeContactId?: string | null;
   assignedEmployee?: ContactAssignmentPreview;
   assignedCustomers?: ContactAssignmentPreview[];
+  assignedLocationId?: string | null;
+  assignedLocation?: ContactLocationPreview;
   note?: string;
   paymentTerms?: string;
   currencyId?: string | { id: string; code: string; name?: string };
@@ -59,6 +61,7 @@ export interface CreateContactInput {
   status: ContactStatus;
   currencyId: string;
   note?: string;
+  assignedLocationId?: string;
 }
 
 export interface UpdateContactInput extends Partial<CreateContactInput> {
@@ -101,6 +104,12 @@ export interface ContactAssignmentPreview {
   name: string;
   email?: string;
   phone?: string;
+}
+
+export interface ContactLocationPreview {
+  id: string;
+  name: string;
+  address?: string;
 }
 
 export interface ContactTransactionSummaryItem {

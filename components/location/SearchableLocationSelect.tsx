@@ -1,4 +1,5 @@
 import useDebouncedValue from "@/hooks/useDebouncedValue";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 import { useGetLocationsQuery } from "@/lib/redux/services";
 import { LocationsQueryParams, LocationStatus } from "@/types/location";
 import { Select, Spin } from "antd";
@@ -16,12 +17,16 @@ const ALL_OPTION_VALUE = "__all__";
 
 export function SearchableLocationSelect({ value, onChange, mode, includeAllOption = false, allLabel = "All" }: SearchableLocationSelectProps) {
   const [locationsQuery, setLocationsQuery] = useState<LocationsQueryParams>();
+  const assignedScope = useAssignedLocationScope();
 
   const debounceContactsQuery = useDebouncedValue(locationsQuery);
 
   const { data: locations, isLoading } = useGetLocationsQuery(debounceContactsQuery);
+  const visibleLocations = assignedScope.isRestricted
+    ? (locations || []).filter((location) => location.id === assignedScope.assignedLocationId)
+    : locations || [];
   const options = [
-    ...(includeAllOption
+    ...(includeAllOption && !assignedScope.isRestricted
       ? [
           {
             value: ALL_OPTION_VALUE,
@@ -29,7 +34,7 @@ export function SearchableLocationSelect({ value, onChange, mode, includeAllOpti
           },
         ]
       : []),
-    ...(locations?.map((location) => ({
+    ...(visibleLocations.map((location) => ({
       value: location.id,
       label: (
         <div className=" flex items-center gap-x-2">
@@ -46,11 +51,16 @@ export function SearchableLocationSelect({ value, onChange, mode, includeAllOpti
       showSearch
       labelInValue={false}
       mode={mode}
-      value={value}
+      value={assignedScope.isRestricted ? assignedScope.assignedLocationId || value : value}
       onChange={(newValues) => {
+        if (assignedScope.isRestricted) {
+          onChange?.(assignedScope.assignedLocationId || "");
+          return;
+        }
         onChange?.(newValues);
       }}
       className="w-full"
+      disabled={assignedScope.isRestricted}
       filterOption={false}
       onSearch={(value) => setLocationsQuery({ search: value })}
       notFoundContent={isLoading ? <Spin size="small" /> : "No results found"}

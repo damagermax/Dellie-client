@@ -9,7 +9,7 @@ const { TextArea } = Input;
 
 type FormItemProps = {
   label: string;
-  name: string;
+  name: AntFormItemProps["name"];
   placeholder?: string;
   rules?: AntFormItemProps["rules"];
   help?: string;

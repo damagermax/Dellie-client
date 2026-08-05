@@ -15,16 +15,17 @@ type SaleDetailHeaderStatusProps = {
 export function SaleDetailHeaderStatus({ sale, isCancelled, isQuote }: SaleDetailHeaderStatusProps) {
   const fulfillmentStatus = sale.receiptStatus || "pending";
   const statusTone = fulfillmentStatus === "received" ? "green" : fulfillmentStatus === "partially_received" ? "gold" : "blue";
-  const sourceTone = sale.source === "POS" ? "green" : sale.source === "Online Store" ? "blue" : sale.source === "Sales Order" ? "gold" : "default";
+  const sourceLabel = !sale.source || sale.source === "Manual Sale" ? "Manual Sales" : sale.source;
+  const sourceTone = sourceLabel === "POS" ? "green" : sourceLabel === "Online Store" ? "blue" : sourceLabel === "Manual Sales" ? "gold" : "default";
   const isPickup = sale.fulfillmentMethod === "pickup";
-  const showSourceTag = (sale.source || "Manual Sale") !== "Manual Sale";
+  const showSourceTag = Boolean(sourceLabel);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       {!isCancelled && !isQuote ? <Tag className="!m-0 !rounded-full !px-2 capitalize" color={statusTone}>{saleFulfillmentStatusLabel(fulfillmentStatus)}</Tag> : null}
       {!isCancelled && !isQuote ? <Tag className="!m-0 !rounded-full !px-2 capitalize" color={sale.paymentStatus === "paid" ? "green" : sale.paymentStatus === "partial" ? "orange" : "blue"}>{paymentStatusLabel(sale.paymentStatus)}</Tag> : null}
       {!isCancelled && isQuote ? <Tag className="!m-0 !rounded-full !px-2" color="purple">Quote</Tag> : null}
-      {showSourceTag ? <Tag className="!m-0 !rounded-full !px-2" color={sourceTone}>{sale.source || "Manual Sale"}</Tag> : null}
+      {showSourceTag ? <Tag className="!m-0 !rounded-full !px-2" color={sourceTone}>{sourceLabel}</Tag> : null}
       {!isCancelled && !isQuote && isPickup ? <Tag className="!m-0 !rounded-full !px-2" color="cyan">Pickup</Tag> : null}
       {isCancelled ? <Tag className="!m-0 !rounded-full !px-2" color="red">Cancelled</Tag> : null}
     </div>

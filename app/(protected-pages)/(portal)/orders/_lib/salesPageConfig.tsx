@@ -8,13 +8,16 @@ import type { Sale } from "@/types/index";
 import { saleDocumentNumber, saleFulfillmentStatusLabel } from "@/components/orders/saleUtils";
 import { TransactionBalancePill } from "@/components/ui/TransactionBalancePill";
 
-const saleSourceLabel = (source?: string) => source || "Manual Sale";
-const shouldShowSaleSourceTag = (source?: string) => saleSourceLabel(source) !== "Manual Sale";
+const saleSourceLabel = (source?: string) => {
+  if (!source || source === "Manual Sale") return "Manual Sales";
+  return source;
+};
+const shouldShowSaleSourceTag = (source?: string) => Boolean(source) || source === "Manual Sale";
 
 const saleSourceColor = (source?: string) => {
   if (source === "POS") return "green";
   if (source === "Online Store") return "blue";
-  if (source === "Sales Order") return "gold";
+  if (source === "Manual Sale") return "gold";
   return "default";
 };
 

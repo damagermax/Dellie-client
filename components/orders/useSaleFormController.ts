@@ -5,6 +5,7 @@ import { Form, MenuProps, message } from "antd";
 import { useSelector } from "react-redux";
 
 import useToggle from "@/hooks/UseToggle";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 import { RootState } from "@/lib/store";
 import { useCreateSaleMutation, useGetCurrencyQuery, useGetPaymentTermsQuery, useGetProductsQuery, useGetTaxesQuery, useUpdateSaleMutation } from "@/lib/redux/services";
 import { useGetDefaultLocationQuery } from "@/lib/redux/services/locationsApi";
@@ -39,6 +40,8 @@ export function useSaleFormController({ open, sale, onSaved, toggle }: UseSaleFo
   const [updateSale, { isLoading: updating }] = useUpdateSaleMutation();
   const { data: paymentTerms } = useGetPaymentTermsQuery();
   const { data: defaultLocation } = useGetDefaultLocationQuery(undefined, { skip: !open });
+  const assignedScope = useAssignedLocationScope();
+  const effectiveDefaultLocationId = assignedScope.isRestricted ? assignedScope.assignedLocationId || undefined : defaultLocation?.id;
   const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20 });
   const { data: taxes } = useGetTaxesQuery();
   const rate = Form.useWatch("rate", form) || 1;
@@ -67,7 +70,7 @@ export function useSaleFormController({ open, sale, onSaved, toggle }: UseSaleFo
       form.setFieldsValue(
         getDefaultSaleFormValues({
           defaultStoreCurrencyId,
-          defaultLocationId: defaultLocation?.id,
+          defaultLocationId: effectiveDefaultLocationId,
           deliveryEnabled,
           pickupEnabled,
           paymentTermsEnabled,
@@ -85,12 +88,12 @@ export function useSaleFormController({ open, sale, onSaved, toggle }: UseSaleFo
     setDiscount({ discountValue: Number(sale.discountValue || 0), discountType: sale.discountType || "fixed" });
     setDeliveryFee(Number(sale.deliveryFee || 0));
     setLineItems(mapSaleLineItems(sale));
-  }, [defaultLocation?.id, defaultStoreCurrencyId, deliveryEnabled, form, open, paymentTermsEnabled, pickupEnabled, sale]);
+  }, [defaultStoreCurrencyId, deliveryEnabled, effectiveDefaultLocationId, form, open, paymentTermsEnabled, pickupEnabled, sale]);
 
   useEffect(() => {
-    if (!open || sale || !defaultLocation?.id || form.getFieldValue("location")) return;
-    form.setFieldValue("location", defaultLocation.id);
-  }, [defaultLocation?.id, form, open, sale]);
+    if (!open || sale || !effectiveDefaultLocationId || form.getFieldValue("location")) return;
+    form.setFieldValue("location", effectiveDefaultLocationId);
+  }, [effectiveDefaultLocationId, form, open, sale]);
 
   useEffect(() => {
     if (!open) return;

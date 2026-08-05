@@ -10,6 +10,7 @@ import PreviewImage from "@/components/ui/PreviewImage";
 import { BatchContextCard } from "@/components/products/product-detail/shared";
 import { ITEM_TYPE } from "@/components/products/ProductFormModal";
 import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 import { useAdjustBatchMutation, useDisassembleBatchByBatchIdMutation, useGetLocationsQuery, useRestockProductMutation, useTransferBatchByBatchIdMutation } from "@/lib/redux/services";
 import { RootState } from "@/lib/store";
 import { getProductTypeLabel, hasBundleComponents } from "@/lib/products/type-label";
@@ -440,16 +441,19 @@ export function BatchTransferModal({ batch, open, toggle, onSaved }: { batch: In
   const [transferBatch, { isLoading }] = useTransferBatchByBatchIdMutation();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const { data: locations = [], isLoading: locationsLoading } = useGetLocationsQuery({}, { skip: !open });
+  const assignedScope = useAssignedLocationScope();
 
   const locationOptions = useMemo(
-    () =>
-      locations
+    () => {
+      if (assignedScope.isRestricted && assignedScope.role === "staff") return [];
+      return locations
         .filter((location: Location) => location.status === "active" && location.id !== batch.locationId)
         .map((location: Location) => ({
           label: location.name,
           value: location.id,
-        })),
-    [batch.locationId, locations],
+        }));
+    },
+    [assignedScope.isRestricted, assignedScope.role, batch.locationId, locations],
   );
 
   useEffect(() => {

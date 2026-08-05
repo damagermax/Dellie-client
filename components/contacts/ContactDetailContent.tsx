@@ -278,6 +278,7 @@ export default function ContactDetailContent({
                 <div className="mt-5 space-y-5">
                   {isEmployee ? (
                     <DetailSection icon={<ShieldCheck size={16} />} title="Employee Access">
+                      <CompactDetail label="Assigned location" value={contact.assignedLocation?.name || "Not assigned"} />
                       <CompactDetail label="Role" value={contact.employeeAccess?.role || "-"} />
                       <CompactDetail
                         label="Permissions"

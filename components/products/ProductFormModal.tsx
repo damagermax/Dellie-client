@@ -24,6 +24,7 @@ import { RootState } from "@/lib/store";
 import { getNormalPrice } from "@/lib/products/pricing";
 import type { TableProps } from "antd";
 import { useStoreCurrencyCode } from "@/hooks/useStoreCurrencyCode";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 
 interface BundleItemInput {
   productId: string;
@@ -141,6 +142,11 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   );
 
   const { data: defaultLocation } = useGetDefaultLocationQuery();
+  const assignedScope = useAssignedLocationScope();
+  const assignedLocation = assignedScope.assignedLocationId
+    ? ({ id: assignedScope.assignedLocationId, name: assignedScope.assignedLocation?.name || "Assigned location" } as Location)
+    : undefined;
+  const effectiveDefaultLocation = assignedScope.isRestricted ? assignedLocation : defaultLocation;
   const debouncedProductSearch = useDebouncedValue(productSearch);
   const { data: products } = useGetProductsQuery({
     search: debouncedProductSearch,
@@ -152,6 +158,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   const toggleSelect = (location: Location) => {
     const locationId = getLocationId(location);
     if (!locationId) return;
+    if (assignedScope.isRestricted && locationId !== assignedScope.assignedLocationId) return;
 
     setLocationQuantities((prev) => {
       const exists = prev.find((item) => item.locationId === locationId);
@@ -412,15 +419,15 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
     if (!open) return;
 
     if (!trackQuantityEnabled) {
-      if (defaultLocation) {
-        ensureLocationSelected(defaultLocation);
+      if (effectiveDefaultLocation) {
+        ensureLocationSelected(effectiveDefaultLocation);
       }
       setItemType(ITEM_TYPE.NON_STOCK);
       return;
     }
 
     setItemType(null);
-  }, [defaultLocation, ensureLocationSelected, open, trackQuantityEnabled]);
+  }, [effectiveDefaultLocation, ensureLocationSelected, open, trackQuantityEnabled]);
 
   useEffect(() => {
     if (trackQuantityEnabled || itemType !== ITEM_TYPE.STOCK) return;
@@ -626,8 +633,8 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
                   setVariantCombinations([]);
                   productForm.setFieldValue("containsOtherProducts", false);
                   if ([ITEM_TYPE.NON_STOCK, ITEM_TYPE.STOCK]?.includes(type.key)) {
-                    if (defaultLocation) {
-                      ensureLocationSelected(defaultLocation);
+                    if (effectiveDefaultLocation) {
+                      ensureLocationSelected(effectiveDefaultLocation);
                     }
                   } else {
                     setLocationQuantities([]);
@@ -830,7 +837,15 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
         </div>
       )}
 
-      {openLocationModal && <LocationSelector toggleSelect={toggleSelect} selected={locationQuantities} toggle={toggleLocationModal} open={openLocationModal} />}
+      {openLocationModal && (
+        <LocationSelector
+          toggleSelect={toggleSelect}
+          selected={locationQuantities}
+          toggle={toggleLocationModal}
+          open={openLocationModal}
+          locationsOverride={assignedScope.isRestricted && assignedLocation ? [assignedLocation] : undefined}
+        />
+      )}
 
       {<VariantFormModal updateVariantCombinations={updateVariantCombinations} toggle={toggleVariantModal} open={openVariantModal} />}
     </AppModal>

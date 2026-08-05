@@ -3,6 +3,7 @@
 import { Checkbox, Divider, Form, Select } from "antd";
 import { useEffect, useMemo } from "react";
 
+import { SearchableLocationSelect } from "@/components/location/SearchableLocationSelect";
 import { useCreateContactMutation, useDisableEmployeeAccessMutation, useEnableEmployeeAccessMutation, useGetContactQuery, useUpdateContactMutation } from "@/lib/redux/services";
 import { Contact, ContactRole, ContactStatus, EmployeeAccessInput, EmployeeAccessResponse } from "@/types/contact";
 import { StorePermission } from "@/types/store-access";
@@ -36,6 +37,7 @@ type EmployeeFormValues = ContactFormValues & {
   enableEmployeeAccess?: boolean;
   employeeRole?: string;
   employeePermissions?: StorePermission[];
+  assignedLocationId?: string;
 };
 
 export default function EmployeeFormModal({ open, toggle, initialValues, onSaved }: BaseContactFormModalProps) {
@@ -71,13 +73,14 @@ export default function EmployeeFormModal({ open, toggle, initialValues, onSaved
     }
 
     const normalizedPermissions = normalizePermissions(source.employeeAccess?.permissions);
-    form.setFieldsValue({
-      ...source,
-      currencyId: normalizeCurrencyId(source.currencyId),
-      roles: [ContactRole.EMPLOYEE],
-      enableEmployeeAccess: hasEmployeeAccess(source),
-      employeePermissions: normalizedPermissions.length ? normalizedPermissions : defaultEmployeePermissions,
-      employeeRole: source.employeeAccess?.role || "staff",
+      form.setFieldsValue({
+        ...source,
+        currencyId: normalizeCurrencyId(source.currencyId),
+        roles: [ContactRole.EMPLOYEE],
+        assignedLocationId: source.assignedLocationId || source.assignedLocation?.id,
+        enableEmployeeAccess: hasEmployeeAccess(source),
+        employeePermissions: normalizedPermissions.length ? normalizedPermissions : defaultEmployeePermissions,
+        employeeRole: source.employeeAccess?.role || "staff",
     });
   }, [contactData, defaultEmployeePermissions, form, initialValues, open]);
 
@@ -90,10 +93,9 @@ export default function EmployeeFormModal({ open, toggle, initialValues, onSaved
   const handleSubmit = async (values: EmployeeFormValues) => {
     if (isCreating || isUpdating || isEnablingEmployeeAccess || isDisablingEmployeeAccess) return;
 
-    const normalizedCurrencyId = typeof values.currencyId === "string" ? values.currencyId : values.currencyId?.id;
+    const { id: _ignoredId, ...restValues } = values as EmployeeFormValues & { id?: string };
     const payload = {
-      ...values,
-      currencyId: normalizedCurrencyId,
+      ...restValues,
       roles: [ContactRole.EMPLOYEE],
       status: values.status || initialValues?.status || ContactStatus.ACTIVE,
     };
@@ -135,6 +137,12 @@ export default function EmployeeFormModal({ open, toggle, initialValues, onSaved
           { type: "email", message: "Enter a valid email address" },
         ]}
       />
+
+      <Divider className="!my-0 col-span-2" />
+
+      <Form.Item className="col-span-2" label="Assigned Location" name="assignedLocationId" rules={[{ required: true, message: "Select assigned location" }]}>
+        <SearchableLocationSelect />
+      </Form.Item>
 
       <Divider className="!my-0 col-span-2" />
 

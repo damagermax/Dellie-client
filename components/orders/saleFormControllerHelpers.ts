@@ -216,7 +216,7 @@ export function buildSalePayload({
   multiCurrencyEnabled: boolean;
 }) {
   const payload = {
-    contactId: values.contactId,
+    contactId: values.contactId || undefined,
     date: values.date.toISOString(),
     fulfillmentMethod: values.fulfillmentMethod || "delivery",
     deliveryDate: values.deliveryDate?.toISOString(),

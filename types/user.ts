@@ -10,6 +10,7 @@ export interface User {
   bio?: string;
   imageUrl?: string;
   isActive: boolean;
+  role?: string;
 }
 
 export interface CurrentUser extends User {
@@ -17,4 +18,6 @@ export interface CurrentUser extends User {
   stores?: StoreAccess[];
   activeStoreId?: string;
   permissions?: StorePermission[];
+  assignedLocationId?: string | null;
+  assignedLocation?: { id: string; name: string; address?: string } | null;
 }

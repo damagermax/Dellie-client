@@ -66,6 +66,7 @@ export function useSeedContactFormDefaults({
       const source = contactData || initialValues;
       form.setFieldsValue({
         ...source,
+        assignedLocationId: source?.assignedLocationId || source?.assignedLocation?.id || undefined,
         currencyId: normalizeCurrencyId(source?.currencyId),
         roles: (source?.roles || fallbackRoles).filter((role) => Object.values(ContactRole).includes(role) && role !== ContactRole.EMPLOYEE),
       });

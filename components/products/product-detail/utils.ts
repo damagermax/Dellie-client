@@ -9,7 +9,7 @@ import { InventoryBatch } from "./types";
 export function saleSourceColor(source?: string) {
   if (source === "POS") return "green";
   if (source === "Online Store") return "blue";
-  if (source === "Sales Order") return "gold";
+  if (source === "Manual Sale") return "gold";
   return "default";
 }
 

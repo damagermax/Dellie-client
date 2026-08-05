@@ -8,6 +8,7 @@ import { useCreatePurchaseMutation, useGetCurrencyQuery, useGetPaymentTermsQuery
 import { useGetDefaultLocationQuery } from "@/lib/redux/services/locationsApi";
 import { buildPaymentTermOptions } from "@/lib/payment-terms";
 import useToggle from "@/hooks/UseToggle";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
 import { RootState } from "@/lib/store";
 import { ProductListItem, Purchase, PurchaseDiscountType, Tax } from "@/types/index";
 import { buildDiscountOptions, formatMoneyLabel, getStoredUserStoreCurrency, resolveCurrencyCode, updateDueDateFromPaymentTerm } from "@/components/shared/transactionFormUtils";
@@ -42,6 +43,8 @@ export function usePurchaseOrderFormController({ open, toggle, purchase, onSaved
   const [updatePurchase, { isLoading: updating }] = useUpdatePurchaseMutation();
   const { data: paymentTerms } = useGetPaymentTermsQuery();
   const { data: defaultLocation } = useGetDefaultLocationQuery(undefined, { skip: !open });
+  const assignedScope = useAssignedLocationScope();
+  const effectiveDefaultLocationId = assignedScope.isRestricted ? assignedScope.assignedLocationId || undefined : defaultLocation?.id;
   const { data: productsData } = useGetProductsQuery({ search: searchValue, limit: 20, purchasable: true });
   const { data: taxes } = useGetTaxesQuery();
 
@@ -74,17 +77,17 @@ export function usePurchaseOrderFormController({ open, toggle, purchase, onSaved
     }
 
     form.resetFields();
-    form.setFieldsValue(getDefaultPurchaseFormValues({ defaultStoreCurrencyId, defaultLocationId: defaultLocation?.id, paymentTermsEnabled }));
+    form.setFieldsValue(getDefaultPurchaseFormValues({ defaultStoreCurrencyId, defaultLocationId: effectiveDefaultLocationId, paymentTermsEnabled }));
     setDiscount({ discountValue: 0, discountType: "percent" });
     setSelectedTax(undefined);
     setIsDeferentProductTax(false);
     setLineItems([]);
-  }, [defaultLocation?.id, defaultStoreCurrencyId, form, open, paymentTermsEnabled, purchase]);
+  }, [defaultStoreCurrencyId, effectiveDefaultLocationId, form, open, paymentTermsEnabled, purchase]);
 
   useEffect(() => {
-    if (!open || purchase || !defaultLocation?.id || form.getFieldValue("location")) return;
-    form.setFieldValue("location", defaultLocation.id);
-  }, [defaultLocation?.id, form, open, purchase]);
+    if (!open || purchase || !effectiveDefaultLocationId || form.getFieldValue("location")) return;
+    form.setFieldValue("location", effectiveDefaultLocationId);
+  }, [effectiveDefaultLocationId, form, open, purchase]);
 
   useEffect(() => {
     if (!open || !purchase || !taxes) return;

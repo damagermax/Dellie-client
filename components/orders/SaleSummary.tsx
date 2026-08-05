@@ -23,6 +23,9 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
     }, {}),
   ).map(([name, amount]) => ({ name, amount }));
 
+  const sourceLabel = !sale.source || sale.source === "Manual Sale" ? "Manual Sales" : sale.source;
+  const sourceColor = sourceLabel === "POS" ? "green" : sourceLabel === "Online Store" ? "blue" : sourceLabel === "Manual Sales" ? "gold" : "default";
+
   return (
     <aside id="sale-summary" className="w-full scroll-mt-14 border-t border-gray-200 bg-gray-50 px-5 pb-8 pt-6 lg:w-[30%] lg:border-l lg:border-t-0 lg:px-7">
       <div className="border-b border-gray-200 pb-6">
@@ -39,8 +42,8 @@ export default function SaleSummary({ sale }: SaleSummaryProps) {
                 Quote
               </Tag>
             )}
-            <Tag className="px-3 !rounded-full" color={sale.source === "POS" ? "green" : sale.source === "Online Store" ? "blue" : sale.source === "Sales Order" ? "gold" : "default"}>
-              {sale.source || "Manual Sale"}
+            <Tag className="px-3 !rounded-full" color={sourceColor}>
+              {sourceLabel}
             </Tag>
           </div>
         </div>

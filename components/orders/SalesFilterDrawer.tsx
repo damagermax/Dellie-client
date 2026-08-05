@@ -25,10 +25,9 @@ interface SalesFilterDrawerProps {
 
 const saleSourceOptions = [
   { value: "", label: "All" },
-  { value: "Manual Sale", label: "Manual Sale" },
   { value: "POS", label: "POS" },
   { value: "Online Store", label: "Website" },
-  { value: "Sales Order", label: "Sales Order" },
+  { value: "Manual Sale", label: "Manual Sales" },
 ];
 
 export function SalesFilterDrawer({ open, filters, onChange, onClose, onApply, onClear }: SalesFilterDrawerProps) {
