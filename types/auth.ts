@@ -10,6 +10,22 @@ export interface RegisterUserInput {
   currencyId: string;
 }
 
+export interface SignupOtpResponse {
+  message: string;
+  email: string;
+  expiresAt: string;
+  resendAvailableAt: string;
+}
+
+export interface VerifySignupOtpInput {
+  email: string;
+  otp: string;
+}
+
+export interface ResendSignupOtpInput {
+  email: string;
+}
+
 export interface LoginUserInput {
   identifier: string;
   password: string;

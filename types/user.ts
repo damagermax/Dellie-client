@@ -7,7 +7,6 @@ export interface User {
   name: string;
   phone?: string;
   username?: string;
-  bio?: string;
   imageUrl?: string;
   isActive: boolean;
   role?: string;

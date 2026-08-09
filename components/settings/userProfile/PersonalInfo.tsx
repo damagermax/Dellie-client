@@ -1,51 +1,82 @@
 "use client";
 
-import { Card, Avatar, Button, Upload, Form } from "antd";
+import { Card, Avatar, Button, Upload, Form, message } from "antd";
+import type { FormInstance, UploadProps } from "antd";
 
 import { EditOutlined, UploadOutlined, UserOutlined } from "@ant-design/icons";
 
-import { InputFormItem, TextAreaFormItem } from "@/components/ui/AppFormItems";
+import { InputFormItem, PhoneInputFormItem } from "@/components/ui/AppFormItems";
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useUpdateUserProfileMutation } from "@/lib/redux/services/userApi";
+import type { RootState } from "@/lib/redux/store";
 
-export default function PersonalInfo({ isEditing }: { isEditing: boolean }) {
-  const [profileForm] = Form.useForm();
+function normalizePhoneInputValue(phone?: string | null) {
+  return (phone ?? "").replace(/[^\d]/g, "");
+}
+
+function formatPhoneForSubmit(phone?: string) {
+  const digits = normalizePhoneInputValue(phone);
+  return digits ? `+${digits}` : "";
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === "object" && error !== null) {
+    const apiError = error as { data?: { message?: string | string[] }; message?: string };
+    const messageValue = apiError.data?.message ?? apiError.message;
+    if (Array.isArray(messageValue)) return messageValue.join(" ");
+    if (typeof messageValue === "string" && messageValue.trim()) return messageValue;
+  }
+  return fallback;
+}
+
+export default function PersonalInfo({ isEditing, profileForm, onSaved }: { isEditing: boolean; profileForm: FormInstance; onSaved: () => void }) {
   const [image, setImage] = useState<string | File | undefined>(undefined);
 
-  const currentUser = useSelector((state: any) => state.currentUser);
+  const currentUser = useSelector((state: RootState) => state.currentUser);
   const [updateUserProfile, { isLoading }] = useUpdateUserProfileMutation();
 
   useEffect(() => {
     if (currentUser?.user) {
       profileForm.setFieldsValue({
         name: currentUser.user.name,
+        username: currentUser.user.username,
         email: currentUser.user.email,
-        phone: currentUser.user.phone,
-        bio: currentUser.user.bio,
+        phone: normalizePhoneInputValue(currentUser.user.phone),
       });
     }
-  }, [currentUser]);
+  }, [currentUser, profileForm]);
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: { name: string; phone?: string }) => {
     const formData = new FormData();
+    const payload = {
+      ...values,
+      phone: formatPhoneForSubmit(values.phone),
+    };
 
     if (image) {
       formData.append("image", image as string | Blob);
     }
 
-    for (const key in values) {
-      if (values[key] !== undefined && values[key] !== null) {
-        formData.append(key, values[key]);
+    for (const [key, value] of Object.entries(payload)) {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value);
       }
     }
 
-    !isLoading && (await updateUserProfile(formData));
+    if (isLoading) return;
+
+    try {
+      await updateUserProfile(formData).unwrap();
+      message.success("Profile updated.");
+      onSaved();
+    } catch (error) {
+      message.error(getErrorMessage(error, "Profile could not be updated."));
+    }
   };
 
-  const handleChange = (values: any) => {
-    setImage(values.file);
-    console.log(" file:", values.file);
+  const handleChange: UploadProps["onChange"] = (values) => {
+    setImage(values.file?.originFileObj);
   };
 
   return (
@@ -104,26 +135,29 @@ export default function PersonalInfo({ isEditing }: { isEditing: boolean }) {
                   className="mb-0"
                 />
 
-                <InputFormItem name="phone" label="Phone" rules={[{ message: "Please input your name!" }]} className="mb-0" />
+                <PhoneInputFormItem label="Phone" name="phone" rules={[{ required: true, message: "Please input your phone number!" }]} className="mb-0" />
+
+                <InputFormItem
+                  name="username"
+                  label="Username"
+                  disable
+                  className="mb-0"
+                />
 
                 <div className=" col-span-2">
                   <InputFormItem
                     name="email"
                     label="Email"
+                    disable
                     rules={[
                       {
                         required: true,
-                        message: "Please input your name!",
+                        message: "Please input your email!",
                       },
                     ]}
                     className="mb-0"
                   />
-                </div>
-
-                <div className=" col-span-2">
-                  <TextAreaFormItem name="bio" label="About Me" placeholder="Tell us about yourself, your experience, or anything else you'd like to share..." />
-
-                  <div className="mt-1 text-xs text-gray-400">This will be displayed on your public profile</div>
+                  <div className="mt-1 text-xs text-gray-400">Email is read-only here. Contact an admin if it needs to change.</div>
                 </div>
               </div>
             </Form>

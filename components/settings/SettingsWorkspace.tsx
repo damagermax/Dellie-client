@@ -5,7 +5,7 @@ import { Button } from "antd";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { IconType } from "react-icons";
-import { LuAppWindow, LuBadgePercent, LuCalendarClock, LuChevronLeft, LuChevronRight, LuCircleDollarSign, LuCreditCard, LuFileStack, LuFolderTree, LuGlobe, LuMapPin, LuPlus, LuReceipt, LuScanLine, LuSettings, LuStore, LuUsers } from "react-icons/lu";
+import { LuAppWindow, LuBadgePercent, LuCalendarClock, LuChevronLeft, LuChevronRight, LuCircleDollarSign, LuCreditCard, LuFileStack, LuFolderTree, LuGlobe, LuMapPin, LuPlus, LuReceipt, LuScanLine, LuSettings, LuStore, LuUser, LuUsers } from "react-icons/lu";
 import CategoriesFormModal from "../categories/CategoriesFormModal";
 import CategoriesList from "../categories/categories-view/CategoriesList";
 import DiscountsList from "../discounts/discount-view/DiscountsList";
@@ -217,6 +217,15 @@ const SETTINGS_GROUPS: SettingGroup[] = [
     title: "Settings",
     description: "Business identity, modules, POS defaults, document templates, and operating locations.",
     items: [
+      {
+        type: "link",
+        key: "account",
+        label: "Account",
+        description: "Your profile details, phone number, and password",
+        href: "/settings/profile",
+        icon: LuUser,
+        tone: "bg-slate-100 text-slate-700 ring-slate-200",
+      },
       { type: "section", key: "Business Profile" },
       { type: "section", key: "Online Store" },
       { type: "section", key: "Features" },

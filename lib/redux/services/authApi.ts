@@ -1,6 +1,6 @@
 import { baseApi } from "./baseApi";
 
-import { ChangePasswordInput, ForgotPasswordInput, LoginUserInput, RegisterUserInput, AuthResponse, RestPasswordInput, CurrentUser } from "@/types/index";
+import { ChangePasswordInput, ForgotPasswordInput, LoginUserInput, RegisterUserInput, AuthResponse, RestPasswordInput, CurrentUser, ResendSignupOtpInput, SignupOtpResponse, VerifySignupOtpInput } from "@/types/index";
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -11,9 +11,23 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
-    register: builder.mutation<AuthResponse, RegisterUserInput>({
+    startSignup: builder.mutation<SignupOtpResponse, RegisterUserInput>({
       query: (body) => ({
-        url: "auth/signup",
+        url: "auth/signup/start",
+        method: "POST",
+        body,
+      }),
+    }),
+    resendSignupOtp: builder.mutation<SignupOtpResponse, ResendSignupOtpInput>({
+      query: (body) => ({
+        url: "auth/signup/resend",
+        method: "POST",
+        body,
+      }),
+    }),
+    verifySignupOtp: builder.mutation<AuthResponse, VerifySignupOtpInput>({
+      query: (body) => ({
+        url: "auth/signup/verify",
         method: "POST",
         body,
       }),
@@ -64,4 +78,4 @@ export const authApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useLogoutMutation, useMeQuery, useChangePasswordMutation, useForgotPasswordMutation, useResetPasswordMutation, useSwitchStoreMutation } = authApi;
+export const { useLoginMutation, useStartSignupMutation, useResendSignupOtpMutation, useVerifySignupOtpMutation, useLogoutMutation, useMeQuery, useChangePasswordMutation, useForgotPasswordMutation, useResetPasswordMutation, useSwitchStoreMutation } = authApi;

@@ -1,23 +1,13 @@
 "use client";
 
 import { ClockCircleOutlined, EditOutlined, GlobalOutlined, LockOutlined, SaveOutlined } from "@ant-design/icons";
-import { Button, Card, Form, Input, message, Select, Switch, Upload, UploadFile, UploadProps } from "antd";
+import { Button, Card, Form, Select, Switch } from "antd";
 import { useState } from "react";
 
 import ChangePassword from "@/components/settings/userProfile/ChangePassword";
 import PersonalInfo from "@/components/settings/userProfile/PersonalInfo";
 
-const { TextArea } = Input;
 const { Option } = Select;
-
-interface UserProfile {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  bio: string;
-  avatar?: string;
-}
 
 const timezones = [
   { value: "Africa/Accra", label: "(GMT+00:00) Accra" },
@@ -36,27 +26,7 @@ const languages = [
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [profileForm] = Form.useForm();
-
-  // Sample user data
-
-  const uploadProps: UploadProps = {
-    onRemove: () => {
-      setFileList([]);
-      return false;
-    },
-    beforeUpload: (file) => {
-      const isImage = file.type.startsWith("image/");
-      if (!isImage) {
-        message.error("You can only upload image files!");
-        return Upload.LIST_IGNORE;
-      }
-      setFileList([file]);
-      return false;
-    },
-    fileList,
-  };
 
   return (
     <div className=" w-[70%]">
@@ -90,7 +60,7 @@ export default function ProfilePage() {
 
       <div className="space-y-6">
         {/* Profile Card */}
-        <PersonalInfo isEditing={isEditing} />
+        <PersonalInfo isEditing={isEditing} profileForm={profileForm} onSaved={() => setIsEditing(false)} />
 
         {/* Security Section */}
         <Card title={<span className="text-lg font-semibold">Security</span>} className="border-0  rounded-xl">

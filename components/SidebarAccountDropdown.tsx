@@ -13,6 +13,11 @@ import { baseApi } from "@/lib/redux/services/baseApi";
 
 const items: MenuProps["items"] = [
   {
+    key: "account",
+    icon: <FiSettings size={16} />,
+    label: <div>Account</div>,
+  },
+  {
     key: "settings",
     icon: <FiSettings size={16} />,
     label: <div>Settings</div>,
@@ -57,6 +62,10 @@ const SidebarAccountDropdown = ({ isCollapsed }: AccountProps) => {
 
   const onMenuClick: MenuProps["onClick"] = async ({ key }) => {
     switch (key) {
+      case "account":
+        router.push("/settings/profile");
+        break;
+
       case "settings":
         router.push("/settings");
         break;
