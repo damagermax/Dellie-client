@@ -507,15 +507,12 @@ function PriceTiersEditor({ enableTradePrice, currencyCode }: { enableTradePrice
                   <p className="mt-0.5 text-xs text-gray-500">{tierDescription(index === 0 ? NORMAL_PRICE_TIER_NAME : TRADE_PRICE_TIER_NAME, index === 0)}</p>
                 </div>
 
-                <div className="grid gap-3 grid-cols-4 md:grid-cols-3">
-                  <Form.Item {...field} label="Price" name={[field.name, "price"]} className="!mb-0  col-span-2 md:col-span-1" rules={[{ required: true, message: "Enter price" }]}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Form.Item {...field} label="Price" name={[field.name, "price"]} className="!mb-0" rules={[{ required: true, message: "Enter price" }]}>
                     <InputNumber className={NUMBER_INPUT_CLASS} min={0} controls={false} prefix={currencyCode || undefined} placeholder="0.00" />
                   </Form.Item>
                   <Form.Item {...field} label="MOQ" name={[field.name, "moq"]} className="!mb-0" rules={[{ required: true, message: "Enter MOQ" }]}>
                     <InputNumber className={NUMBER_INPUT_CLASS} min={1} controls={false} placeholder="1" />
-                  </Form.Item>
-                  <Form.Item {...field} label="Discount" name={[field.name, "discountPercent"]} className="!mb-0" rules={[{ required: true, message: "Enter discount" }]}>
-                    <InputNumber className={NUMBER_INPUT_CLASS} min={0} suffix="%" controls={false} placeholder="0" />
                   </Form.Item>
                 </div>
 

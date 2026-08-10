@@ -53,9 +53,8 @@ function PriceTierCard({ tier, costPrice, isNormal, canEdit, onEdit, currencyCod
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 overflow-hidden rounded-md border border-gray-100 bg-white/60">
+          <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-md border border-gray-100 bg-white/60">
             <TierStat label="MOQ" value={formatQuantity(tier.moq)} />
-            <TierStat label="Discount" value={`${formatQuantity(tier.discountPercent)}%`} />
             <TierStat label="Margin" value={formatMargin(tier.price, costPrice)} />
           </div>
         </div>
