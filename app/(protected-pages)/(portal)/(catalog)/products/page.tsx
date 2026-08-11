@@ -19,11 +19,15 @@ import { DesktopQuickFilterSegment } from "@/components/ui/DesktopQuickFilterSeg
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
 import { useEffect, useMemo } from "react";
+import { ActiveFilterChipItem, DesktopActiveFilterChips } from "@/components/ui/DesktopActiveFilterChips";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
+import { useGetCategoryQuery, useGetLocationQuery } from "@/lib/redux/services";
 
 type ProductsQuickFilter = "all" | "out_of_stock" | "expiring_soon" | "archived";
 
 export default function ProductsPage() {
   const { ready, hasPermission } = usePermissions();
+  const assignedScope = useAssignedLocationScope();
   const trackQuantityEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.trackQuantityEnabled !== false);
   const [openProductForm, toggleProductForm] = useToggle();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -31,6 +35,10 @@ export default function ProductsPage() {
 
   const [productsQuery, setProductsQuery] = useState<ProductQueryParams>({ page: 1, limit: 20 });
   const [draftFilters, setDraftFilters] = useState<ProductQueryParams>({});
+  const { data: category } = useGetCategoryQuery(productsQuery.categoryId || "", { skip: !productsQuery.categoryId });
+  const { data: location } = useGetLocationQuery(productsQuery.locationId || "", {
+    skip: !productsQuery.locationId || (assignedScope.isRestricted && productsQuery.locationId === assignedScope.assignedLocationId),
+  });
   const filterCount =
     Number(Boolean(trackQuantityEnabled && productsQuery.type)) +
     Number(Boolean(productsQuery.categoryId)) +
@@ -48,6 +56,55 @@ export default function ProductsPage() {
           : !productsQuery.stockStatus && !productsQuery.expiryStatus && !productsQuery.status
             ? "all"
             : undefined;
+  const activeFilterChips = useMemo(() => {
+    const items: Array<ActiveFilterChipItem | null> = [
+      trackQuantityEnabled && productsQuery.type
+        ? {
+            key: "type",
+            label: productsQuery.type === "STOCK" ? "Stock" : productsQuery.type === "NON_STOCK" ? "Non-stock" : "Bundle",
+            onRemove: () => setProductsQuery((current) => ({ ...current, type: undefined, page: 1 })),
+          }
+        : null,
+      productsQuery.categoryId
+        ? {
+            key: "categoryId",
+            label: category?.name || "Category",
+            onRemove: () => setProductsQuery((current) => ({ ...current, categoryId: undefined, page: 1 })),
+          }
+        : null,
+      productsQuery.locationId
+        ? {
+            key: "locationId",
+            label: assignedScope.isRestricted && productsQuery.locationId === assignedScope.assignedLocationId ? assignedScope.assignedLocation?.name || "Assigned location" : location?.name || "Location",
+            removable: !assignedScope.isRestricted,
+            onRemove: assignedScope.isRestricted ? undefined : () => setProductsQuery((current) => ({ ...current, locationId: undefined, page: 1 })),
+          }
+        : null,
+      trackQuantityEnabled && productsQuery.stockStatus
+        ? {
+            key: "stockStatus",
+            label: productsQuery.stockStatus === "out_of_stock" ? "Out of stock" : "In stock",
+            onRemove: () => setProductsQuery((current) => ({ ...current, stockStatus: undefined, page: 1 })),
+          }
+        : null,
+      productsQuery.status
+        ? {
+            key: "status",
+            label: productsQuery.status === "archived" ? "Archived" : "Active",
+            onRemove: () => setProductsQuery((current) => ({ ...current, status: undefined, page: 1 })),
+          }
+        : null,
+      trackQuantityEnabled && productsQuery.expiryStatus
+        ? {
+            key: "expiryStatus",
+            label: productsQuery.expiryStatus === "expiring_soon" ? "Soon expiring" : productsQuery.expiryStatus,
+            onRemove: () => setProductsQuery((current) => ({ ...current, expiryStatus: undefined, page: 1 })),
+          }
+        : null,
+    ];
+
+    return items.filter((item): item is ActiveFilterChipItem => item !== null);
+  }, [assignedScope.assignedLocation?.name, assignedScope.assignedLocationId, assignedScope.isRestricted, category?.name, location?.name, productsQuery, trackQuantityEnabled]);
 
   const quickFilterOptions = useMemo(
     () =>
@@ -147,6 +204,7 @@ export default function ProductsPage() {
           )}
         </div>
       </div>
+      <DesktopActiveFilterChips items={activeFilterChips} className="px-4 pb-2 md:px-8" />
       <ProductView view={view} query={productsQuery} onQueryChange={setProductsQuery} />
       <ProductsFilterDrawer open={filterOpen} filters={draftFilters} onChange={(values) => setDraftFilters((prev) => ({ ...prev, ...values }))} onClose={() => setFilterOpen(false)} onApply={handleApplyFilters} onClear={handleFilterReset} />
 

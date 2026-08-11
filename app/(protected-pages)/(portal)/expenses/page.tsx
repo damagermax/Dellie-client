@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import dayjs from "dayjs";
 import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 import ExpenseFormModal from "@/components/expenses/ExpenseFormModel";
@@ -16,6 +17,9 @@ import { StorePermission } from "@/types/store-access";
 import { ExpenseQueryParams } from "@/types/transaction";
 import { ExpensesFilterDrawer } from "@/components/expenses/ExpensesFilterDrawer";
 import { DesktopQuickFilterSegment } from "@/components/ui/DesktopQuickFilterSegment";
+import { ActiveFilterChipItem, DesktopActiveFilterChips } from "@/components/ui/DesktopActiveFilterChips";
+import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
+import { useGetCategoryQuery, useGetContactQuery } from "@/lib/redux/services";
 
 type ExpensesQuickFilter = "all" | "unpaid" | "paid" | "overdue";
 
@@ -36,6 +40,8 @@ export default function ExpensePage() {
   );
   const [query, setQuery] = useState<ExpenseQueryParams>(initialQuery);
   const [draftFilters, setDraftFilters] = useState<ExpenseQueryParams>({ type: TransactionType.EXPENSE });
+  const { data: category } = useGetCategoryQuery(query.categoryId || "", { skip: !query.categoryId });
+  const { data: contact } = useGetContactQuery(query.contactId || "", { skip: !query.contactId });
   const filterCount = Number(Boolean(query.status)) + Number(Boolean(query.categoryId)) + Number(Boolean(query.contactId)) + Number(Boolean(query.dateFrom || query.dateTo));
   const expensesQuickFilter: ExpensesQuickFilter | undefined =
     query.overdue && !query.paymentStatus
@@ -44,9 +50,62 @@ export default function ExpensePage() {
         ? "unpaid"
         : query.paymentStatus === "paid" && !query.overdue
           ? "paid"
-          : !query.paymentStatus && !query.overdue
+        : !query.paymentStatus && !query.overdue
             ? "all"
             : undefined;
+  const activeFilterChips = useMemo(() => {
+    const dateLabel =
+      query.dateFrom || query.dateTo
+        ? `Date: ${query.dateFrom ? dayjs(query.dateFrom).format("DD MMM YYYY") : "Any"} - ${query.dateTo ? dayjs(query.dateTo).format("DD MMM YYYY") : "Any"}`
+        : undefined;
+
+    const items: Array<ActiveFilterChipItem | null> = [
+      query.paymentStatus
+        ? {
+            key: "paymentStatus",
+            label: paymentStatusLabel(query.paymentStatus),
+            onRemove: () => setQuery((current) => ({ ...current, paymentStatus: undefined, page: 1 })),
+          }
+        : null,
+      query.overdue
+        ? {
+            key: "overdue",
+            label: "Overdue",
+            onRemove: () => setQuery((current) => ({ ...current, overdue: undefined, page: 1 })),
+          }
+        : null,
+      query.status
+        ? {
+            key: "status",
+            label: query.status === "closed" ? "Closed" : query.status === "cancelled" ? "Cancelled" : "Open",
+            onRemove: () => setQuery((current) => ({ ...current, status: undefined, page: 1 })),
+          }
+        : null,
+      query.categoryId
+        ? {
+            key: "categoryId",
+            label: category?.name || "Category",
+            onRemove: () => setQuery((current) => ({ ...current, categoryId: undefined, page: 1 })),
+          }
+        : null,
+      query.contactId
+        ? {
+            key: "contactId",
+            label: contact?.name || "Contact",
+            onRemove: () => setQuery((current) => ({ ...current, contactId: undefined, page: 1 })),
+          }
+        : null,
+      dateLabel
+        ? {
+            key: "dateRange",
+            label: dateLabel,
+            onRemove: () => setQuery((current) => ({ ...current, dateFrom: undefined, dateTo: undefined, page: 1 })),
+          }
+        : null,
+    ];
+
+    return items.filter((item): item is ActiveFilterChipItem => item !== null);
+  }, [category?.name, contact?.name, query]);
 
   const openFilters = () => {
     setDraftFilters({
@@ -128,6 +187,7 @@ export default function ExpensePage() {
           </div>
         </div>
       </div>
+      <DesktopActiveFilterChips items={activeFilterChips} className="px-4 pb-2 md:px-8" />
 
       {/* 
       <div className=" hidden mb-5 grid grid-cols-3 border-y border-solid border-gray-100 px-8 bg-gray-50 py-5">

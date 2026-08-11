@@ -3,7 +3,7 @@
 import ContactsFormModal from "@/components/contacts/ContactsFormModal";
 import EmployeeFormModal from "@/components/contacts/EmployeeFormModal";
 import ContactsView from "@/components/contacts/contacts-view/ContactsView";
-import { AddButton, FloatingAddButton, ImportExportButton } from "@/components/ui/AppButtons";
+import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 import useToggle from "@/hooks/UseToggle";
 import { ContactQueryParams, ContactRole } from "@/types/contact";
@@ -130,7 +130,6 @@ export default function ContactsPage() {
           ) : null}
         </div>
         <div className="flex gap-x-2">
-          <ImportExportButton />
           <div className="hidden md:block">
             <AddButton onClick={contactsQuickFilter === "employees" ? toggleEmployeeForm : toggleCustomerForm} label={contactsQuickFilter === "employees" ? "New Employee" : "New Contact"} />
           </div>
