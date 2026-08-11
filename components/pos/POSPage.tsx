@@ -119,7 +119,7 @@ export default function POSPage() {
   const historyRange = useMemo(() => getTodayRange(), []);
 
   const { data: defaultLocation } = useGetDefaultLocationQuery();
-  const { data: locations } = useGetLocationsQuery({});
+  const { data: locations, isLoading: locationsLoading } = useGetLocationsQuery({});
   const { data: contactsData, isLoading: contactsLoading } = useGetContactsQuery({
     role: ContactRole.CUSTOMER,
     search: debouncedCustomerSearch || undefined,
@@ -831,6 +831,7 @@ export default function POSPage() {
       <PosLocationModal
         open={!assignedScope.isRestricted && locationModalOpen}
         locations={locations}
+        loading={locationsLoading}
         activeLocationId={selectedLocation?.id || defaultLocation?.id || form.getFieldValue("locationId")}
         onClose={() => setLocationModalOpen(false)}
         onSelectLocation={(location) => {

@@ -20,6 +20,7 @@ import { RootState } from "@/lib/redux/store";
 
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
 import ContactsFormModal from "../contacts/ContactsFormModal";
+import { ContactRole } from "@/types/contact";
 
 interface ExpenseFormModalProps extends ModalProps {
   initialValues?: Expense;
@@ -155,7 +156,16 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
 
   return (
     <>
-      <CategoriesFormModal type={CategoryType.EXPENSE} open={openExpenseCategoryModal} toggle={toggleOpenExpenseCategoryModal} />
+      <CategoriesFormModal
+        type={CategoryType.EXPENSE}
+        open={openExpenseCategoryModal}
+        toggle={toggleOpenExpenseCategoryModal}
+        onSaved={(category) => {
+          if (category?.id) {
+            expenseForm.setFieldValue("categoryId", category.id);
+          }
+        }}
+      />
 
       <AppModal height={"62vh"} title={initialValues ? "Edit Expense " : "Create Expense "} onOk={expenseForm.submit} width={600} okText={isCreating || isUpdating ? "Saving.." : "Save"} open={open} toggle={toggle}>
         <Form
@@ -245,7 +255,19 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
         </Form>
       </AppModal>
 
-      {isContactModalOpen && <ContactsFormModal open={isContactModalOpen} toggle={toggleContactModal} />}
+      {isContactModalOpen && (
+        <ContactsFormModal
+          open={isContactModalOpen}
+          toggle={toggleContactModal}
+          hideRoles
+          defaultRoles={[ContactRole.SUPPLIER]}
+          onSaved={(contact) => {
+            if (contact?.id) {
+              expenseForm.setFieldValue("contactId", contact.id);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

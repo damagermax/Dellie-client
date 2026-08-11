@@ -1,5 +1,6 @@
 "use client";
 
+import dayjs, { Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { message } from "antd";
 
@@ -18,6 +19,7 @@ interface UseSaleStockOperationControllerArgs {
 
 export function useSaleStockOperationController({ open, sale, onSaved, toggle }: UseSaleStockOperationControllerArgs) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [date, setDate] = useState<Dayjs>(dayjs());
   const [fulfillSale, { isLoading: fulfilling }] = useFulfillSaleMutation();
   const isPickup = sale.fulfillmentMethod === "pickup";
   const lines = useMemo(() => buildSaleFulfillmentLines(sale), [sale]);
@@ -25,6 +27,7 @@ export function useSaleStockOperationController({ open, sale, onSaved, toggle }:
   useEffect(() => {
     if (open) {
       setQuantities(buildDefaultFulfillmentQuantities(lines));
+      setDate(dayjs());
     }
   }, [lines, open]);
 
@@ -46,20 +49,22 @@ export function useSaleStockOperationController({ open, sale, onSaved, toggle }:
     }
 
     try {
-      await fulfillSale({ id: sale.id, items }).unwrap();
+      await fulfillSale({ id: sale.id, date: date.toISOString(), items }).unwrap();
       message.success(isPickup ? "Sale marked as picked up." : "Sale fulfilled.");
       onSaved();
       toggle();
     } catch (error) {
       message.error(saleApiError(error, isPickup ? "Sale could not be marked as picked up." : "Sale could not be fulfilled."));
     }
-  }, [fulfillSale, isPickup, lines, onSaved, quantities, sale.id, toggle]);
+  }, [date, fulfillSale, isPickup, lines, onSaved, quantities, sale.id, toggle]);
 
   return {
+    date,
     fulfilling,
     isPickup,
     lines,
     quantities,
+    setDate,
     setQuantity,
     submit,
   };

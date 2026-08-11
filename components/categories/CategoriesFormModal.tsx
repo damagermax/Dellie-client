@@ -12,13 +12,14 @@ import AppSingleImagePicker from "../ui/AppSingleImagePicker";
 interface CategoriesFormModalProp extends ModalProps {
   initialValues?: Category;
   type?: CategoryType;
+  onSaved?: (category?: Category) => void;
 }
 
 type CategoryFormValues = Omit<CategoryCreateInput, "status"> & {
   status?: boolean;
 };
 
-export default function CategoriesFormModal({ open, toggle, initialValues, type }: CategoriesFormModalProp) {
+export default function CategoriesFormModal({ open, toggle, initialValues, type, onSaved }: CategoriesFormModalProp) {
   const [categoryForm] = Form.useForm();
   const categoryType = useMemo(() => initialValues?.type || type || CategoryType.PRODUCT, [initialValues?.type, type]);
   const [imageFiles, setImageFiles] = useState<UploadFile[]>([]);
@@ -46,14 +47,11 @@ export default function CategoriesFormModal({ open, toggle, initialValues, type 
       payload.append("removeImage", "true");
     }
 
-    if (initialValues?.id) {
-      await updateCategory({ id: initialValues.id, data: payload }).unwrap();
-    } else {
-      await createCategory(payload).unwrap();
-    }
+    const savedCategory = initialValues?.id ? await updateCategory({ id: initialValues.id, data: payload }).unwrap() : await createCategory(payload).unwrap();
 
     categoryForm.resetFields();
     setImageFiles([]);
+    onSaved?.(savedCategory);
     toggle();
   };
 

@@ -1,5 +1,6 @@
 "use client";
 
+import dayjs, { Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { message } from "antd";
 
@@ -18,12 +19,14 @@ interface UsePurchaseStockOperationControllerArgs {
 
 export function usePurchaseStockOperationController({ open, purchase, onSaved, toggle }: UsePurchaseStockOperationControllerArgs) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [date, setDate] = useState<Dayjs>(dayjs());
   const [fulfillPurchase, { isLoading: fulfilling }] = useFulfillPurchaseMutation();
   const lines = useMemo(() => buildPurchaseReceiptLines(purchase), [purchase]);
 
   useEffect(() => {
     if (open) {
       setQuantities(buildDefaultReceiptQuantities(lines));
+      setDate(dayjs());
     }
   }, [lines, open]);
 
@@ -45,19 +48,21 @@ export function usePurchaseStockOperationController({ open, purchase, onSaved, t
     }
 
     try {
-      await fulfillPurchase({ id: purchase.id, items }).unwrap();
+      await fulfillPurchase({ id: purchase.id, date: date.toISOString(), items }).unwrap();
       message.success("Purchase fulfilled.");
       onSaved();
       toggle();
     } catch (error) {
       message.error(purchaseApiError(error, "Items could not be fulfilled."));
     }
-  }, [fulfillPurchase, lines, onSaved, purchase.id, quantities, toggle]);
+  }, [date, fulfillPurchase, lines, onSaved, purchase.id, quantities, toggle]);
 
   return {
+    date,
     fulfilling,
     lines,
     quantities,
+    setDate,
     setQuantity,
     submit,
   };

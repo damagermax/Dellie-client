@@ -1,7 +1,8 @@
 "use client";
 
-import { Button, Form, Input, Select, Switch } from "antd";
+import { Button, Form, Input, Switch } from "antd";
 import { SearchableContactSelect } from "@/components/contacts/SeachableContactSelect";
+import ContactsFormModal from "@/components/contacts/ContactsFormModal";
 import { SearchableLocationSelect } from "@/components/location/SearchableLocationSelect";
 import { TaxSelector } from "@/components/settings/TaxSelector";
 import { SearchableCurrenciesSelect } from "@/components/system/SearchableCurrencySelect";
@@ -15,6 +16,10 @@ import { buildSaleFormColumns, SaleProductSearchResults, SaleSummaryPanel } from
 import { useSaleFormController } from "./useSaleFormController";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
+import useToggle from "@/hooks/UseToggle";
+import { ContactRole } from "@/types/contact";
+import PaymentTermsForm from "@/components/settings/PaymentTermsForm";
+import { SearchablePaymentTermSelect } from "@/components/settings/SearchablePaymentTermSelect";
 
 interface SaleFormModalProps extends ModalProps {
   sale?: Sale;
@@ -23,6 +28,8 @@ interface SaleFormModalProps extends ModalProps {
 
 export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormModalProps) {
   const controller = useSaleFormController({ open, toggle, sale, onSaved });
+  const [contactOpen, toggleContactOpen] = useToggle();
+  const [paymentTermOpen, togglePaymentTermOpen] = useToggle();
   const quotesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.quotesEnabled !== false);
   const inputGridClass = controller.multiCurrencyEnabled && controller.paymentTermsEnabled ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3";
   const columns = buildSaleFormColumns({
@@ -78,7 +85,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
           )}
           <div className={`grid grid-cols-1 gap-x-5 gap-y-1 px-5 pb-8 pt-4 ${inputGridClass}`}>
             <Form.Item name="contactId" label="Contact">
-              <SearchableContactSelect onAddContact={() => {}} />
+              <SearchableContactSelect role={ContactRole.CUSTOMER} onAddContact={toggleContactOpen} />
             </Form.Item>
             <DatePickerFormItem label="Date" name="date" placeholder="date" className="" />
             <DatePickerFormItem
@@ -101,7 +108,7 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
             {controller.paymentTermsEnabled ? (
               <>
                 <Form.Item name="paymentTerm" label="Payment Term">
-                  <Select options={controller.paymentTermOptions} placeholder="Payment Term" onChange={controller.handlePaymentTermChange} />
+                  <SearchablePaymentTermSelect onAddPaymentTerm={togglePaymentTermOpen} onChange={controller.handlePaymentTermChange} />
                 </Form.Item>
                 <DatePickerFormItem label="Due Date" name="dueDate" placeholder="Due Date" className="" />
               </>
@@ -131,6 +138,31 @@ export default function SaleFormModal({ open, toggle, sale, onSaved }: SaleFormM
           ) : null}
         </Form>
       </AppModal>
+      {contactOpen ? (
+        <ContactsFormModal
+          open={contactOpen}
+          toggle={toggleContactOpen}
+          hideRoles
+          defaultRoles={[ContactRole.CUSTOMER]}
+          onSaved={(contact) => {
+            if (contact?.id) {
+              controller.form.setFieldValue("contactId", contact.id);
+            }
+          }}
+        />
+      ) : null}
+      {paymentTermOpen ? (
+        <PaymentTermsForm
+          open={paymentTermOpen}
+          toggle={togglePaymentTermOpen}
+          onSaved={(paymentTerm) => {
+            if (paymentTerm?.code) {
+              controller.form.setFieldValue("paymentTerm", paymentTerm.code);
+              controller.handlePaymentTermChange(paymentTerm.code);
+            }
+          }}
+        />
+      ) : null}
       <ProductVariantSelectorModal parent={controller.variantParent} onClose={controller.closeVariantSelector} onSelect={(variant) => (controller.addProduct(variant), controller.closeVariantSelector())} />
       <TaxSelector
         handleTaxSelect={controller.handleSelectTax}

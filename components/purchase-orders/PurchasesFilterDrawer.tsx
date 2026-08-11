@@ -6,6 +6,7 @@ import { SearchableContactSelect } from "@/components/contacts/SeachableContactS
 import { SearchableLocationSelect } from "@/components/location/SearchableLocationSelect";
 import { AppFilterDrawer } from "@/components/ui/AppFilterDrawer";
 import { FilterField } from "@/components/ui/FilterField";
+import { ContactRole } from "@/types/contact";
 import { PurchaseQueryParams, PurchaseReceiptStatus } from "@/types/purchase";
 
 const { RangePicker } = DatePicker;
@@ -85,7 +86,7 @@ export function PurchasesFilterDrawer({ open, filters, onChange, onClose, onAppl
       </FilterField>
 
       <FilterField label="Supplier">
-        <SearchableContactSelect includeAllOption allLabel="All" value={filters.supplierId} onChange={(supplierId) => onChange({ supplierId: (supplierId as string) || undefined })} />
+        <SearchableContactSelect role={ContactRole.SUPPLIER} includeAllOption allLabel="All" value={filters.supplierId} onChange={(supplierId) => onChange({ supplierId: (supplierId as string) || undefined })} />
       </FilterField>
 
       <FilterField label="Date range">

@@ -113,7 +113,9 @@ export default function PosHistoryDrawer({
             <div className="rounded-2xl bg-stone-50 px-4 py-6 text-sm text-stone-500">No saved carts for today.</div>
           )
         ) : salesHistoryLoading ? (
-          <div className="rounded-2xl bg-stone-50 px-4 py-6 text-sm text-stone-500">Loading sales...</div>
+          <div className="bg-white">
+            <HistoryListShimmer />
+          </div>
         ) : todaysCompletedSales.length ? (
           <div className="bg-white">
             {todaysCompletedSales.map((sale, index) => {
@@ -153,5 +155,30 @@ export default function PosHistoryDrawer({
         )}
       </div>
     </Drawer>
+  );
+}
+
+function HistoryListShimmer() {
+  return (
+    <div className="bg-white">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={`pos-history-shimmer-${index}`} className={`bg-white px-4 py-4 ${index !== 4 ? "border-b border-stone-200" : ""}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="h-4 w-36 animate-pulse rounded bg-stone-200" />
+              <div className="mt-2 h-3 w-24 animate-pulse rounded bg-stone-100" />
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
+              <div className="h-5 w-14 animate-pulse rounded-full bg-stone-100" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="h-3 w-20 animate-pulse rounded bg-stone-100" />
+            <div className="h-3 w-28 animate-pulse rounded bg-stone-100" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

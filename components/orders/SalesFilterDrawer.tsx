@@ -7,6 +7,7 @@ import { SearchableContactSelect } from "@/components/contacts/SeachableContactS
 import { SearchableLocationSelect } from "@/components/location/SearchableLocationSelect";
 import { AppFilterDrawer } from "@/components/ui/AppFilterDrawer";
 import { FilterField } from "@/components/ui/FilterField";
+import { ContactRole } from "@/types/contact";
 import { SaleQueryParams } from "@/types/sale";
 import { PurchaseReceiptStatus } from "@/types/purchase";
 import { useSelector } from "react-redux";
@@ -102,7 +103,7 @@ export function SalesFilterDrawer({ open, filters, onChange, onClose, onApply, o
       </FilterField>
 
       <FilterField label="Customer">
-        <SearchableContactSelect includeAllOption allLabel="All" value={filters.customerId} onChange={(customerId) => onChange({ customerId: (customerId as string) || undefined })} />
+        <SearchableContactSelect role={ContactRole.CUSTOMER} includeAllOption allLabel="All" value={filters.customerId} onChange={(customerId) => onChange({ customerId: (customerId as string) || undefined })} />
       </FilterField>
 
       <FilterField label="Source">

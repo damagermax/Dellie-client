@@ -4,6 +4,7 @@ import { Checkbox, Divider, Form, FormInstance, Input, InputNumber, Switch, mess
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { InputFormItem, TextAreaFormItem } from "../ui/AppFormItems";
 import { SearchableCategorySelect } from "../categories/SearchableCategorySelect";
+import CategoriesFormModal from "../categories/CategoriesFormModal";
 import ImageUpload from "../ui/ImageUploader";
 import { MdOutlineArrowBackIos } from "react-icons/md";
 import { useCreateProductMutation, useGetDefaultLocationQuery, useGetProductsQuery } from "@/lib/redux/services";
@@ -115,6 +116,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   const trackQuantityEnabled = featureSettings?.trackQuantityEnabled !== false;
   const [openLocationModal, toggleLocationModal] = useToggle();
   const [openVariantModal, toggleVariantModal] = useToggle();
+  const [openCategoryModal, toggleCategoryModal] = useToggle();
   const [media, setMedia] = useState<File[]>([]);
   const [itemType, setItemType] = useState<ITEM_TYPE | null>(() => (trackQuantityEnabled ? null : ITEM_TYPE.NON_STOCK));
   const [productSearch, setProductSearch] = useState("");
@@ -600,25 +602,36 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
   );
 
   return (
-    <AppModal
-      loading={isLoading}
-      footer={itemType ? undefined : null}
-      width={750}
-      height={"70vh"}
-      title={
-        itemType ? (
-          <p className={`capitalize flex items-center ${trackQuantityEnabled ? "cursor-pointer" : ""}`} onClick={() => trackQuantityEnabled && setItemType(null)}>
-            {trackQuantityEnabled ? <MdOutlineArrowBackIos className="mr-2" /> : null} {itemType?.replace("_", " ")?.toLowerCase()}
-          </p>
-        ) : (
-          ""
-        )
-      }
-      open={open}
-      toggle={toggle}
-      onOk={handleOk}
-      okText={isLoading ? "Saving.." : "Save"}
-    >
+    <>
+      <CategoriesFormModal
+        type={CategoryType.PRODUCT}
+        open={openCategoryModal}
+        toggle={toggleCategoryModal}
+        onSaved={(category) => {
+          if (category?.id) {
+            productForm.setFieldValue("categoryId", category.id);
+          }
+        }}
+      />
+      <AppModal
+        loading={isLoading}
+        footer={itemType ? undefined : null}
+        width={750}
+        height={"70vh"}
+        title={
+          itemType ? (
+            <p className={`capitalize flex items-center ${trackQuantityEnabled ? "cursor-pointer" : ""}`} onClick={() => trackQuantityEnabled && setItemType(null)}>
+              {trackQuantityEnabled ? <MdOutlineArrowBackIos className="mr-2" /> : null} {itemType?.replace("_", " ")?.toLowerCase()}
+            </p>
+          ) : (
+            ""
+          )
+        }
+        open={open}
+        toggle={toggle}
+        onOk={handleOk}
+        okText={isLoading ? "Saving.." : "Save"}
+      >
       {!itemType && trackQuantityEnabled && (
         <div className="px-5">
           <h2 className="text-lg font-semibold text-gray-800">Choose Item Type</h2>
@@ -665,7 +678,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
               <div className=" px-5">
                 <div className=" grid md:grid-cols-5 md:gap-x-5">
                   <Form.Item label="Category" className=" w-full md:col-span-2" name="categoryId">
-                    <SearchableCategorySelect type={CategoryType.PRODUCT} />
+                    <SearchableCategorySelect type={CategoryType.PRODUCT} onAddCategory={toggleCategoryModal} />
                   </Form.Item>
 
                   <div className=" grid  md:col-span-3 grid-cols-3   gap-x-3">
@@ -848,6 +861,7 @@ export default function ProductFormModal({ open, toggle }: ProductFormModalProps
       )}
 
       {<VariantFormModal updateVariantCombinations={updateVariantCombinations} toggle={toggleVariantModal} open={openVariantModal} />}
-    </AppModal>
+      </AppModal>
+    </>
   );
 }

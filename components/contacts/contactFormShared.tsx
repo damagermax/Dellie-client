@@ -10,7 +10,7 @@ import { InputFormItem, PhoneInputFormItem } from "../ui/AppFormItems";
 
 export interface BaseContactFormModalProps extends ModalProps {
   initialValues?: Contact;
-  onSaved?: () => void;
+  onSaved?: (contact?: Contact) => void;
 }
 
 export type ContactFormValues = CreateContactInput &

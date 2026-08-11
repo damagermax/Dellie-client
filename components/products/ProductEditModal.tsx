@@ -2,10 +2,12 @@
 
 import { AppModal, ModalProps } from "@/components/ui/AppModal";
 import { SearchableCategorySelect } from "@/components/categories/SearchableCategorySelect";
+import CategoriesFormModal from "@/components/categories/CategoriesFormModal";
 import { useUpdateProductMutation, useGetProductsQuery } from "@/lib/redux/services";
 import { ProductListItem } from "@/types/index";
 import { Checkbox, Divider, Form, Input, InputNumber, message } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import useToggle from "@/hooks/UseToggle";
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import AppTable from "@/components/ui/AppTable";
 import PreviewImage from "@/components/ui/PreviewImage";
@@ -86,6 +88,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
   const [bundleItemsError, setBundleItemsError] = useState("");
   const [bundleSellingPriceEdited, setBundleSellingPriceEdited] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+  const [categoryOpen, toggleCategoryOpen] = useToggle();
   const debouncedProductSearch = useDebouncedValue(productSearch);
 
   const { data: products } = useGetProductsQuery({ search: debouncedProductSearch, limit: 20, purchasable: true });
@@ -338,17 +341,28 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
   );
 
   return (
-    <AppModal
-      open={open}
-      toggle={toggle}
-      loading={isLoading}
-      width={650}
-      height="70vh"
-      title={<p className="capitalize">{isVariantParent ? "Edit variant product" : `Edit ${getProductTypeLabel(product)} item`}</p>}
-      onOk={handleSubmit}
-      okText={isLoading ? "Saving.." : "Save"}
-      {...modalProps}
-    >
+    <>
+      <CategoriesFormModal
+        type={CategoryType.PRODUCT}
+        open={categoryOpen}
+        toggle={toggleCategoryOpen}
+        onSaved={(category) => {
+          if (category?.id) {
+            form.setFieldValue("categoryId", category.id);
+          }
+        }}
+      />
+      <AppModal
+        open={open}
+        toggle={toggle}
+        loading={isLoading}
+        width={650}
+        height="70vh"
+        title={<p className="capitalize">{isVariantParent ? "Edit variant product" : `Edit ${getProductTypeLabel(product)} item`}</p>}
+        onOk={handleSubmit}
+        okText={isLoading ? "Saving.." : "Save"}
+        {...modalProps}
+      >
       <div>
         <Form disabled={isLoading} className=" " form={form} layout="vertical">
           <div className="gap-x-12">
@@ -362,7 +376,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
               {isVariantParent && (
                 <div className="px-5">
                   <Form.Item label="Category" name="categoryId">
-                    <SearchableCategorySelect type={CategoryType.PRODUCT} />
+                    <SearchableCategorySelect type={CategoryType.PRODUCT} onAddCategory={toggleCategoryOpen} />
                   </Form.Item>
 
                   <Form.Item label="Description" name="description">
@@ -381,7 +395,7 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
                   <div className="grid grid-cols-2 px-5 gap-x-5 md:grid-cols-4">
                     <div className="col-span-2">
                       <Form.Item label="Category" name="categoryId">
-                        <SearchableCategorySelect type={CategoryType.PRODUCT} />
+                        <SearchableCategorySelect type={CategoryType.PRODUCT} onAddCategory={toggleCategoryOpen} />
                       </Form.Item>
                     </div>
 
@@ -478,7 +492,8 @@ export function ProductEditModal({ open, toggle, product, onSaved, ...modalProps
           </div>
         </Form>
       </div>
-    </AppModal>
+      </AppModal>
+    </>
   );
 }
 

@@ -21,16 +21,18 @@ export function buildLandedCostProductColumns({
   purchase,
   onUpdateLineWeight,
   amountCurrencyCode,
+  weightRequired = false,
 }: {
   purchase: Purchase;
   onUpdateLineWeight: (lineId: string, weight: number) => void;
   amountCurrencyCode: string;
+  weightRequired?: boolean;
 }): TableProps<PurchaseLineItem>["columns"] {
   return [
     { title: "Product", dataIndex: "productName", key: "productName" },
     { title: "Qty", dataIndex: "quantity", key: "quantity", width: 72 },
     {
-      title: "Weight",
+      title: weightRequired ? "Weight *" : "Weight",
       key: "weight",
       width: 120,
       render: (_, line) => <InputNumber className="!w-full" controls={false} min={0} suffix="kg" value={Number(line.weight || 0)} onChange={(value) => onUpdateLineWeight(line.id, Number(value || 0))} />,

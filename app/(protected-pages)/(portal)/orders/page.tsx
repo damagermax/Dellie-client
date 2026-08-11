@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import dayjs from "dayjs";
 import SaleFormModal from "@/components/orders/SaleFormModal";
 import SalesMobileList from "@/components/orders/SalesMobileList";
 import SaleShareDocumentModal from "@/components/orders/SaleShareDocumentModal";
+import { saleDetailFulfillmentStatusLabel } from "@/components/orders/saleUtils";
+import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
 import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
+import { ActiveFilterChipItem, DesktopActiveFilterChips } from "@/components/ui/DesktopActiveFilterChips";
 import { AppNotFoundView } from "@/components/ui/AppNotFoundView";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 import AppPaginationFooter from "@/components/ui/AppPaginationFooter";
@@ -19,11 +23,14 @@ import { buildSalesColumns } from "./_lib/salesPageConfig";
 import { useSalesPageController } from "./_lib/useSalesPageController";
 import { useSelector } from "react-redux";
 import { RootState } from "@/lib/store";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
+import { useGetContactQuery, useGetLocationQuery } from "@/lib/redux/services";
 
 type SalesQuickFilter = "all" | "quote" | "unpaid" | "paid" | "unfulfilled" | "fulfilled";
 
 export default function SalesPage() {
   const searchParams = useSearchParams();
+  const assignedScope = useAssignedLocationScope();
   const quotesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.features?.quotesEnabled !== false);
   const manualSalesEnabled = useSelector((state: RootState) => state.currentUser.storeSettings.enabledModules.sales !== false);
   const initialQuery = useMemo(
@@ -37,6 +44,8 @@ export default function SalesPage() {
     [searchParams],
   );
   const controller = useSalesPageController(initialQuery);
+  const { data: customer } = useGetContactQuery(controller.query.customerId || "", { skip: !controller.query.customerId });
+  const { data: location } = useGetLocationQuery(controller.query.locationId || "", { skip: !controller.query.locationId || (assignedScope.isRestricted && controller.query.locationId === assignedScope.assignedLocationId) });
   const salesQuickFilter: SalesQuickFilter | undefined =
     quotesEnabled && controller.query.status === "draft" && !controller.query.paymentStatus && !controller.query.fulfillmentStatus && !controller.query.overdue
       ? "quote"
@@ -69,6 +78,74 @@ export default function SalesPage() {
   }, [controller, quotesEnabled]);
 
   const columns = buildSalesColumns();
+  const activeFilterChips = useMemo(() => {
+    const dateLabel =
+      controller.query.dateFrom || controller.query.dateTo
+        ? `Date: ${controller.query.dateFrom ? dayjs(controller.query.dateFrom).format("DD MMM YYYY") : "Any"} - ${controller.query.dateTo ? dayjs(controller.query.dateTo).format("DD MMM YYYY") : "Any"}`
+        : undefined;
+
+    const items: Array<ActiveFilterChipItem | null> = [
+      controller.query.status
+        ? {
+            key: "status",
+            label: controller.query.status === "draft" ? "Quote" : controller.query.status === "open" ? "Open" : "Closed",
+            onRemove: () => controller.setQuery((current) => ({ ...current, status: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.fulfillmentStatus
+        ? {
+            key: "fulfillmentStatus",
+            label: saleDetailFulfillmentStatusLabel({ fulfillmentMethod: "now", receiptStatus: controller.query.fulfillmentStatus }),
+            onRemove: () => controller.setQuery((current) => ({ ...current, fulfillmentStatus: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.paymentStatus
+        ? {
+            key: "paymentStatus",
+            label: paymentStatusLabel(controller.query.paymentStatus),
+            onRemove: () => controller.setQuery((current) => ({ ...current, paymentStatus: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.overdue
+        ? {
+            key: "overdue",
+            label: "Overdue",
+            onRemove: () => controller.setQuery((current) => ({ ...current, overdue: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.customerId
+        ? {
+            key: "customerId",
+            label: customer?.name || "Customer",
+            onRemove: () => controller.setQuery((current) => ({ ...current, customerId: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.source
+        ? {
+            key: "source",
+            label: controller.query.source === "Manual Sale" ? "Manual Sales" : controller.query.source === "Online Store" ? "Website" : controller.query.source,
+            onRemove: () => controller.setQuery((current) => ({ ...current, source: undefined, page: 1 })),
+          }
+        : null,
+      dateLabel
+        ? {
+            key: "dateRange",
+            label: dateLabel,
+            onRemove: () => controller.setQuery((current) => ({ ...current, dateFrom: undefined, dateTo: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.locationId
+        ? {
+            key: "locationId",
+            label: assignedScope.isRestricted && controller.query.locationId === assignedScope.assignedLocationId ? assignedScope.assignedLocation?.name || "Assigned location" : location?.name || "Location",
+            removable: !assignedScope.isRestricted,
+            onRemove: assignedScope.isRestricted ? undefined : () => controller.setQuery((current) => ({ ...current, locationId: undefined, page: 1 })),
+          }
+        : null,
+    ];
+
+    return items.filter((item): item is ActiveFilterChipItem => item !== null);
+  }, [assignedScope.assignedLocation?.name, assignedScope.assignedLocationId, assignedScope.isRestricted, controller, customer?.name, location?.name]);
 
   return (
     <div>
@@ -100,6 +177,7 @@ export default function SalesPage() {
           ) : null}
         </div>
       </div>
+      <DesktopActiveFilterChips items={activeFilterChips} className="px-4 pb-2 md:px-8" />
 
       <div className="hidden md:block">
         <AppViewLoader loading={controller.isLoading} />

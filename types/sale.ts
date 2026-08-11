@@ -107,6 +107,7 @@ export interface SaleOperationItemInput {
 
 export interface FulfillSaleInput {
   id: string;
+  date?: string;
   items: SaleOperationItemInput[];
 }
 

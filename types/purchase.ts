@@ -135,6 +135,7 @@ export interface PurchaseOperationItemInput {
 
 export interface FulfillPurchaseInput {
   id: string;
+  date?: string;
   items: PurchaseOperationItemInput[];
 }
 

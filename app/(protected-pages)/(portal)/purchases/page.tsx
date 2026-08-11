@@ -2,9 +2,12 @@
 
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import dayjs from "dayjs";
 import PurchaseOrderFormModal from "@/components/purchase-orders/PurchaseOrderFormModal";
 import PurchasesMobileList from "@/components/purchase-orders/PurchasesMobileList";
+import { paymentStatusLabel } from "@/components/shared/paymentStatusLabel";
 import { AddButton, FloatingAddButton } from "@/components/ui/AppButtons";
+import { ActiveFilterChipItem, DesktopActiveFilterChips } from "@/components/ui/DesktopActiveFilterChips";
 import { AppNotFoundView } from "@/components/ui/AppNotFoundView";
 import { AppSearch } from "@/components/ui/AppSearchInput";
 import AppPaginationFooter from "@/components/ui/AppPaginationFooter";
@@ -14,6 +17,8 @@ import MobileInfiniteScrollFooter from "@/components/ui/MobileInfiniteScrollFoot
 import MobileListShimmer from "@/components/ui/MobileListShimmer";
 import { PurchasesFilterDrawer } from "@/components/purchase-orders/PurchasesFilterDrawer";
 import { DesktopQuickFilterSegment } from "@/components/ui/DesktopQuickFilterSegment";
+import { useAssignedLocationScope } from "@/hooks/useAssignedLocationScope";
+import { useGetContactQuery, useGetLocationQuery } from "@/lib/redux/services";
 import { buildPurchaseColumns } from "./_lib/purchasesPageConfig";
 import { usePurchasesPageController } from "./_lib/usePurchasesPageController";
 
@@ -21,6 +26,7 @@ type PurchasesQuickFilter = "all" | "unpaid" | "paid" | "unfulfilled" | "fulfill
 
 export default function PurchaseOrdersPage() {
   const searchParams = useSearchParams();
+  const assignedScope = useAssignedLocationScope();
   const initialQuery = useMemo(
     () => ({
       page: 1,
@@ -31,6 +37,8 @@ export default function PurchaseOrdersPage() {
     [searchParams],
   );
   const controller = usePurchasesPageController(initialQuery);
+  const { data: supplier } = useGetContactQuery(controller.query.supplierId || "", { skip: !controller.query.supplierId });
+  const { data: location } = useGetLocationQuery(controller.query.locationId || "", { skip: !controller.query.locationId || (assignedScope.isRestricted && controller.query.locationId === assignedScope.assignedLocationId) });
   const purchasesQuickFilter: PurchasesQuickFilter | undefined =
     controller.query.paymentStatus === "unpaid" && !controller.query.fulfillmentStatus
       ? "unpaid"
@@ -44,6 +52,65 @@ export default function PurchaseOrdersPage() {
               ? "all"
               : undefined;
   const columns = buildPurchaseColumns();
+  const activeFilterChips = useMemo(() => {
+    const dateLabel =
+      controller.query.dateFrom || controller.query.dateTo
+        ? `Date: ${controller.query.dateFrom ? dayjs(controller.query.dateFrom).format("DD MMM YYYY") : "Any"} - ${controller.query.dateTo ? dayjs(controller.query.dateTo).format("DD MMM YYYY") : "Any"}`
+        : undefined;
+
+    const items: Array<ActiveFilterChipItem | null> = [
+      controller.query.status
+        ? {
+            key: "status",
+            label: controller.query.status === "draft" ? "Draft" : controller.query.status === "open" ? "Open" : "Closed",
+            onRemove: () => controller.setQuery((current) => ({ ...current, status: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.fulfillmentStatus
+        ? {
+            key: "fulfillmentStatus",
+            label:
+              controller.query.fulfillmentStatus === "received"
+                ? "Fulfilled"
+                : controller.query.fulfillmentStatus === "partially_received"
+                  ? "Partially fulfilled"
+                  : "Pending",
+            onRemove: () => controller.setQuery((current) => ({ ...current, fulfillmentStatus: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.paymentStatus
+        ? {
+            key: "paymentStatus",
+            label: paymentStatusLabel(controller.query.paymentStatus),
+            onRemove: () => controller.setQuery((current) => ({ ...current, paymentStatus: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.supplierId
+        ? {
+            key: "supplierId",
+            label: supplier?.name || "Supplier",
+            onRemove: () => controller.setQuery((current) => ({ ...current, supplierId: undefined, page: 1 })),
+          }
+        : null,
+      dateLabel
+        ? {
+            key: "dateRange",
+            label: dateLabel,
+            onRemove: () => controller.setQuery((current) => ({ ...current, dateFrom: undefined, dateTo: undefined, page: 1 })),
+          }
+        : null,
+      controller.query.locationId
+        ? {
+            key: "locationId",
+            label: assignedScope.isRestricted && controller.query.locationId === assignedScope.assignedLocationId ? assignedScope.assignedLocation?.name || "Assigned location" : location?.name || "Location",
+            removable: !assignedScope.isRestricted,
+            onRemove: assignedScope.isRestricted ? undefined : () => controller.setQuery((current) => ({ ...current, locationId: undefined, page: 1 })),
+          }
+        : null,
+    ];
+
+    return items.filter((item): item is ActiveFilterChipItem => item !== null);
+  }, [assignedScope.assignedLocation?.name, assignedScope.assignedLocationId, assignedScope.isRestricted, controller, location?.name, supplier?.name]);
 
   return (
     <div>
@@ -83,6 +150,7 @@ export default function PurchaseOrdersPage() {
           </div>
         </div>
       </div>
+      <DesktopActiveFilterChips items={activeFilterChips} className="px-4 pb-2 md:px-8" />
 
       <div className="hidden md:block">
         <AppViewLoader loading={controller.isLoading} />

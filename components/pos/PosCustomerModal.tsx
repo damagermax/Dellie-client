@@ -35,7 +35,7 @@ export default function PosCustomerModal({
   onOpenNewCustomer,
 }: PosCustomerModalProps) {
   return (
-    <Modal title="Select Customer" open={open} onCancel={onClose} footer={null} width={580} destroyOnHidden styles={{ mask: POS_MODAL_OVERLAY_STYLE }}>
+    <Modal title="Select Customer" open={open} onCancel={onClose} footer={null} width={580} styles={{ mask: POS_MODAL_OVERLAY_STYLE }}>
       <div className="space-y-4 px-5 pb-5 pt-3">
         <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3">
           <div className="flex items-center gap-3">
@@ -66,7 +66,9 @@ export default function PosCustomerModal({
 
           <div className="max-h-[52vh] overflow-y-auto">
             {contactsLoading ? (
-              <p className="px-4 py-6 text-sm text-stone-500">Loading customers...</p>
+              <div className="px-4 py-3">
+                <CustomerListShimmer />
+              </div>
             ) : contacts.length > 0 ? (
               contacts.map((contact) => {
                 const isActive = selectedContactId === contact.id;
@@ -105,5 +107,21 @@ export default function PosCustomerModal({
         </div>
       </div>
     </Modal>
+  );
+}
+
+function CustomerListShimmer() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div key={`customer-shimmer-${index}`} className="flex items-center justify-between gap-3 border-b border-stone-100 pb-3 last:border-b-0 last:pb-0">
+          <div className="min-w-0 flex-1">
+            <div className="h-4 w-40 animate-pulse rounded bg-stone-200" />
+            <div className="mt-2 h-3 w-28 animate-pulse rounded bg-stone-100" />
+          </div>
+          <div className="h-6 w-6 animate-pulse rounded-full bg-stone-100" />
+        </div>
+      ))}
+    </div>
   );
 }

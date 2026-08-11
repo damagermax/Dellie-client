@@ -3,7 +3,7 @@
 import { Divider, Form } from "antd";
 
 import { useCreateContactMutation, useGetContactQuery, useUpdateContactMutation } from "@/lib/redux/services";
-import { ContactRole, ContactStatus, CreateContactInput, UpdateContactInput } from "@/types/contact";
+import { Contact, ContactRole, ContactStatus, CreateContactInput, UpdateContactInput } from "@/types/contact";
 import {
   BaseContactFormModalProps,
   ContactAddressFields,
@@ -36,7 +36,6 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
 
   const closeAndReset = () => {
     contactsForm.resetFields();
-    onSaved?.();
     toggle();
   };
 
@@ -51,13 +50,13 @@ export default function ContactsFormModal({ open, toggle, initialValues, onSaved
       status: values.status || initialValues?.status || ContactStatus.ACTIVE,
     } as CreateContactInput | UpdateContactInput;
 
-    if (initialValues?.id) {
-      await updateContact({ id: initialValues.id, ...payload }).unwrap();
-    } else {
-      await createContact(payload as CreateContactInput).unwrap();
-    }
+    const response = initialValues?.id
+      ? await updateContact({ id: initialValues.id, ...payload }).unwrap()
+      : await createContact(payload as CreateContactInput).unwrap();
 
+    const savedContact = "contact" in (response as { contact?: Contact }) ? (response as { contact?: Contact }).contact : (response as Contact);
     closeAndReset();
+    onSaved?.(savedContact);
   };
 
   const saving = isCreating || isUpdating;

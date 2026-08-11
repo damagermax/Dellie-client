@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { DatePicker } from "antd";
 import { AppModal } from "@/components/ui/AppModal";
 import { Purchase } from "@/types/index";
 import { PurchaseReceiptLineList } from "./purchaseStockOperationSections";
@@ -17,10 +18,22 @@ export default function PurchaseOrderStockOperationModal({ open, toggle, purchas
   const controller = usePurchaseStockOperationController({ open, purchase, onSaved, toggle });
 
   return (
-    <AppModal open={open} toggle={toggle} title="Fulfill Items" onOk={controller.submit} width={640} loading={controller.fulfilling} okText="Fulfill">
-      <div className="px-5 py-4">
-        <p className="mb-4 text-sm text-gray-500">Fulfill purchase items for {purchase.locationId?.name || "the purchase location"}.</p>
+    <AppModal
+      open={open}
+      toggle={toggle}
+      title="Receive Items"
+      subtitle={`Record received quantities into ${purchase.locationId?.name || "the purchase location"}.`}
+      onOk={controller.submit}
+      width={840}
+      loading={controller.fulfilling}
+      okText="Receive"
+    >
+      <div className="pb-4">
         <PurchaseReceiptLineList lines={controller.lines} quantities={controller.quantities} onQuantityChange={controller.setQuantity} />
+        <div className="px-5 pt-5">
+          <label className="mb-2 block text-sm font-medium text-gray-700">Received at</label>
+          <DatePicker className="!w-full" value={controller.date} onChange={(value) => value && controller.setDate(value)} />
+        </div>
       </div>
     </AppModal>
   );

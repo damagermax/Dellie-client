@@ -140,7 +140,7 @@ export default function TransactionItemEditModal({
           <AppTable columns={columns} dataSource={summaryRows} rowKey="id" pagination={false} scrollX={showRestock ? 760 : 680} />
 
           <div className="p-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className={`grid grid-cols-1 gap-4 ${showNote ? "md:grid-cols-2" : ""}`}>
               <Form.Item label={dateLabel} name="date" className="!mb-0" rules={[{ required: true, message: "Select a date" }]}>
                 <DatePicker className="!w-full" style={{ width: "100%" }} />
               </Form.Item>
@@ -149,9 +149,7 @@ export default function TransactionItemEditModal({
                 <Form.Item label="Reason" name="note" className="!mb-0" rules={[{ required: true, message: "Enter a reason" }]}>
                   <Input placeholder="Enter reason" />
                 </Form.Item>
-              ) : (
-                <div />
-              )}
+              ) : null}
             </div>
           </div>
         </Form>

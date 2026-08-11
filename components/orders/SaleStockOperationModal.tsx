@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { DatePicker } from "antd";
 import { AppModal } from "@/components/ui/AppModal";
 import { Sale } from "@/types/index";
 import { SaleFulfillmentLineList } from "./saleStockOperationSections";
@@ -21,17 +22,22 @@ export default function SaleStockOperationModal({ open, toggle, sale, onSaved }:
       open={open}
       toggle={toggle}
       title={controller.isPickup ? "Mark as Picked Up" : "Fulfill Sale"}
+      subtitle={
+        controller.isPickup
+          ? `Record picked-up quantities from ${sale.locationId?.name || "the sale location"}.`
+          : `Record fulfilled quantities from ${sale.locationId?.name || "the sale location"}.`
+      }
       onOk={controller.submit}
-      width={640}
+      width={840}
       loading={controller.fulfilling}
       okText={controller.isPickup ? "Mark as Picked Up" : "Fulfill"}
     >
-      <div className="px-5 py-4">
-        <p className="mb-4 text-sm text-gray-500">
-          {controller.isPickup ? "Mark items collected from " : "Mark items delivered from "}
-          {sale.locationId?.name || "the sale location"}.
-        </p>
+      <div className="pb-4">
         <SaleFulfillmentLineList lines={controller.lines} quantities={controller.quantities} onQuantityChange={controller.setQuantity} />
+        <div className="px-5 pt-5">
+          <label className="mb-2 block text-sm font-medium text-gray-700">{controller.isPickup ? "Picked up at" : "Fulfilled at"}</label>
+          <DatePicker className="!w-full" value={controller.date} onChange={(value) => value && controller.setDate(value)} />
+        </div>
       </div>
     </AppModal>
   );

@@ -1,9 +1,10 @@
 "use client";
 
 import { AppModal, ModalProps } from "../ui/AppModal";
-import { Button, Form, Select } from "antd";
+import { Button, Form } from "antd";
 import { DatePickerFormItem } from "../ui/AppFormItems";
 import { SearchableContactSelect } from "../contacts/SeachableContactSelect";
+import ContactsFormModal from "../contacts/ContactsFormModal";
 import { Purchase } from "@/types/index";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
 import AppTable from "../ui/AppTable";
@@ -15,6 +16,10 @@ import { TaxSelector } from "../settings/TaxSelector";
 import { ProductVariantSelectorModal } from "../products/ProductVariantSelectorModal";
 import { buildPurchaseFormColumns, ProductLineItem, PurchaseProductSearchResults, PurchaseSummaryPanel } from "./purchaseFormSections";
 import { usePurchaseOrderFormController } from "./usePurchaseOrderFormController";
+import useToggle from "@/hooks/UseToggle";
+import { ContactRole } from "@/types/contact";
+import PaymentTermsForm from "@/components/settings/PaymentTermsForm";
+import { SearchablePaymentTermSelect } from "@/components/settings/SearchablePaymentTermSelect";
 
 interface PurchaseOrderFormModalProps extends ModalProps {
   purchase?: Purchase;
@@ -23,6 +28,8 @@ interface PurchaseOrderFormModalProps extends ModalProps {
 
 export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: PurchaseOrderFormModalProps) {
   const controller = usePurchaseOrderFormController({ open, toggle, purchase, onSaved });
+  const [contactOpen, toggleContactOpen] = useToggle();
+  const [paymentTermOpen, togglePaymentTermOpen] = useToggle();
   const inputGridClass = controller.multiCurrencyEnabled && controller.paymentTermsEnabled ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-3";
 
   const productColumns = buildPurchaseFormColumns({
@@ -60,7 +67,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
         <Form form={controller.form} disabled={controller.cannotEdit || controller.loading} layout="vertical" initialValues={{ date: dayjs(), dueDate: dayjs() }}>
           <div className={`grid grid-cols-1 gap-x-5 gap-y-1 p-5 pb-8 ${inputGridClass}`}>
             <Form.Item name="contactId" label="Contact">
-              <SearchableContactSelect onAddContact={() => {}} />
+              <SearchableContactSelect role={ContactRole.SUPPLIER} onAddContact={toggleContactOpen} />
             </Form.Item>
             <DatePickerFormItem label="Date" name="date" placeholder="date" className="" />
             <DatePickerFormItem label="Expected Delivery Date" name="deliveryDate" placeholder="Delivery Date" className="" />
@@ -78,7 +85,7 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
             {controller.paymentTermsEnabled ? (
               <>
                 <Form.Item name="paymentTerm" label="Payment Term">
-                  <Select options={controller.paymentTermOptions} placeholder="Payment Term" onChange={controller.handlePaymentTermChange} />
+                  <SearchablePaymentTermSelect onAddPaymentTerm={togglePaymentTermOpen} onChange={controller.handlePaymentTermChange} />
                 </Form.Item>
                 <DatePickerFormItem label="Due Date" name="dueDate" placeholder="Due Date" className="" />
               </>
@@ -103,6 +110,31 @@ export function PurchaseOrderFormModal({ open, toggle, purchase, onSaved }: Purc
           />
         </Form>
       </AppModal>
+      {contactOpen ? (
+        <ContactsFormModal
+          open={contactOpen}
+          toggle={toggleContactOpen}
+          hideRoles
+          defaultRoles={[ContactRole.SUPPLIER]}
+          onSaved={(contact) => {
+            if (contact?.id) {
+              controller.form.setFieldValue("contactId", contact.id);
+            }
+          }}
+        />
+      ) : null}
+      {paymentTermOpen ? (
+        <PaymentTermsForm
+          open={paymentTermOpen}
+          toggle={togglePaymentTermOpen}
+          onSaved={(paymentTerm) => {
+            if (paymentTerm?.code) {
+              controller.form.setFieldValue("paymentTerm", paymentTerm.code);
+              controller.handlePaymentTermChange(paymentTerm.code);
+            }
+          }}
+        />
+      ) : null}
       <ProductVariantSelectorModal parent={controller.variantParent} onClose={controller.closeVariantSelector} onSelect={(variant) => (controller.addLineItem(variant), controller.closeVariantSelector())} />
 
       <TaxSelector

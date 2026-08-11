@@ -10,10 +10,11 @@ interface SearchableCategorySelectProps {
   type?: CategoryType;
   includeAllOption?: boolean;
   allLabel?: string;
+  onAddCategory?: () => void;
 }
 
 const ALL_OPTION_VALUE = "__all__";
-export function SearchableCategorySelect({ value, onChange, type = CategoryType.PRODUCT, includeAllOption = false, allLabel = "All" }: SearchableCategorySelectProps) {
+export function SearchableCategorySelect({ value, onChange, type = CategoryType.PRODUCT, includeAllOption = false, allLabel = "All", onAddCategory }: SearchableCategorySelectProps) {
   const [categoriesQuery, setCategoriesQuery] = useState<CategoriesQueryParams>({ type });
 
   const debounceCategoriesQuery = useDebouncedValue(categoriesQuery);
@@ -59,6 +60,20 @@ export function SearchableCategorySelect({ value, onChange, type = CategoryType.
       filterOption={false}
       onSearch={(value) => handleFilterChange({ search: value })}
       notFoundContent={isLoading ? <Spin size="small" /> : "No results found"}
+      dropdownRender={(menu) => (
+        <>
+          {onAddCategory ? (
+            <div
+              className="cursor-pointer px-3 py-2 text-blue-500 hover:bg-gray-100"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={onAddCategory}
+            >
+              + Add Category
+            </div>
+          ) : null}
+          {menu}
+        </>
+      )}
       options={options}
       onSelect={(selected) => {
         if (selected === ALL_OPTION_VALUE) {

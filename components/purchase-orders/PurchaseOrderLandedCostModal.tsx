@@ -4,12 +4,15 @@ import React from "react";
 import { Alert, DatePicker, Form, Input, InputNumber, Select } from "antd";
 import { AppModal } from "@/components/ui/AppModal";
 import { SearchableContactSelect } from "@/components/contacts/SeachableContactSelect";
+import ContactsFormModal from "@/components/contacts/ContactsFormModal";
 import { SearchablePaymentMethodSelect } from "@/components/paymentMethods/SearchablePaymentMethodSelect";
 import { SearchableCurrenciesSelect } from "@/components/system/SearchableCurrencySelect";
 import { ExchangeRateFormItem } from "@/components/system/ExchangeRateFormItem";
 import { Purchase, PurchaseLandedCost } from "@/types/index";
 import { buildLandedCostProductColumns, landedCostAllocationOptions, landedCostScopeOptions, LandedCostProductSelector } from "./purchaseLandedCostSections";
 import { usePurchaseLandedCostController } from "./usePurchaseLandedCostController";
+import useToggle from "@/hooks/UseToggle";
+import { ContactRole } from "@/types/contact";
 
 interface PurchaseOrderLandedCostModalProps {
   open: boolean;
@@ -21,9 +24,16 @@ interface PurchaseOrderLandedCostModalProps {
 
 export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, onSaved, initialValues }: PurchaseOrderLandedCostModalProps) {
   const controller = usePurchaseLandedCostController({ open, purchase, onSaved, toggle, initialValues });
+  const [contactOpen, toggleContactOpen] = useToggle();
   const productColumns = React.useMemo(
-    () => buildLandedCostProductColumns({ purchase, onUpdateLineWeight: controller.updateLineWeight, amountCurrencyCode: controller.amountCurrencyCode }),
-    [controller.amountCurrencyCode, controller.updateLineWeight, purchase],
+    () =>
+      buildLandedCostProductColumns({
+        purchase,
+        onUpdateLineWeight: controller.updateLineWeight,
+        amountCurrencyCode: controller.amountCurrencyCode,
+        weightRequired: controller.allocationMethod === "WEIGHT",
+      }),
+    [controller.allocationMethod, controller.amountCurrencyCode, controller.updateLineWeight, purchase],
   );
 
   return (
@@ -43,7 +53,7 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
 
         <div className="grid gap-4 md:grid-cols-2">
           <Form.Item className="!mb-3" name="contactId" label="Contact" rules={[{ required: true, message: "Select the contact paid for this landed cost" }]}>
-            <SearchableContactSelect onAddContact={() => {}} />
+            <SearchableContactSelect role={ContactRole.SUPPLIER} onAddContact={toggleContactOpen} />
           </Form.Item>
           <Form.Item className="!mb-3" name="date" label="Payment Date" rules={[{ required: true, message: "Select the payment date" }]}>
             <DatePicker className="!w-full" format="DD MMM YYYY" />
@@ -94,6 +104,19 @@ export default function PurchaseOrderLandedCostModal({ open, toggle, purchase, o
           />
         ) : null}
       </Form>
+      {contactOpen ? (
+        <ContactsFormModal
+          open={contactOpen}
+          toggle={toggleContactOpen}
+          hideRoles
+          defaultRoles={[ContactRole.SUPPLIER]}
+          onSaved={(contact) => {
+            if (contact?.id) {
+              controller.form.setFieldValue("contactId", contact.id);
+            }
+          }}
+        />
+      ) : null}
     </AppModal>
   );
 }

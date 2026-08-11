@@ -41,10 +41,16 @@ export default function PosProductGrid({
     <>
       <div className=" px-3 bg-[#F5F5F5] py-4 md:px-4">
         <div className="flex gap-4 overflow-x-auto ">
-          <CategoryCard title="All Menu" count={allProductsCount} active={!categoryId} onClick={() => onSelectCategory(undefined)} />
-          {categories.map((category) => (
-            <CategoryCard key={category.id} title={category.name} count={categoryCounts.get(category.id) || 0} active={categoryId === category.id} onClick={() => onSelectCategory(category.id)} />
-          ))}
+          {categoriesLoading ? (
+            <CategoryRailShimmer />
+          ) : (
+            <>
+              <CategoryCard title="All Menu" count={allProductsCount} active={!categoryId} onClick={() => onSelectCategory(undefined)} />
+              {categories.map((category) => (
+                <CategoryCard key={category.id} title={category.name} count={categoryCounts.get(category.id) || 0} active={categoryId === category.id} onClick={() => onSelectCategory(category.id)} />
+              ))}
+            </>
+          )}
         </div>
       </div>
 
@@ -82,6 +88,19 @@ export default function PosProductGrid({
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+function CategoryRailShimmer() {
+  return (
+    <>
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div key={`pos-category-shimmer-${index}`} className="min-w-[112px] rounded-[22px] border border-stone-200 bg-white px-4 py-3">
+          <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
+          <div className="mt-2 h-3 w-8 animate-pulse rounded bg-stone-100" />
+        </div>
+      ))}
     </>
   );
 }

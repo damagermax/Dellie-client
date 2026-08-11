@@ -62,7 +62,7 @@ export function SearchableExpenseCategorySelect({ value, type, onChange, onAddCa
         filterOption={false}
         onSearch={(value) => handleFilterChange({ search: value })}
         notFoundContent={isLoading ? <Spin size="small" /> : <span>No categories found</span>}
-        popupRender={(menu) => (
+        dropdownRender={(menu) => (
           <>
             {onAddCategory ? (
               <div

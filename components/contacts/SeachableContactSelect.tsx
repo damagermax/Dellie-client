@@ -1,6 +1,6 @@
 import useDebouncedValue from "@/hooks/useDebouncedValue";
 import { useGetContactsQuery } from "@/lib/redux/services";
-import { ContactQueryParams } from "@/types/contact";
+import { ContactQueryParams, ContactRole } from "@/types/contact";
 import { Select, Spin } from "antd";
 import { useState } from "react";
 import { IoPersonCircleOutline } from "react-icons/io5";
@@ -12,16 +12,17 @@ interface SearchableContactSelectProps {
   mode?: "multiple" | undefined;
   includeAllOption?: boolean;
   allLabel?: string;
+  role?: ContactRole;
 }
 
 const ALL_OPTION_VALUE = "__all__";
 
-export function SearchableContactSelect({ value, onChange, mode, onAddContact, includeAllOption = false, allLabel = "All" }: SearchableContactSelectProps) {
-  const [contactsQuery, setContactsQuery] = useState<ContactQueryParams>({});
+export function SearchableContactSelect({ value, onChange, mode, onAddContact, includeAllOption = false, allLabel = "All", role }: SearchableContactSelectProps) {
+  const [contactsQuery, setContactsQuery] = useState<ContactQueryParams>(() => (role ? { role } : {}));
 
   const debounceContactsQuery = useDebouncedValue(contactsQuery);
 
-  const { data: contacts, isLoading } = useGetContactsQuery(debounceContactsQuery);
+  const { data: contacts, isLoading } = useGetContactsQuery(role ? { ...debounceContactsQuery, role } : debounceContactsQuery);
   const options = [
     ...(includeAllOption
       ? [
@@ -55,9 +56,9 @@ export function SearchableContactSelect({ value, onChange, mode, onAddContact, i
       }}
       className="w-full"
       filterOption={false}
-      onSearch={(value) => setContactsQuery({ ...contactsQuery, search: value })}
+      onSearch={(search) => setContactsQuery((current) => ({ ...current, role, search }))}
       notFoundContent={isLoading ? <Spin size="small" /> : <span>No contacts found</span>}
-      popupRender={(menu) => (
+      dropdownRender={(menu) => (
         <>
           {onAddContact ? (
             <div
