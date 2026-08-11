@@ -48,7 +48,11 @@ export default function ExpenseTable({ expenses, pagination }: ExpenseTableProps
       dataIndex: "category",
       key: "category",
       width: 180,
-      render: (_, record) => record.category?.name || "Uncategorized",
+      render: (_, record) => (
+        <span className="inline-flex max-w-full items-center truncate rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-medium leading-4 text-gray-600">
+          {record.category?.name || "Uncategorized"}
+        </span>
+      ),
     },
     {
       title: "Contact",

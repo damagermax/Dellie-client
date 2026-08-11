@@ -33,7 +33,7 @@ export default function ProductsTable({ products, pagination }: ProductTableProp
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-medium  line-clamp-1 text-gray-700">{name}</p>
-                {Boolean(data.variants?.length) && <span className="inline-flex rounded-full bg-[#eef4ff] px-2 py-0.5 text-[11px] font-medium text-[#3559a6]">{data.variants?.length} variants</span>}
+                {Boolean(data.variants?.length) && <span className="inline-flex items-center rounded-full bg-[#eef4ff] px-2 py-0.5 text-[10px] font-medium leading-4 text-[#3559a6]">{data.variants?.length} variants</span>}
               </div>
               <p className="text-xs  text-gray-700">
                 {data.sku} | <span className="capitalize">{getProductTypeLabel(data)}</span>
@@ -48,7 +48,11 @@ export default function ProductsTable({ products, pagination }: ProductTableProp
       title: "Category",
       dataIndex: "categoryName",
       key: "categoryName",
-      render: (category: string | undefined) => <span className={`inline-flex max-w-full rounded-full px-3 py-1 text-sm ${category ? "bg-gray-100 text-gray-700" : "bg-gray-50 text-gray-400"}`}>{category || "Uncategorized"}</span>,
+      render: (category: string | undefined) => (
+        <span className={`inline-flex max-w-full items-center truncate rounded-full px-2.5 py-1 text-[11px] font-medium leading-4 ${category ? "bg-gray-100 text-gray-600" : "bg-gray-50 text-gray-400"}`}>
+          {category || "Uncategorized"}
+        </span>
+      ),
     },
 
     {
