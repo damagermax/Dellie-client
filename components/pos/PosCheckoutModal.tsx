@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button, Input, InputNumber, Modal, Select } from "antd";
 import { HiCheckCircle, HiChevronRight, HiOutlineBolt, HiOutlineShoppingBag, HiOutlineTruck, HiOutlineUserGroup } from "react-icons/hi2";
 import type { PaymentMethod } from "@/types/index";
-import CheckoutInfoCard from "./CheckoutInfoCard";
 import { PAY_LATER_PAYMENT_METHOD_ID, type PosOrderMethod, type PosPaymentEntry } from "./types";
 import { POS_MODAL_OVERLAY_STYLE, formatMoney, parseMoneyInput } from "./utils";
 
@@ -28,7 +27,6 @@ type PosCheckoutModalProps = {
   taxAmount: number;
   taxSummary: Array<{ name: string; amount: number }>;
   grandTotal: number;
-  totalPaid: number;
   balance: number;
   change: number;
   deliveryFee: number;
@@ -67,7 +65,6 @@ export default function PosCheckoutModal({
   taxAmount,
   taxSummary,
   grandTotal,
-  totalPaid,
   balance,
   change,
   deliveryFee,
@@ -108,19 +105,20 @@ export default function PosCheckoutModal({
       open={open}
       onCancel={onCancel}
       footer={null}
-      width={1080}
+      width="min(1080px, calc(100vw - 16px))"
       destroyOnClose
-      style={{ top: 16 }}
-      styles={{ mask: POS_MODAL_OVERLAY_STYLE, body: { padding: 0 }, header: { padding: "20px 20px 0" } }}
+      style={{ top: 8 }}
+      className="!m-0 sm:!mx-auto"
+      styles={{ mask: POS_MODAL_OVERLAY_STYLE, body: { padding: 0 }, header: { padding: "14px 14px 0" }, content: { borderRadius: 8 } }}
     >
-      <div className="max-h-[calc(100vh-140px)] overflow-y-auto px-5 pb-5 pt-4">
-        <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <section className="rounded-xl bg-stone-50 p-5">
+      <div className="max-h-[calc(100dvh-82px)] overflow-y-auto px-3 pb-0 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
+        <div className="grid gap-3 lg:grid-cols-[360px_minmax(0,1fr)] lg:gap-5">
+          <section className="border-b border-stone-200 bg-white pb-3 sm:rounded-xl sm:border-0 sm:bg-stone-50 sm:p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Amount due</p>
-            <p className="mt-3 text-4xl font-semibold leading-none text-stone-950">{formatMoney(selectedCurrencyCode, grandTotal)}</p>
-            {change > 0 ? <div className="mt-3 inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Change to return: {formatMoney(selectedCurrencyCode, change)}</div> : null}
+            <p className="mt-2 text-3xl font-semibold leading-none text-stone-950 sm:mt-3 sm:text-4xl">{formatMoney(selectedCurrencyCode, grandTotal)}</p>
+            {change > 0 ? <div className="mt-3 inline-flex items-center bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 sm:rounded-full">Change to return: {formatMoney(selectedCurrencyCode, change)}</div> : null}
 
-            <div className="mt-4 rounded-lg bg-white p-4">
+            <div className="mt-3 border-t border-stone-200 bg-white pt-3 sm:mt-4 sm:rounded-lg sm:border-0 sm:p-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-stone-500">Items</span>
@@ -174,14 +172,9 @@ export default function PosCheckoutModal({
                 ) : null}
               </div>
             </div>
-
-            <div className="mt-3 grid gap-2">
-              <CheckoutInfoCard label="Paid" value={formatMoney(selectedCurrencyCode, totalPaid)} />
-              <CheckoutInfoCard label={change > 0 ? "Change" : "Remaining"} value={formatMoney(selectedCurrencyCode, change > 0 ? change : balance)} />
-            </div>
           </section>
 
-          <section className="flex max-h-[calc(100vh-172px)] flex-col overflow-hidden bg-white px-4 sm:px-5">
+          <section className="flex min-h-0 flex-col overflow-visible bg-white sm:max-h-[calc(100vh-172px)] sm:overflow-hidden sm:px-5">
             <div className="flex-1 overflow-y-auto pr-1">
               {selectedFulfillmentOption ? (
                 <div className="mb-4 pb-4">
@@ -189,10 +182,10 @@ export default function PosCheckoutModal({
                     <button
                       type="button"
                       onClick={() => setFulfillmentPickerOpen(true)}
-                      className="flex w-full items-center justify-between rounded-lg border border-stone-200 bg-white px-4 py-3 text-left transition-colors hover:border-stone-300 hover:bg-stone-50"
+                      className="flex w-full items-center justify-between border border-stone-200 bg-white px-3 py-3 text-left transition-colors hover:border-stone-300 hover:bg-stone-50 sm:rounded-lg sm:px-4"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${selectedFulfillmentOption.accentIcon}`}>
+                        <span className={`flex size-9 shrink-0 items-center justify-center sm:size-10 sm:rounded-lg ${selectedFulfillmentOption.accentIcon}`}>
                           <selectedFulfillmentOption.icon className="size-5" />
                         </span>
                         <span className="min-w-0">
@@ -203,8 +196,8 @@ export default function PosCheckoutModal({
                       <HiChevronRight className="size-4 shrink-0 text-stone-400" />
                     </button>
                   ) : (
-                    <div className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white px-4 py-3">
-                      <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${selectedFulfillmentOption.accentIcon}`}>
+                    <div className="flex items-center gap-3 border border-stone-200 bg-white px-3 py-3 sm:rounded-lg sm:px-4">
+                      <span className={`flex size-9 shrink-0 items-center justify-center sm:size-10 sm:rounded-lg ${selectedFulfillmentOption.accentIcon}`}>
                         <selectedFulfillmentOption.icon className="size-5" />
                       </span>
                       <span className="min-w-0">
@@ -222,7 +215,7 @@ export default function PosCheckoutModal({
                           value={deliveryAddress}
                           onChange={(event) => onDeliveryAddressChange(event.target.value)}
                           placeholder="Delivery address (optional)"
-                          className="!rounded-lg"
+                          className="!rounded-md sm:!rounded-lg"
                         />
                       </div>
                       <div className="pt-1">
@@ -294,11 +287,11 @@ export default function PosCheckoutModal({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-stone-200 bg-stone-50/40 p-4">
+                  <div className="border border-stone-200 bg-white p-3 sm:rounded-lg sm:p-4">
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <p className="font-semibold uppercase tracking-[0.14em] text-stone-400">Payment</p>
 
-	                      {!isPayLater ? <button className=" rounded-lg cursor-pointer bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200" onClick={onOpenSplitPayment}>
+	                      {!isPayLater ? <button className="cursor-pointer bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200 sm:rounded-lg" onClick={onOpenSplitPayment}>
 	                        Split payment
 	                      </button> : null}
 	                    </div>
@@ -306,7 +299,7 @@ export default function PosCheckoutModal({
 		                      <button
 		                        type="button"
 		                        onClick={() => onUpdatePaymentRow(payments[0]?.id, { paymentMethodId: PAY_LATER_PAYMENT_METHOD_ID, amount: 0 })}
-		                        className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${isPayLater ? "border-2 border-[#2d837d] bg-green-100 text-green-800" : "border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50"}`}
+		                        className={`min-h-10 border bg-white px-3 py-2 text-xs font-semibold transition-all sm:min-h-11 sm:rounded-lg ${isPayLater ? "border-2 border-[#2d837d] text-green-800" : "border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50"}`}
 		                      >
 		                        Pay later
 		                      </button>
@@ -317,7 +310,7 @@ export default function PosCheckoutModal({
                             key={method.id}
                             type="button"
 	                            onClick={() => onUpdatePaymentRow(payments[0]?.id, { paymentMethodId: method.id, amount: grandTotal })}
-                            className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${isSelected ? "border-2 border-[#2d837d] bg-green-100 text-green-800" : "border-stone-200 bg-white text-stone-700 hover:border-stone-300 hover:bg-stone-50"}`}
+                            className={`min-h-10 border bg-white px-3 py-2 text-xs font-semibold transition-all sm:min-h-11 sm:rounded-lg ${isSelected ? "border-2 border-[#2d837d] text-green-800" : "border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50"}`}
                           >
                             {method.name}
                           </button>
@@ -327,13 +320,13 @@ export default function PosCheckoutModal({
                   </div>
 
 	                  {!isPayLater ? (
-	                    <div className="rounded-lg border border-stone-200 bg-white p-4">
+	                    <div className="border border-stone-200 bg-white p-3 sm:rounded-lg sm:p-4">
 	                      <div className="flex items-start justify-between gap-3">
 	                        <div>
 	                          <p className="text-sm font-semibold text-stone-900">Amount received</p>
 	                          <p className="mt-1 text-xs text-stone-500">Use exact amount or enter cash received.</p>
 	                        </div>
-	                        <div className={`rounded-lg px-3 py-1 text-xs font-semibold ${change > 0 ? "bg-emerald-100 text-emerald-700" : balance > 0 ? "bg-amber-100 text-amber-700" : "bg-stone-200 text-stone-700"}`}>
+	                        <div className={`px-3 py-1 text-xs font-semibold sm:rounded-lg ${change > 0 ? "bg-emerald-100 text-emerald-700" : balance > 0 ? "bg-amber-100 text-amber-700" : "bg-stone-200 text-stone-700"}`}>
 	                          {change > 0 ? `Change ${formatMoney(selectedCurrencyCode, change)}` : `Remaining ${formatMoney(selectedCurrencyCode, balance)}`}
 	                        </div>
 	                      </div>
@@ -357,7 +350,7 @@ export default function PosCheckoutModal({
 	                      </div>
 	                    </div>
 	                  ) : (
-	                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+	                    <div className="border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 sm:rounded-lg sm:p-4">
 	                      This order will be saved as unpaid with the full amount remaining.
 	                    </div>
 	                  )}
@@ -369,26 +362,26 @@ export default function PosCheckoutModal({
                 <Input.TextArea
                   value={note}
                   onChange={(event) => onNoteChange(event.target.value)}
-                  rows={4}
+                  rows={3}
                   placeholder="Add an optional note for this sale"
-                  className="!rounded-xl"
+                  className="!rounded-md sm:!rounded-xl"
                 />
               </div>
             </div>
 
-            <div className="mt-4 space-y-3 border-t border-stone-200 bg-white pb-1 pt-3">
+            <div className="sticky bottom-0 z-10 mt-4 space-y-3 border-t border-stone-200 bg-white pb-[max(10px,env(safe-area-inset-bottom))] pt-3">
 	              {remainingAmount > 0 && !isPayLater ? <p className="text-sm text-amber-700">Remaining payment required: {formatMoney(selectedCurrencyCode, remainingAmount)}</p> : null}
-              <div className="grid grid-cols-3 gap-3">
-              <Button size="large" className="!h-12 !rounded-lg !border !border-stone-200 !bg-transparent !text-stone-700 !shadow-none hover:!border-stone-300 hover:!bg-stone-50" onClick={onCancel}>
+              <div className="grid grid-cols-[0.8fr_0.9fr_1.25fr] gap-2 sm:grid-cols-3 sm:gap-3">
+              <Button size="large" className="!h-11 !rounded-md !border !border-stone-200 !bg-transparent !px-2 !text-sm !text-stone-700 !shadow-none hover:!border-stone-300 hover:!bg-stone-50 sm:!h-12 sm:!rounded-lg" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button size="large" className="!h-12 !rounded-lg !border !border-stone-200 !bg-white !text-stone-700 !shadow-none hover:!border-stone-300 hover:!bg-stone-50" onClick={onSaveCart}>
+              <Button size="large" className="!h-11 !rounded-md !border !border-stone-200 !bg-white !px-2 !text-sm !text-stone-700 !shadow-none hover:!border-stone-300 hover:!bg-stone-50 sm:!h-12 sm:!rounded-lg" onClick={onSaveCart}>
                 Save cart
               </Button>
               <Button
                 type="primary"
                 size="large"
-                className="!h-12 !rounded-lg !border-0 !shadow-none"
+                className="!h-11 !rounded-md !border-0 !px-2 !text-sm !shadow-none sm:!h-12 sm:!rounded-lg"
                 style={{ backgroundColor: "#2d837d" }}
                 loading={loading}
 	                disabled={!isPayLater && remainingAmount > 0.005}

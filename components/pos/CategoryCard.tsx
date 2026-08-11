@@ -1,24 +1,21 @@
 "use client";
 
-import type { ReactNode } from "react";
-
 type CategoryCardProps = {
   title: string;
-  count: number;
   active?: boolean;
   onClick: () => void;
 };
 
-export default function CategoryCard({ title, count, active = false, onClick }: CategoryCardProps) {
+export default function CategoryCard({ title, active = false, onClick }: CategoryCardProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex  shrink-0  items-center justify-center rounded-[18px] border px-4 py-2 text-center transition ${
-        active ? "border-[#7a39cc] bg-[#f6efff] shadow-[0_8px_24px_rgba(122,57,204,0.08)]" : "border-[#dfdfdf] bg-[#fafafa] hover:border-[#cfcfcf] hover:bg-white"
+      className={`flex shrink-0 items-center justify-center border-b-2 px-3 py-2.5 text-center transition md:rounded-[18px] md:border md:px-4 md:py-2 ${
+        active ? "border-[#2d837d] bg-white md:bg-[#edf7f6]" : "border-transparent bg-white hover:border-gray-300 md:border-[#dfdfdf] md:bg-[#fafafa] md:hover:bg-white"
       }`}
     >
-      <div className={` text-[15px] font-semibold leading-tight ${active ? "text-[#6f38c5]" : "text-[#b0b0b0]"}`}>{title}</div>
+      <div className={`whitespace-nowrap text-sm font-semibold leading-tight md:text-[15px] ${active ? "text-[#236d68]" : "text-gray-500"}`}>{title}</div>
     </button>
   );
 }

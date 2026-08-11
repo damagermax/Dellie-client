@@ -3,16 +3,13 @@
 import { PackageSearch } from "lucide-react";
 import { getNormalPrice } from "@/lib/products/pricing";
 import type { Category, ProductListItem } from "@/types/index";
-import { AppViewLoader } from "@/components/ui/AppViewLoader";
 import CategoryCard from "./CategoryCard";
 import ProductCard from "./ProductCard";
 import { formatMoney, getProductImage, isTrackedInventory } from "./utils";
 
 type PosProductGridProps = {
   categories: Category[];
-  allProductsCount: number;
   categoryId?: string;
-  categoryCounts: Map<string, number>;
   visibleProducts: ProductListItem[];
   visibleProductNames: Record<string, string>;
   selectedCurrencyCode: string;
@@ -25,9 +22,7 @@ type PosProductGridProps = {
 
 export default function PosProductGrid({
   categories,
-  allProductsCount,
   categoryId,
-  categoryCounts,
   visibleProducts,
   visibleProductNames,
   selectedCurrencyCode,
@@ -39,48 +34,50 @@ export default function PosProductGrid({
 }: PosProductGridProps) {
   return (
     <>
-      <div className=" px-3 bg-[#F5F5F5] py-4 md:px-4">
-        <div className="flex gap-4 overflow-x-auto ">
+      <div className="hidden px-3 bg-[#F5F5F5] py-4 md:block md:px-4">
+        <div className="flex gap-4 overflow-x-auto">
           {categoriesLoading ? (
             <CategoryRailShimmer />
           ) : (
             <>
-              <CategoryCard title="All Menu" count={allProductsCount} active={!categoryId} onClick={() => onSelectCategory(undefined)} />
+              <CategoryCard title="All Menu" active={!categoryId} onClick={() => onSelectCategory(undefined)} />
               {categories.map((category) => (
-                <CategoryCard key={category.id} title={category.name} count={categoryCounts.get(category.id) || 0} active={categoryId === category.id} onClick={() => onSelectCategory(category.id)} />
+                <CategoryCard key={category.id} title={category.name} active={categoryId === category.id} onClick={() => onSelectCategory(category.id)} />
               ))}
             </>
           )}
         </div>
       </div>
 
-      <div className="px-3  md:px-4 ">
-        <AppViewLoader loading={productsLoading || categoriesLoading} />
+      <div className="px-2 py-2 md:px-4 md:py-0">
+        {productsLoading ? (
+          <ProductGridShimmer />
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5 md:grid-cols-4 md:gap-3 lg:grid-cols-5 xl:grid-cols-6">
+            {visibleProducts.map((product) => {
+              const quantity = getCartQuantity(product.id);
+              const trackedInventory = isTrackedInventory(product.type);
+              const unavailable = trackedInventory && Number(product.availableStock || 0) <= 0;
 
-        <div className="grid gap-1.5 md:gap-3 grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 ">
-          {visibleProducts.map((product) => {
-            const quantity = getCartQuantity(product.id);
-            const trackedInventory = isTrackedInventory(product.type);
-            const unavailable = trackedInventory && Number(product.availableStock || 0) <= 0;
-
-            return (
-              <ProductCard
-                key={product.id}
-                name={visibleProductNames[product.id] || product.name}
-                imageUrl={getProductImage(product)}
-                price={product.hasVariants ? "Select variant" : formatMoney(selectedCurrencyCode, getNormalPrice(product))}
-                quantity={quantity}
-                available={!unavailable}
-                onDecrease={() => undefined}
-                onIncrease={() => onAddProduct(product)}
-              />
-            );
-          })}
-        </div>
+              return (
+                <ProductCard
+                  key={product.id}
+                  name={visibleProductNames[product.id] || product.name}
+                  imageUrl={getProductImage(product)}
+                  price={product.hasVariants ? "Select variant" : formatMoney(selectedCurrencyCode, getNormalPrice(product))}
+                  quantity={quantity}
+                  available={!unavailable}
+                  onDecrease={() => undefined}
+                  onIncrease={() => onAddProduct(product)}
+                />
+              );
+            })}
+          </div>
+        )}
 
         {!visibleProducts.length && !productsLoading && (
-          <div className="mt-5 rounded-[26px] border border-dashed border-[#dbd6e2] bg-[#fafafa] px-6 py-16 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f2e9ff] text-[#7a39cc]">
+          <div className="mt-5 border-y border-dashed border-gray-300 bg-white px-6 py-16 text-center md:rounded-[26px] md:border">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center bg-[#edf7f6] text-[#2d837d] md:rounded-full">
               <PackageSearch size={30} />
             </div>
             <h3 className="mt-4 text-lg font-semibold text-gray-950">No products found</h3>
@@ -96,11 +93,26 @@ function CategoryRailShimmer() {
   return (
     <>
       {Array.from({ length: 6 }).map((_, index) => (
-        <div key={`pos-category-shimmer-${index}`} className="min-w-[112px] rounded-[22px] border border-stone-200 bg-white px-4 py-3">
+        <div key={`pos-category-shimmer-${index}`} className="min-w-[112px] rounded-[18px] border border-stone-200 bg-white px-4 py-3">
           <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
-          <div className="mt-2 h-3 w-8 animate-pulse rounded bg-stone-100" />
         </div>
       ))}
     </>
+  );
+}
+
+function ProductGridShimmer() {
+  return (
+    <div className="grid grid-cols-3 gap-1.5 md:grid-cols-4 md:gap-3 lg:grid-cols-5 xl:grid-cols-6">
+      {Array.from({ length: 12 }).map((_, index) => (
+        <div key={`pos-product-shimmer-${index}`} className="flex h-full flex-col overflow-hidden border border-gray-200/80 bg-white md:rounded-md">
+          <div className="aspect-square w-full animate-pulse bg-stone-100 md:aspect-[4/2.8]" />
+          <div className="flex flex-1 flex-col p-1 pb-2 md:p-3">
+            <div className="h-4 w-16 animate-pulse rounded bg-stone-200" />
+            <div className="mt-2 h-4 w-full animate-pulse rounded bg-stone-100" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

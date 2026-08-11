@@ -4,6 +4,7 @@ import type { MenuProps } from "antd";
 import { ShoppingCart, UserPlus } from "lucide-react";
 import { ResolvedProductName } from "@/components/products/ResolvedProductName";
 import ResponsiveActionMenu from "@/components/ui/ResponsiveActionMenu";
+import CompactQuantityControl from "./CompactQuantityControl";
 import type { PosCartItem } from "./types";
 import PosSummaryRow from "./PosSummaryRow";
 import { formatMoney } from "./utils";
@@ -23,6 +24,8 @@ type PosCartSidebarProps = {
   grandTotal: number;
   onOpenCustomer: () => void;
   onEditCartItem: (cartItemId: string) => void;
+  onDecreaseQuantity: (cartItemId: string) => void;
+  onIncreaseQuantity: (cartItemId: string) => void;
   onOpenCheckout: () => void;
 };
 
@@ -41,6 +44,8 @@ export default function PosCartSidebar({
   grandTotal,
   onOpenCustomer,
   onEditCartItem,
+  onDecreaseQuantity,
+  onIncreaseQuantity,
   onOpenCheckout,
 }: PosCartSidebarProps) {
   return (
@@ -72,23 +77,34 @@ export default function PosCartSidebar({
           <div className=" max-h-[70vh] overflow-y-scroll">
             {cart.length ? (
               cart.map((item) => (
-                <div key={item.id} className={`cursor-pointer border-b p-2 px-3 ${stockIssues.some((issue) => issue.id === item.id) ? "border-red-200 bg-red-50/60" : "border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f9fafb_100%)]"}`} onClick={() => onEditCartItem(item.id)}>
+                <div key={item.id} className={`cursor-pointer overflow-hidden border-b p-2 px-3 ${stockIssues.some((issue) => issue.id === item.id) ? "border-red-200 bg-red-50/60" : "border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f9fafb_100%)]"}`} onClick={() => onEditCartItem(item.id)}>
                   <div className="flex gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <ResolvedProductName name={cartProductNames[item.productId] || item.name} productId={item.productId} className="truncate text-sm  font-medium text-gray-950" />
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <div className="flex min-w-0 items-start justify-between gap-3 overflow-hidden">
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <ResolvedProductName name={cartProductNames[item.productId] || item.name} productId={item.productId} className="block truncate overflow-hidden text-sm font-medium text-gray-950" />
                         </div>
+                        <p className="shrink-0 truncate font-semibold text-green-900">{formatMoney(selectedCurrencyCode, item.quantity * item.unitPrice)}</p>
                       </div>
 
-                      <div className=" flex justify-between items-center w-full">
-                        <p className="text-xs    font-normal text-gray-600">
+                      <div className="mt-3 flex min-w-0 items-center justify-between gap-3 overflow-hidden w-full">
+                        <p className="min-w-0 truncate text-xs font-normal text-gray-600">
                           {"("} GHS {item.unitPrice || "-"} <span className=" text-[10px]">x</span>
                           {item.quantity}
                           {")"}
                         </p>
-
-                        <p className="text-green-900 font-semibold"> GHS {item.quantity * item.unitPrice || "-"}</p>
+                        <div
+                          className="w-[92px] shrink-0"
+                          onClick={(event) => event.stopPropagation()}
+                          onPointerDown={(event) => event.stopPropagation()}
+                        >
+                          <CompactQuantityControl
+                            value={item.quantity}
+                            onDecrease={() => onDecreaseQuantity(item.id)}
+                            onIncrease={() => onIncreaseQuantity(item.id)}
+                            decreaseDisabled={item.quantity <= 1}
+                          />
+                        </div>
                       </div>
                       {stockIssues.some((issue) => issue.id === item.id) ? <p className="mt-1 text-xs font-medium text-red-600">Only {Number(item.availableStock || 0)} available at this location.</p> : null}
                     </div>

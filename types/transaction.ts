@@ -108,6 +108,7 @@ export interface UpdateExpenseInput {
   totalAmount?: number;
   categoryId?: number;
   contactId?: number;
+  paymentMethodId?: string;
 }
 
 export interface Transaction {
@@ -160,6 +161,7 @@ export interface CreateExpenseInput {
   rate?: string;
   currencyId?: string;
   categoryId?: string;
+  paymentMethodId?: string;
 }
 
 export interface ExpenseQueryParams {

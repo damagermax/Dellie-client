@@ -56,6 +56,7 @@ export function ExchangeRateFormItem({
     <Form.Item label={label} className={className} name={name} rules={rules}>
       <InputNumber
         className="!w-full"
+        size="large"
         min={min}
         controls={false}
         disabled={disabled || isStoreCurrency}

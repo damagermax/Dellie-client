@@ -30,6 +30,7 @@ import { CategoryStatus, CategoryType, Location, PaymentMethod, ProductListItem,
 import { Contact, ContactRole } from "@/types/contact";
 import { DEFAULT_POS_SETTINGS } from "@/types/store-settings";
 import { DropdownItemLabel } from "@/components/ui/ActionDropdown";
+import { ShoppingCart } from "lucide-react";
 import { GrUserExpert } from "react-icons/gr";
 import { HiOutlineTrash } from "react-icons/hi2";
 import { RiDraftLine } from "react-icons/ri";
@@ -40,6 +41,7 @@ import PosEditItemModal from "./PosEditItemModal";
 import PosHeader from "./PosHeader";
 import PosHistoryDrawer from "./PosHistoryDrawer";
 import PosLocationModal from "./PosLocationModal";
+import PosMobileCartDrawer from "./PosMobileCartDrawer";
 import PosProductGrid from "./PosProductGrid";
 import { usePosCartTotals } from "./hooks/usePosCartTotals";
 import { usePosCheckout } from "./hooks/usePosCheckout";
@@ -94,6 +96,7 @@ export default function POSPage() {
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [activeSavedCartId, setActiveSavedCartId] = useState<string | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [posFulfillmentMode, setPosFulfillmentMode] = useState<"fulfill_now" | "pending" | undefined>(undefined);
   const [posOrderMethod, setPosOrderMethod] = useState<PosOrderMethod>("now");
@@ -132,8 +135,8 @@ export default function POSPage() {
     ? assignedScope.assignedLocationId || undefined
     : selectedLocation?.id || normalizeEntityId(form.getFieldValue("locationId")) || defaultLocation?.id;
   const activeLocationId = currentPosLocationId;
-  const { data: allProductsData } = useGetProductsQuery({ inPOS: true, locationId: activeLocationId, limit: 100 });
-  const { data: filteredProductsData, isLoading: productsLoading } = useGetProductsQuery({
+  const { data: allProductsData, isFetching: allProductsFetching } = useGetProductsQuery({ inPOS: true, locationId: activeLocationId, limit: 100 });
+  const { data: filteredProductsData, isLoading: productsLoading, isFetching: filteredProductsFetching } = useGetProductsQuery({
     search: debouncedSearch,
     inPOS: true,
     categoryId,
@@ -202,18 +205,8 @@ export default function POSPage() {
     })),
   );
 
-  const categoryCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const product of allProducts) {
-      const key = product.categoryId || product.categoryName || product.category;
-      if (!key) continue;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    }
-    return counts;
-  }, [allProducts]);
-
   const deliveryFeeAmount = useMemo(() => (posOrderMethod === "delivery" ? roundMoney(Number(deliveryFee || 0)) : 0), [deliveryFee, posOrderMethod]);
-  const { totalItems, subtotal, discounts, taxableSubtotal, taxAmount, grandTotal, totalPaid, balance, change } = usePosCartTotals(cart, payments, selectedTax, deliveryFeeAmount);
+  const { totalItems, subtotal, discounts, taxableSubtotal, taxAmount, grandTotal, balance, change } = usePosCartTotals(cart, payments, selectedTax, deliveryFeeAmount);
   const taxSummary = useMemo(
     () => buildTaxBreakdown(taxableSubtotal, selectedTax),
     [selectedTax, taxableSubtotal],
@@ -442,13 +435,13 @@ export default function POSPage() {
   const getCartQuantity = useCallback((productId: string) => getCartItem(cart, productId)?.quantity || 0, [cart]);
 
   const addQuantity = useCallback(
-    (product: ProductListItem) => {
+    (product: ProductListItem, quantity = 1) => {
       if (product.hasVariants || product.variants?.length) {
         setVariantParent(product);
         return;
       }
       const current = getCartItem(cart, product.id)?.quantity || 0;
-      setCartQuantity(product, current + 1);
+      setCartQuantity(product, current + quantity);
     },
     [cart, setCartQuantity],
   );
@@ -640,6 +633,7 @@ export default function POSPage() {
 
     prepareCheckout();
     setShowSplit(false);
+    setMobileCartOpen(false);
     setCheckoutModalOpen(true);
   }, [cart.length, prepareCheckout, stockIssues]);
 
@@ -669,16 +663,21 @@ export default function POSPage() {
   }, [clearSelectedCustomer]);
 
   const loading = creatingCheckout;
+  const productGridLoading = productsLoading || filteredProductsFetching || allProductsFetching;
 
   return (
-    <div className="min-h-screen  ">
-      <div className="flex h-screen w-full items-start  -bg-[#f7f8fd] ">
-        <div className="mx-auto  h-screen overflow-scroll  w-full lg:w-[70%] border-r border-gray-200  bg-[#F5F5F5] ">
+    <div className="h-[100dvh] overflow-hidden bg-white">
+      <div className="flex h-full w-full items-start">
+        <div className="mx-auto h-full w-full overflow-y-auto border-r border-gray-200 bg-white pb-24 lg:w-[70%] lg:bg-[#F5F5F5] lg:pb-0">
           <PosHeader
             counterName={posSettings.counterName}
             selectedLocationName={selectedLocation?.name || defaultLocation?.name}
+            categories={categories}
+            categoryId={categoryId}
+            categoriesLoading={categoriesLoading}
             searchValue={searchValue}
             onSearchChange={setSearchValue}
+            onSelectCategory={setCategoryId}
             onOpenLocation={() => {
               if (assignedScope.isRestricted) return;
               setLocationModalOpen(true);
@@ -687,13 +686,11 @@ export default function POSPage() {
           />
           <PosProductGrid
             categories={categories}
-            allProductsCount={allProducts.length}
             categoryId={categoryId}
-            categoryCounts={categoryCounts}
             visibleProducts={visibleProducts}
             visibleProductNames={visibleProductNames}
             selectedCurrencyCode={selectedCurrencyCode}
-            productsLoading={productsLoading}
+            productsLoading={productGridLoading}
             categoriesLoading={categoriesLoading}
             getCartQuantity={getCartQuantity}
             onSelectCategory={setCategoryId}
@@ -713,11 +710,37 @@ export default function POSPage() {
           discounts={discounts}
           taxableSubtotal={taxableSubtotal}
           taxAmount={taxAmount}
-          grandTotal={grandTotal}
-          onOpenCustomer={() => setCustomerModalOpen(true)}
-          onEditCartItem={setEditingCartItemId}
-          onOpenCheckout={openCheckout}
-        />
+        grandTotal={grandTotal}
+        onOpenCustomer={() => setCustomerModalOpen(true)}
+        onEditCartItem={setEditingCartItemId}
+        onDecreaseQuantity={(cartItemId) => changeCartItemQuantity(cartItemId, -1)}
+        onIncreaseQuantity={(cartItemId) => changeCartItemQuantity(cartItemId, 1)}
+        onOpenCheckout={openCheckout}
+      />
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-300 bg-white pb-[env(safe-area-inset-bottom)] lg:hidden">
+        <div className="flex h-[68px] items-stretch">
+          <button type="button" onClick={() => setMobileCartOpen(true)} className="flex min-w-0 flex-1 items-center gap-3 px-4 text-left active:bg-gray-100">
+            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center border border-gray-300 bg-white">
+              <ShoppingCart size={18} />
+              {totalItems > 0 ? <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center bg-[#2d837d] px-1 text-[10px] font-bold text-white">{totalItems}</span> : null}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs text-gray-500">{selectedContactName || "Walk-in customer"}</span>
+              <span className="block truncate text-base font-bold text-gray-950">{formatMoney(selectedCurrencyCode, grandTotal)}</span>
+            </span>
+            <span className="text-xs font-semibold text-[#236d68]">View cart</span>
+          </button>
+          <button
+            type="button"
+            onClick={openCheckout}
+            disabled={!cart.length || stockIssues.length > 0}
+            className={`flex w-[116px] shrink-0 items-center justify-center border-l text-sm font-bold text-white transition-colors ${!cart.length || stockIssues.length > 0 ? "cursor-not-allowed border-gray-300 bg-gray-300" : "border-[#236d68] bg-[#236d68] active:bg-[#1d5d58]"}`}
+          >
+            Checkout
+          </button>
+        </div>
       </div>
 
       <PosHistoryDrawer
@@ -762,8 +785,8 @@ export default function POSPage() {
         parent={variantParent}
         onClose={() => setVariantParent(undefined)}
         priceLabel={(price) => formatMoney(selectedCurrencyCode, price)}
-        onSelect={(variant) => {
-          setCartQuantity(variant, (getCartItem(cart, variant.id)?.quantity || 0) + 1);
+        onSelect={(variant, quantity) => {
+          setCartQuantity(variant, (getCartItem(cart, variant.id)?.quantity || 0) + quantity);
           setVariantParent(undefined);
         }}
       />
@@ -781,7 +804,6 @@ export default function POSPage() {
         taxAmount={taxAmount}
         taxSummary={taxSummary}
         grandTotal={grandTotal}
-        totalPaid={totalPaid}
         balance={balance}
         change={change}
         deliveryFee={deliveryFeeAmount}
@@ -808,6 +830,34 @@ export default function POSPage() {
           saveCartDraft();
         }}
         onSubmitCheckout={submitCheckout}
+      />
+
+      <PosMobileCartDrawer
+        open={mobileCartOpen}
+        onClose={() => setMobileCartOpen(false)}
+        selectedContactName={selectedContactName}
+        cartActionItems={cartActionItems}
+        onCartActionClick={handleCartActionClick}
+        cart={cart}
+        stockIssues={stockIssues}
+        cartProductNames={cartProductNames}
+        selectedCurrencyCode={selectedCurrencyCode}
+        subtotal={subtotal}
+        discounts={discounts}
+        taxableSubtotal={taxableSubtotal}
+        taxAmount={taxAmount}
+        grandTotal={grandTotal}
+        onOpenCustomer={() => {
+          setMobileCartOpen(false);
+          setCustomerModalOpen(true);
+        }}
+        onEditCartItem={(cartItemId) => {
+          setMobileCartOpen(false);
+          setEditingCartItemId(cartItemId);
+        }}
+        onDecreaseQuantity={(cartItemId) => changeCartItemQuantity(cartItemId, -1)}
+        onIncreaseQuantity={(cartItemId) => changeCartItemQuantity(cartItemId, 1)}
+        onOpenCheckout={openCheckout}
       />
 
       <PosCustomerModal

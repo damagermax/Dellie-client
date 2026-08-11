@@ -7,10 +7,11 @@ import { Expense, CreateExpenseInput, UpdateExpenseInput, TransactionType } from
 import { useEffect, useState } from "react";
 import { SearchableCurrenciesSelect } from "../system/SearchableCurrencySelect";
 import { ExchangeRateFormItem } from "../system/ExchangeRateFormItem";
+import { SearchablePaymentMethodSelect } from "../paymentMethods/SearchablePaymentMethodSelect";
 import dayjs from "dayjs";
 import { useSelector } from "react-redux";
 
-import { useCreateExpenseMutation, useUpdateExpenseMutation, useGetTransactionQuery } from "@/lib/redux/services";
+import { useCreateExpenseMutation, useUpdateExpenseMutation, useGetTransactionQuery, useGetCurrencyQuery } from "@/lib/redux/services";
 import { SearchableExpenseCategorySelect } from "./SearchableExpenseCategorySelect";
 import useToggle from "@/hooks/UseToggle";
 import { CiReceipt } from "react-icons/ci";
@@ -47,6 +48,15 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
   const [paidAmountEntered, setPaidAmountEntered] = useState();
   const totalAmount = Form.useWatch("totalAmount", expenseForm);
   const paidAmount = Form.useWatch("paidAmount", expenseForm);
+  const selectedCurrencyId = Form.useWatch("currencyId", expenseForm) as string | undefined;
+  const fallbackStoreCurrencyCode = JSON.parse(localStorage.getItem("user") || "{}")?.store?.currency?.code || JSON.parse(localStorage.getItem("user") || "{}")?.store?.currencyCode || "";
+  const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId as string, { skip: !selectedCurrencyId });
+  const { data: storeCurrency } = useGetCurrencyQuery(storeCurrencyId as string, { skip: !storeCurrencyId || Boolean(fallbackStoreCurrencyCode) });
+  const amountCurrencyCode =
+    (selectedCurrencyId && selectedCurrency?.code) ||
+    fallbackStoreCurrencyCode ||
+    storeCurrency?.code ||
+    "GHS";
 
   const canChangeCurrency = expenseData?.balance != expenseData?.amount || initialValues?.balance != initialValues?.amount;
 
@@ -59,16 +69,17 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
 
   useEffect(() => {
     if (expenseData && isSuccess) {
-      expenseForm.setFieldsValue({
-        ...expenseData,
-        date: dayjs(expenseData.date),
-        dueDate: expenseData.dueDate ? dayjs(expenseData.dueDate) : undefined,
-        totalAmount: expenseData.amount,
-        categoryId: expenseData.category?.id,
-        contactId: expenseData.contact?.id,
-        currencyId: expenseData.currency?.id,
-      });
-    }
+        expenseForm.setFieldsValue({
+          ...expenseData,
+          date: dayjs(expenseData.date),
+          dueDate: expenseData.dueDate ? dayjs(expenseData.dueDate) : undefined,
+          totalAmount: expenseData.amount,
+          categoryId: expenseData.category?.id,
+          contactId: expenseData.contact?.id,
+          paymentMethodId: expenseData.paymentMethod?.id,
+          currencyId: expenseData.currency?.id,
+        });
+      }
   }, [expenseData, isSuccess]);
 
   useEffect(() => {
@@ -89,6 +100,7 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
         currencyId: initialValues.currency?.id,
         rate: initialValues.rate ?? 1,
         dueDate: initialValues.dueDate ? dayjs(initialValues.dueDate) : undefined,
+        paymentMethodId: initialValues.paymentMethod?.id,
       });
     }
   }, [expenseForm, initialValues, storeCurrencyId]);
@@ -189,14 +201,20 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
               <InputFormItem label="Description" name="note" placeholder="What was it for" rules={[{ required: true, message: "Enter description" }]} />
             </div>
 
+            <div className="col-span-2">
+              <Form.Item label="Contact" name="contactId">
+                <SearchableContactSelect onAddContact={toggleContactModal} />
+              </Form.Item>
+            </div>
+
             <Form.Item label="Category" name="categoryId">
               <SearchableExpenseCategorySelect type={CategoryType.EXPENSE} onAddCategory={toggleOpenExpenseCategoryModal} />
             </Form.Item>
 
             <DatePickerFormItem name="date" label="Date" />
 
-            <Form.Item label="Contact" name="contactId">
-              <SearchableContactSelect onAddContact={toggleContactModal} />
+            <Form.Item label="Payment Method" name="paymentMethodId">
+              <SearchablePaymentMethodSelect allowClear />
             </Form.Item>
 
             <DatePickerFormItem name="dueDate" label="Due Date" />
@@ -207,15 +225,15 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
                   <SearchableCurrenciesSelect disabled={canChangeCurrency} />
                 </Form.Item>
 
-                <ExchangeRateFormItem name="rate" />
+                <ExchangeRateFormItem name="rate" className="w-full" />
               </>
             ) : null}
 
-            <InputFormItem addonBefore="GHS" type="number" label="Total Amount (without discount)" name="totalAmount" rules={[{ required: true, message: "Enter amount" }]} />
+            <InputFormItem addonBefore={amountCurrencyCode} type="number" label="Total Amount" name="totalAmount" rules={[{ required: true, message: "Enter amount" }]} />
 
             {!initialValues && (
               <>
-                <InputFormItem addonBefore="GHS" type="number" label="Paid Amount" name="paidAmount" />
+                <InputFormItem addonBefore={amountCurrencyCode} type="number" label="Paid Amount" name="paidAmount" />
                 <div className="  hidden col-span-2 p-3 bg-gray-50 rounded-lg flex   flex-col border-gray-200 border border-solid">
                   {preview && (
                     <div className=" flex gap-x-5 items-center">
