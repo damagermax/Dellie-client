@@ -31,8 +31,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function PersonalInfo({ isEditing, profileForm, onSaved }: { isEditing: boolean; profileForm: FormInstance; onSaved: () => void }) {
-  const [image, setImage] = useState<string | File | undefined>(undefined);
-
   const currentUser = useSelector((state: RootState) => state.currentUser);
   const [updateUserProfile, { isLoading }] = useUpdateUserProfileMutation();
 
@@ -54,10 +52,6 @@ export default function PersonalInfo({ isEditing, profileForm, onSaved }: { isEd
       phone: formatPhoneForSubmit(values.phone),
     };
 
-    if (image) {
-      formData.append("image", image as string | Blob);
-    }
-
     for (const [key, value] of Object.entries(payload)) {
       if (value !== undefined && value !== null) {
         formData.append(key, value);
@@ -75,49 +69,29 @@ export default function PersonalInfo({ isEditing, profileForm, onSaved }: { isEd
     }
   };
 
-  const handleChange: UploadProps["onChange"] = (values) => {
-    setImage(values.file?.originFileObj);
-  };
-
   return (
-    <Card className="border-0  rounded-xl overflow-hidden">
+    <div className=" rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100">
-        <h2 className="text-xl font-semibold text-gray-800">Personal Information</h2>
-        <p className="text-gray-500 text-sm">Update your personal details and contact information</p>
-      </div>
 
       <div className="p-6">
         <div className=" gap-8">
-          <div className="w-full mb-5  flex gap-x-5  items-center">
+          <div className="w-full mb-5  flex gap-x-5  ">
             <div className="relative mb-4 group">
               <div className="relative">
-                <Avatar src={image ? URL.createObjectURL(image as File) : currentUser?.user?.imageUrl} size={90} icon={<UserOutlined />} className="border-4 border-white  transition-all duration-300 hover:shadow-xl" />
-                {isEditing && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <Upload maxCount={1} showUploadList={false} onChange={handleChange} beforeUpload={() => false}>
-                      <Button type="primary" shape="circle" icon={<EditOutlined />} className="bg-white/90 hover:bg-white text-blue-600 shadow-md" size="large" />
-                    </Upload>
-                  </div>
-                )}
+                <Avatar size={90} icon={<UserOutlined />} className="border-4 border-white  transition-all duration-300 hover:shadow-xl" />
               </div>
             </div>
 
-            {isEditing ? (
-              <Upload showUploadList={false} onChange={handleChange} maxCount={1} className=" " beforeUpload={() => false}>
-                <Button type="default" icon={<UploadOutlined />} className="w-full border-dashed hover:border-blue-400 hover:text-blue-600">
-                  Change Photo
-                </Button>
-              </Upload>
-            ) : (
-              <div className="text-center space-y-2 ">
-                <h3 className="text-xl font-semibold text-gray-900">{}</h3>
-                <div className="inline-flex  items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  <span className=" h-2 w-2 mr-2 rounded-full bg-green-500 mr"></span>
-                  Active Account
-                </div>
+            <div className="  ">
+              <h3 className="text-lg font-semibold text-gray-900">{currentUser?.user?.name}</h3>
+              <p className="text-gray-600 text-sm">
+                {currentUser?.user?.email} | {currentUser?.user?.username}
+              </p>
+              <div className="inline-flex mt-2  items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className=" h-2  w-2 mr-2 rounded-full bg-green-500 mr"></span>
+                Active Account
               </div>
-            )}
+            </div>
           </div>
 
           <div className="flex-1">
@@ -136,34 +110,11 @@ export default function PersonalInfo({ isEditing, profileForm, onSaved }: { isEd
                 />
 
                 <PhoneInputFormItem label="Phone" name="phone" rules={[{ required: true, message: "Please input your phone number!" }]} className="mb-0" />
-
-                <InputFormItem
-                  name="username"
-                  label="Username"
-                  disable
-                  className="mb-0"
-                />
-
-                <div className=" col-span-2">
-                  <InputFormItem
-                    name="email"
-                    label="Email"
-                    disable
-                    rules={[
-                      {
-                        required: true,
-                        message: "Please input your email!",
-                      },
-                    ]}
-                    className="mb-0"
-                  />
-                  <div className="mt-1 text-xs text-gray-400">Email is read-only here. Contact an admin if it needs to change.</div>
-                </div>
               </div>
             </Form>
           </div>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

@@ -3,6 +3,7 @@
 import { DashboardPageContainer } from "@/components/dashboard/DashboardPageContainer";
 import { DashboardStateCard } from "@/components/dashboard/DashboardStateCard";
 import { DashboardToolbar } from "@/components/dashboard/DashboardToolbar";
+import { ReportDateRangePicker } from "@/components/dashboard/ReportDateRangePicker";
 import { StoreSelector } from "@/components/dashboard/StoreSelector";
 import { CriticalStockWatchlistCard } from "@/components/dashboard/inventory-report/CriticalStockWatchlistCard";
 import { InventoryReportShimmer } from "@/components/dashboard/inventory-report/InventoryReportShimmer";
@@ -15,12 +16,10 @@ import { RootState } from "@/lib/store";
 import { LocationStatus, StorePermission } from "@/types/index";
 import type { InventoryReportResponse } from "@/types/inventory-report";
 import { DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
-import { Button, DatePicker, Select } from "antd";
+import { Button, Select } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
-
-const { RangePicker } = DatePicker;
 
 export default function InventoryReportPage() {
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>(() => [dayjs().startOf("month"), dayjs()]);
@@ -95,7 +94,7 @@ export default function InventoryReportPage() {
         <div />
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
           <Select className="min-w-[220px]" value={effectiveLocationId} onChange={assignedScope.isRestricted ? undefined : setLocationId} options={locationOptions} disabled={assignedScope.isRestricted} />
-          <RangePicker value={dateRange} onChange={(value) => value && setDateRange(value as [Dayjs, Dayjs])} />
+          <ReportDateRangePicker value={dateRange} onChange={setDateRange} />
           <StoreSelector />
           <div className="flex items-center gap-2">
             <Button aria-label="Refresh report" icon={<ReloadOutlined spin={isFetching && !isLoading} />} onClick={() => refetch()} disabled={isFetching && !isLoading} />

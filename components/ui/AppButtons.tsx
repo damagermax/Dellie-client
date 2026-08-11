@@ -1,8 +1,6 @@
 import { Button } from "antd";
 import { IoAddCircleOutline } from "react-icons/io5";
 import { LuPlus } from "react-icons/lu";
-import { LuFilter } from "react-icons/lu";
-import { TfiImport, TfiExport } from "react-icons/tfi";
 
 export function BaseButton({
   icon,
@@ -47,22 +45,5 @@ export function FloatingAddButton({ onClick, label = "Create" }: { onClick: () =
     >
       <LuPlus size={18} />
     </Button>
-  );
-}
-
-export function FilterButton({ onClick }: { onClick: () => void }) {
-  return <BaseButton onClick={onClick} icon={<LuFilter />} label={"Filter"} type="default" classNames="!text-gray-500 font-normal !h-[36px] !text-sm" />;
-}
-
-export function ImportExportButton() {
-  return (
-    <>
-      <Button shape="circle">
-        <TfiImport />
-      </Button>
-      <Button shape="circle">
-        <TfiExport />
-      </Button>
-    </>
   );
 }

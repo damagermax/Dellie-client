@@ -52,11 +52,7 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
   const fallbackStoreCurrencyCode = JSON.parse(localStorage.getItem("user") || "{}")?.store?.currency?.code || JSON.parse(localStorage.getItem("user") || "{}")?.store?.currencyCode || "";
   const { data: selectedCurrency } = useGetCurrencyQuery(selectedCurrencyId as string, { skip: !selectedCurrencyId });
   const { data: storeCurrency } = useGetCurrencyQuery(storeCurrencyId as string, { skip: !storeCurrencyId || Boolean(fallbackStoreCurrencyCode) });
-  const amountCurrencyCode =
-    (selectedCurrencyId && selectedCurrency?.code) ||
-    fallbackStoreCurrencyCode ||
-    storeCurrency?.code ||
-    "GHS";
+  const amountCurrencyCode = (selectedCurrencyId && selectedCurrency?.code) || fallbackStoreCurrencyCode || storeCurrency?.code || "GHS";
 
   const canChangeCurrency = expenseData?.balance != expenseData?.amount || initialValues?.balance != initialValues?.amount;
 
@@ -69,17 +65,17 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
 
   useEffect(() => {
     if (expenseData && isSuccess) {
-        expenseForm.setFieldsValue({
-          ...expenseData,
-          date: dayjs(expenseData.date),
-          dueDate: expenseData.dueDate ? dayjs(expenseData.dueDate) : undefined,
-          totalAmount: expenseData.amount,
-          categoryId: expenseData.category?.id,
-          contactId: expenseData.contact?.id,
-          paymentMethodId: expenseData.paymentMethod?.id,
-          currencyId: expenseData.currency?.id,
-        });
-      }
+      expenseForm.setFieldsValue({
+        ...expenseData,
+        date: dayjs(expenseData.date),
+        dueDate: expenseData.dueDate ? dayjs(expenseData.dueDate) : undefined,
+        totalAmount: expenseData.amount,
+        categoryId: expenseData.category?.id,
+        contactId: expenseData.contact?.id,
+        paymentMethodId: expenseData.paymentMethod?.id,
+        currencyId: expenseData.currency?.id,
+      });
+    }
   }, [expenseData, isSuccess]);
 
   useEffect(() => {
@@ -181,7 +177,6 @@ export default function ExpenseFormModal({ open, toggle, initialValues }: Expens
 
       <AppModal height={"62vh"} title={initialValues ? "Edit Expense " : "Create Expense "} onOk={expenseForm.submit} width={600} okText={isCreating || isUpdating ? "Saving.." : "Save"} open={open} toggle={toggle}>
         <Form
-          size="small"
           disabled={isCreating || isUpdating}
           onFinish={handleSubmit}
           form={expenseForm}

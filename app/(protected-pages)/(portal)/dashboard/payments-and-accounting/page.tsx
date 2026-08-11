@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardPageContainer } from "@/components/dashboard/DashboardPageContainer";
+import { ReportDateRangePicker } from "@/components/dashboard/ReportDateRangePicker";
 import { DashboardStateCard } from "@/components/dashboard/DashboardStateCard";
 import { DashboardToolbar } from "@/components/dashboard/DashboardToolbar";
 import { StoreSelector } from "@/components/dashboard/StoreSelector";
@@ -30,13 +31,12 @@ import type {
 } from "@/types/finance-report";
 import type { SalesReportResponse } from "@/types/sales-report";
 import { DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
-import { Button, DatePicker, Select } from "antd";
+import { Button, Select } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 
-const { RangePicker } = DatePicker;
 type FinanceView = "cashflow" | "profit-loss" | "expenses";
 
 const FINANCE_VIEW_OPTIONS: Array<{ value: FinanceView; label: string }> = [
@@ -225,10 +225,7 @@ function FinanceReportContent() {
               options={categoryOptions}
             />
           ) : null}
-          <RangePicker
-            value={dateRange}
-            onChange={(value) => value && setDateRange(value as [Dayjs, Dayjs])}
-          />
+          <ReportDateRangePicker value={dateRange} onChange={setDateRange} />
           <StoreSelector />
           <div className="flex items-center gap-2">
             <Button

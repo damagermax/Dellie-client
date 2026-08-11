@@ -14,21 +14,10 @@ interface ExchangeRateFormItemProps {
   disabled?: boolean;
 }
 
-export function ExchangeRateFormItem({
-  name,
-  label = "Exchange Rate",
-  className,
-  currencyFieldName = "currencyId",
-  rules,
-  min = 0.000001,
-  disabled = false,
-}: ExchangeRateFormItemProps) {
+export function ExchangeRateFormItem({ name, label = "Exchange Rate", className, currencyFieldName = "currencyId", rules, min = 0.000001, disabled = false }: ExchangeRateFormItemProps) {
   const form = Form.useFormInstance();
   const selectedCurrencyId = Form.useWatch(currencyFieldName, form) as string | undefined;
-  const user =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("user") || "{}")
-      : {};
+  const user = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("user") || "{}") : {};
 
   const storeCurrencyId = user?.store?.currencyId as string | undefined;
   const fallbackStoreCurrencyCode = user?.store?.currency?.code || user?.store?.currencyCode || "";
@@ -54,16 +43,7 @@ export function ExchangeRateFormItem({
 
   return (
     <Form.Item label={label} className={className} name={name} rules={rules}>
-      <InputNumber
-        className="!w-full"
-        size="large"
-        min={min}
-        controls={false}
-        disabled={disabled || isStoreCurrency}
-        prefix={`1 ${selectedCurrencyCode || storeCurrencyCode} =`}
-        suffix={storeCurrencyCode || selectedCurrencyCode}
-        placeholder="1"
-      />
+      <InputNumber className="!w-full" min={min} controls={false} disabled={disabled || isStoreCurrency} prefix={`1 ${selectedCurrencyCode || storeCurrencyCode} =`} suffix={storeCurrencyCode || selectedCurrencyCode} placeholder="1" />
     </Form.Item>
   );
 }

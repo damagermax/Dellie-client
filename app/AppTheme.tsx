@@ -30,6 +30,13 @@ export default function AppTheme({ children }: { children: React.ReactNode }) {
             borderRadiusLG: 12,
           },
 
+          InputNumber: {
+            paddingBlockSM: 6,
+            paddingInlineSM: 10,
+            borderRadiusSM: 5,
+            borderRadiusLG: 12,
+          },
+
           Button: {
             paddingBlockLG: 13,
             borderRadius: 30,
