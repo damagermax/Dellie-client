@@ -33,8 +33,9 @@ export interface PurchaseLineLandedCostBreakdown {
 
 export interface PurchaseLineItem extends Omit<PurchaseLineItemInput, "productId"> {
   id: string;
-  productId: string | { id: string; name: string; sku?: string; type?: string; media?: { url: string }[] };
+  productId: string | { id: string; name: string; sku?: string; type?: string; media?: { url: string }[]; parentProductName?: string };
   productName: string;
+  parentProductName?: string;
   productSku?: string;
   productType?: string;
   productUrl?: string;
@@ -190,7 +191,9 @@ export interface UpdatePurchaseLandedCostInput extends AddPurchaseLandedCostInpu
 export interface PurchaseStockEvent {
   id: string;
   lineItemId: string;
-  productId: string | { id: string; name: string; sku?: string; type?: string; media?: { url: string }[] };
+  productId: string | { id: string; name: string; sku?: string; type?: string; media?: { url: string }[]; parentProductName?: string };
+  productName?: string;
+  parentProductName?: string;
   quantity: number;
   fulfilledAt: string;
 }
