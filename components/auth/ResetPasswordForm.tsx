@@ -57,12 +57,12 @@ export default function ResetPasswordForm() {
       </Form>
 
       <div className="mt-6">
-        <BaseButton onClick={() => resetForm.submit()} disabled={isLoading || !token} label={isLoading ? "Resetting..." : "Reset password"} classNames="w-full !bg-[#102d2b] !py-[1.35rem] !text-white hover:!bg-[#173d3a]" />
+        <BaseButton onClick={() => resetForm.submit()} disabled={isLoading || !token} label={isLoading ? "Resetting..." : "Reset password"} classNames="w-full !bg-black !py-[1.35rem] !text-white hover:!bg-[#1a1a1a]" />
       </div>
 
       <div className="mt-6 text-center text-sm text-gray-600">
         Return to{" "}
-        <Link href="/auth/signin" className="font-semibold text-[#1f5d58] transition-colors hover:text-[#102d2b]">
+        <Link href="/auth/signin" className="font-semibold text-gray-700 transition-colors hover:text-black">
           sign in
         </Link>
       </div>

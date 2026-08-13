@@ -44,7 +44,7 @@ export default function SigninForm() {
       : null;
 
   return (
-    <AuthPageShell eyebrow="Welcome back" title="Access your account" description="Sign in to manage stock, sales, and payments.">
+    <AuthPageShell title="Access your account" description="Sign in to manage stock, sales, and payments.">
       <Form disabled={isLoading} id="signinForm" onFinish={handleLogin} size="small" form={signinForm} className="auth grid gap-x-5" layout="vertical">
         <InputFormItem
           rules={[
@@ -77,20 +77,20 @@ export default function SigninForm() {
           <Checkbox />
           <span>Remember me</span>
         </label>
-        <Link href="/auth/forgot-password" className="font-medium text-[#1f5d58] transition-colors hover:text-[#102d2b]">
+        <Link href="/auth/forgot-password" className="font-medium text-gray-700 transition-colors hover:text-black">
           Forgot password?
         </Link>
       </div>
 
       <div className="mt-6">
-        <BaseButton disabled={isLoading} form="signinForm" htmlType="submit" label={isLoading ? "Signing in..." : "Sign in"} classNames="w-full !bg-[#102d2b] !py-[1.35rem] !text-white hover:!bg-[#173d3a]" />
+        <BaseButton disabled={isLoading} form="signinForm" htmlType="submit" label={isLoading ? "Signing in..." : "Sign in"} classNames="w-full !bg-black !py-[1.35rem] !text-white hover:!bg-[#1a1a1a]" />
       </div>
 
       {errorMessage ? <Alert className="mt-4 rounded-2xl" type="error" showIcon message={errorMessage} /> : null}
 
       <div className="mt-6 text-center text-sm text-gray-600">
         New to Dellie?{" "}
-        <Link href="/auth/signup" className="font-semibold text-[#1f5d58] transition-colors hover:text-[#102d2b]">
+        <Link href="/auth/signup" className="font-semibold text-gray-700 transition-colors hover:text-black">
           Create your account
         </Link>
       </div>

@@ -19,7 +19,7 @@ export default function ForgotPasswordForm() {
   };
 
   return (
-    <AuthPageShell eyebrow="Password help" title="Reset your access" description="Enter your username or email to recover access.">
+    <AuthPageShell title="Reset your access" description="Enter your username or email to recover access.">
       <Form size="small" disabled={isLoading} form={signinForm} onFinish={handleSubmit} className="auth grid gap-x-5" layout="vertical">
         <InputFormItem
           label="Username or email"
@@ -42,12 +42,12 @@ export default function ForgotPasswordForm() {
       ) : null}
 
       <div className="mt-6">
-        <BaseButton onClick={() => signinForm.submit()} disabled={isLoading} label={isLoading ? "Requesting..." : "Request reset link"} classNames="w-full !bg-[#102d2b] !py-[1.35rem] !text-white hover:!bg-[#173d3a]" />
+        <BaseButton onClick={() => signinForm.submit()} disabled={isLoading} label={isLoading ? "Requesting..." : "Request reset link"} classNames="w-full !bg-black !py-[1.35rem] !text-white hover:!bg-[#1a1a1a]" />
       </div>
 
       <div className="mt-6 text-center text-sm text-gray-600">
         Remembered your password?{" "}
-        <Link href="/auth/signin" className="font-semibold text-[#1f5d58] transition-colors hover:text-[#102d2b]">
+        <Link href="/auth/signin" className="font-semibold text-gray-700 transition-colors hover:text-black">
           Back to sign in
         </Link>
       </div>

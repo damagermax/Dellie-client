@@ -47,6 +47,9 @@ const MENU_ITEMS: SidebarMenuItem[] = [
   { title: "More", link: "/settings", icon: <LuEllipsis /> },
 ];
 
+const SIDEBAR_LOGO_SRC = "/brand/dellie-logo-sidebar.svg";
+const SIDEBAR_MARK_SRC = "/brand/dellie-mark-sidebar.svg";
+
 // Memoized component to prevent unnecessary re-renders
 const MenuItem = memo(({ title, link, icon, isActive, isCollapsed = true, onClick }: MenuItemProps) => (
   <li>
@@ -123,7 +126,7 @@ interface SidebarContentProps {
 
 const SidebarContent = ({ isCollapsed, onItemClick, onClose }: SidebarContentProps) => (
   <div className="flex h-full flex-col px-3">
-    <div className={cn("border-b-0 border-gray-200 py-[1rem]", isCollapsed ? "hidden justify-center" : "px-2")}>
+    <div className={cn("border-b-0 border-gray-200 py-[1rem]", isCollapsed ? "flex justify-center" : "px-2")}>
       {!isCollapsed && onClose ? (
         <div className="mb-3 flex justify-end">
           <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm transition-colors hover:bg-gray-50" aria-label="Close navigation menu">
@@ -131,8 +134,7 @@ const SidebarContent = ({ isCollapsed, onItemClick, onClose }: SidebarContentPro
           </button>
         </div>
       ) : null}
-      {/* <img src={"/images/dellie-logo.png"} alt="Moor Logo" style={{ width: "100px", height: "auto" }} className="object-contain hidden" loading="eager" /> */}
-      {/* {!isCollapsed && <h2 className="text-2xl  hidden   font-semibold text-gray-800 whitespace-nowrap">Moor</h2>} */}
+      <img src={isCollapsed ? SIDEBAR_MARK_SRC : SIDEBAR_LOGO_SRC} alt="Dellie" className={cn("object-contain", isCollapsed ? "h-8 w-8" : "h-8 w-auto")} loading="eager" />
     </div>
 
     <StoreSelector />

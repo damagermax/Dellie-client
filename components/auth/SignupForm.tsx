@@ -67,7 +67,7 @@ export default function SignupForm() {
       : null;
 
   return (
-    <AuthPageShell eyebrow="Get started" title="Create your business workspace" description="Set up Dellie and start running your business clearly.">
+    <AuthPageShell title="Create your business workspace" description="Set up Dellie and start running your business clearly.">
       {step === "details" ? (
         <Form disabled={startState.isLoading} onFinish={handleSubmit} size="small" id="signupForm" form={signinForm} className="auth grid gap-x-5 sm:grid-cols-2" layout="vertical">
           <InputFormItem label="Full name" name="name" placeholder="Enter your full name" rules={[{ required: true, message: "Please enter your full name." }]} />
@@ -105,14 +105,14 @@ export default function SignupForm() {
 
       <div className="mt-6">
         {step === "details" ? (
-          <BaseButton htmlType="submit" form="signupForm" label={startState.isLoading ? "Sending code..." : "Create account"} classNames="w-full !bg-[#102d2b] !py-[1.35rem] !text-white hover:!bg-[#173d3a]" />
+          <BaseButton htmlType="submit" form="signupForm" label={startState.isLoading ? "Sending code..." : "Create account"} classNames="w-full !bg-black !py-[1.35rem] !text-white hover:!bg-[#1a1a1a]" />
         ) : (
           <div className="space-y-3">
-            <BaseButton htmlType="submit" form="signupOtpForm" label={verifyState.isLoading ? "Verifying..." : "Verify email and continue"} classNames="w-full !bg-[#102d2b] !py-[1.35rem] !text-white hover:!bg-[#173d3a]" />
+            <BaseButton htmlType="submit" form="signupOtpForm" label={verifyState.isLoading ? "Verifying..." : "Verify email and continue"} classNames="w-full !bg-black !py-[1.35rem] !text-white hover:!bg-[#1a1a1a]" />
             <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
-                className="text-sm font-medium text-[#1f5d58]"
+                className="text-sm font-medium text-gray-700 transition-colors hover:text-black"
                 onClick={() => {
                   setStep("details");
                   setFeedback(null);
@@ -120,7 +120,7 @@ export default function SignupForm() {
               >
                 Edit email
               </button>
-              <button type="button" className="text-sm font-medium text-[#1f5d58]" disabled={resendState.isLoading} onClick={handleResendOtp}>
+              <button type="button" className="text-sm font-medium text-gray-700 transition-colors hover:text-black disabled:hover:text-gray-700" disabled={resendState.isLoading} onClick={handleResendOtp}>
                 {resendState.isLoading ? "Resending..." : "Resend code"}
               </button>
             </div>
@@ -130,7 +130,7 @@ export default function SignupForm() {
 
       <div className="mt-6 text-center text-sm text-gray-600">
         Already have an account?{" "}
-        <Link href="/auth/signin" className="font-semibold text-[#1f5d58] transition-colors hover:text-[#102d2b]">
+        <Link href="/auth/signin" className="font-semibold text-gray-700 transition-colors hover:text-black">
           Sign in
         </Link>
       </div>

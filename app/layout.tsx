@@ -19,8 +19,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Moor",
-  description: "Sell Anything Anywhere",
+  title: "Dellie",
+  description: "Run and understand your business from one place.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/brand/icon-192.png",
+    apple: "/brand/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

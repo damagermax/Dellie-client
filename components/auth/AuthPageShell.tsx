@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 interface AuthPageShellProps {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description: string;
   children: ReactNode;
@@ -15,17 +15,13 @@ export default function AuthPageShell({ eyebrow, title, description, children, c
       <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-white/8 to-transparent" />
 
       <div className="relative">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[18px] bg-[#f7c855] text-sm font-semibold text-[#102d2b] shadow-sm">D</div>
-          <div>
-            <p className="text-sm font-semibold text-[#102d2b]">Dellie</p>
-            <p className="text-xs text-gray-500">Business operating system</p>
-          </div>
+        <div className="mb-6">
+          <img src="/brand/dellie-logo-dark.svg" alt="Dellie" className="h-8 w-auto object-contain" />
         </div>
 
         <div className="mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#2d837d]/80">{eyebrow}</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-gray-950 sm:text-[2rem]">{title}</h1>
+          {eyebrow ? <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#2d837d]/80">{eyebrow}</p> : null}
+          <h1 className={`${eyebrow ? "mt-3" : ""} text-3xl font-semibold tracking-tight text-gray-950 sm:text-[2rem]`}>{title}</h1>
           <p className="mt-2.5 max-w-[40ch] text-sm leading-6 text-gray-600">{description}</p>
         </div>
 

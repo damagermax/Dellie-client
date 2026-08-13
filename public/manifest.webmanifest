@@ -1,0 +1,13 @@
+{
+  "name": "Dellie",
+  "short_name": "Dellie",
+  "description": "Run and understand your business from one place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F766E",
+  "theme_color": "#0D9488",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
